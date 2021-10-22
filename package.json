@@ -1,0 +1,84 @@
+{
+  "name": "mock-service-cli",
+  "version": "0.0.1",
+  "description": "🦅 Local mock server",
+  "main": "index.js",
+  "bin": {
+    "mock-service-cli": "./bin/mock-service-cli.js"
+  },
+  "scripts": {
+    "start": "node ./bin/mock-service-cli",
+    "test": "tap --reporter=spec test/*.test.js",
+    "test-watch": "tap --reporter=spec --watch test/*.test.js",
+    "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
+    "fix": "eslint --ext .js,.vue,.css --fix",
+    "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
+    "release:prerelease": "standard-version --prerelease",
+    "release:prefix": "standard-version --prerelease alpha",
+    "release:patch": "standard-version --release-as patch && git push origin master && npm publish",
+    "release:minor": "standard-version --release-as minor && git push --follow-tags origin master",
+    "release:major": "standard-version --release-as major && git push --follow-tags origin master"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "doc"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "author": "chendq <deqiaochen@gmail.com>",
+  "keywords": [
+    "MIT-licensed",
+    "Mock",
+    "MockServer",
+    "mock-service-cli",
+    "CLI"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chandq/mock-service-cli"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/chandq/mock-service-cli#readme",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "minimist": "^1.2.5",
+    "nodemon": "^2.0.14",
+    "ora": "^4.0.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^8.3.5",
+    "@commitlint/config-conventional": "^8.3.4",
+    "babel-eslint": "^10.1.0",
+    "coveralls": "^3.1.0",
+    "eslint": "^7.0.0",
+    "eslint-config-populist": "^4.2.0",
+    "eslint-plugin-mocha": "^9.0.0",
+    "express": "^4.17.1",
+    "husky": "^4.2.5",
+    "lint-staged": "^10.2.2",
+    "mockjs": "^1.1.0",
+    "nyc": "^15.0.1",
+    "portfinder": "^1.0.28",
+    "prettier": "^2.4.1",
+    "standard-version": "^8.0.0",
+    "tap": "^15.0.10"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.{js,vue}": [
+      "eslint"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}

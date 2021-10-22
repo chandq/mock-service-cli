@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+
+'use strict'
+
+const colors = require('colors/safe'),
+  portfinder = require('portfinder'),
+  path = require('path'),
+  nodemon = require('nodemon')
+const argv = require('minimist')(process.argv.slice(2))
+process.title = 'mock-service-cli'
+
+if (argv.h || argv.help) {
+  console.log(
+    [
+      'usage: http-server [path] [options]',
+      '',
+      'options:',
+      '  -p --port    Port to use. If 0, look for open port. [8090]',
+      '  -d           Show directory listings [true], default [/mock] directory,',
+      '               Also watch js files changes and support hot reload',
+      '  -f --file     Specify the input data source, support javascript or JSON file',
+      '                     The priority is over the directory watches',
+      '  -s --silent  Suppress log messages from output',
+      '',
+      '  -h --help          Print this list and exit.',
+      '  -v --version       Print the version and exit.'
+    ].join('\n')
+  )
+  process.exit()
+}
+
+var port = argv.p || argv.port,
+  watchDir = argv.d,
+  specifiedFile = argv.f || argv.file,
+  version = argv.v || argv.version,
+  logger
+
+const watchMockFiles = function (watchDir) {
+  /**
+   * script 重启的脚本
+   * ext 检测的文件
+   */
+  nodemon({
+    script: path.join(__dirname, '../lib/mockServer.js'),
+    watch: [watchDir],
+    ext: 'js'
+  })
+
+  nodemon
+    .on('start', function () {
+      console.info('nodemon: mockServer has started')
+    })
+    .on('quit', function () {
+      console.info('nodemon: mockServer has quit')
+      process.exit()
+    })
+    .on('restart', function (files) {
+      console.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''))
+    })
+}
+
+if (!argv.s && !argv.silent) {
+  logger = {
+    info: console.log
+    // request: function (req, res, error) {
+    //   const date = utc ? new Date().toUTCString() : new Date()
+    //   const ip = argv['log-ip'] ? req.headers['x-forwarded-for'] || '' + req.connection.remoteAddress : ''
+    //   if (error) {
+    //     logger.info(
+    //       '[%s] %s "%s %s" Error (%s): "%s"',
+    //       date,
+    //       ip,
+    //       colors.red(req.method),
+    //       colors.red(req.url),
+    //       colors.red(error.status.toString()),
+    //       colors.red(error.message)
+    //     )
+    //   } else {
+    //     logger.info(
+    //       '[%s] %s "%s %s" "%s"',
+    //       date,
+    //       ip,
+    //       colors.cyan(req.method),
+    //       colors.cyan(req.url),
+    //       req.headers['user-agent']
+    //     )
+    //   }
+    // }
+  }
+} else if (colors) {
+  logger = {
+    info: function () {},
+    request: function () {}
+  }
+}
+
+if (version) {
+  logger.info('v' + require('../package.json').version)
+  process.exit()
+}
+
+if (!port) {
+  portfinder.basePort = 8090
+  portfinder.getPort(function (err, port) {
+    if (err) {
+      throw err
+    }
+    process.env.PORT = port
+    // listen(port)
+  })
+} else {
+  process.env.PORT = port
+  // listen(port)
+}
+
+if (specifiedFile) {
+  process.env.SPECIFIED_FILE = path.join(process.cwd(), specifiedFile)
+  watchMockFiles(process.env.SPECIFIED_FILE)
+} else if (watchDir) {
+  process.env.SPECIFIED_DIR = path.join(process.cwd(), watchDir)
+  console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR)
+  watchMockFiles(process.env.SPECIFIED_DIR)
+} else {
+  watchDir = process.env.SPECIFIED_DIR = path.join(__dirname, '../mock')
+  console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR)
+  watchMockFiles(watchDir)
+}
