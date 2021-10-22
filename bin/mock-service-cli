@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-'use strict'
-
 const colors = require('colors/safe'),
   portfinder = require('portfinder'),
   path = require('path'),
-  nodemon = require('nodemon')
-const argv = require('minimist')(process.argv.slice(2))
-process.title = 'mock-service-cli'
+  nodemon = require('nodemon');
+const argv = require('minimist')(process.argv.slice(2));
+process.title = 'mock-service-cli';
 
 if (argv.h || argv.help) {
   console.log(
@@ -25,15 +23,15 @@ if (argv.h || argv.help) {
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
     ].join('\n')
-  )
-  process.exit()
+  );
+  process.exit();
 }
 
 var port = argv.p || argv.port,
   watchDir = argv.d,
   specifiedFile = argv.f || argv.file,
   version = argv.v || argv.version,
-  logger
+  logger;
 
 const watchMockFiles = function (watchDir) {
   /**
@@ -44,20 +42,20 @@ const watchMockFiles = function (watchDir) {
     script: path.join(__dirname, '../lib/mockServer.js'),
     watch: [watchDir],
     ext: 'js'
-  })
+  });
 
   nodemon
     .on('start', function () {
-      console.info('nodemon: mockServer has started')
+      console.info('nodemon: mockServer has started');
     })
     .on('quit', function () {
-      console.info('nodemon: mockServer has quit')
-      process.exit()
+      console.info('nodemon: mockServer has quit');
+      process.exit();
     })
     .on('restart', function (files) {
-      console.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''))
-    })
-}
+      console.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
+    });
+};
 
 if (!argv.s && !argv.silent) {
   logger = {
@@ -86,42 +84,40 @@ if (!argv.s && !argv.silent) {
     //     )
     //   }
     // }
-  }
+  };
 } else if (colors) {
   logger = {
     info: function () {},
     request: function () {}
-  }
+  };
 }
 
 if (version) {
-  logger.info('v' + require('../package.json').version)
-  process.exit()
+  logger.info('v' + require('../package.json').version);
+  process.exit();
 }
 
 if (!port) {
-  portfinder.basePort = 8090
+  portfinder.basePort = 8090;
   portfinder.getPort(function (err, port) {
     if (err) {
-      throw err
+      throw err;
     }
-    process.env.PORT = port
-    // listen(port)
-  })
+    process.env.PORT = port;
+  });
 } else {
-  process.env.PORT = port
-  // listen(port)
+  process.env.PORT = port;
 }
 
 if (specifiedFile) {
-  process.env.SPECIFIED_FILE = path.join(process.cwd(), specifiedFile)
-  watchMockFiles(process.env.SPECIFIED_FILE)
+  process.env.SPECIFIED_FILE = path.join(process.cwd(), specifiedFile);
+  watchMockFiles(process.env.SPECIFIED_FILE);
 } else if (watchDir) {
-  process.env.SPECIFIED_DIR = path.join(process.cwd(), watchDir)
-  console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR)
-  watchMockFiles(process.env.SPECIFIED_DIR)
+  process.env.SPECIFIED_DIR = path.join(process.cwd(), watchDir);
+  // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+  watchMockFiles(process.env.SPECIFIED_DIR);
 } else {
-  watchDir = process.env.SPECIFIED_DIR = path.join(__dirname, '../mock')
-  console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR)
-  watchMockFiles(watchDir)
+  watchDir = process.env.SPECIFIED_DIR = path.join(__dirname, '../mock');
+  // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+  watchMockFiles(watchDir);
 }

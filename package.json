@@ -2,9 +2,9 @@
   "name": "mock-service-cli",
   "version": "0.0.1",
   "description": "🦅 Local mock server",
-  "main": "index.js",
+  "main": "./lib/mockServer.js",
   "bin": {
-    "mock-service-cli": "./bin/mock-service-cli.js"
+    "mock-service-cli": "bin/mock-service-cli.js"
   },
   "scripts": {
     "start": "node ./bin/mock-service-cli",
@@ -37,12 +37,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/chandq/mock-service-cli"
+    "url": "git+https://github.com/chandq/mock-service-cli.git"
   },
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
     "colors": "^1.4.0",
+    "deasync": "^0.1.23",
     "minimist": "^1.2.5",
     "nodemon": "^2.0.14",
     "ora": "^4.0.3"
@@ -80,5 +81,13 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
+  },
+  "bugs": {
+    "url": "https://github.com/chandq/mock-service-cli/issues"
+  },
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
   }
 }
