@@ -46,3 +46,32 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-s` or `--silent`  | Suppress log messages from output                                                                              |          |
 | `-h` or `--help`    | Print this list and exit.                                                                                      |          |
 | `-v` or `--version` | Print the version and exit.                                                                                    |          |
+
+## Example
+
+1. Specify server port.
+
+`mock-service-cli -p 8085`
+
+2. Specify mock directory.
+
+`mock-service-cli -d ./mock`
+
+3. Specify mock file.
+
+`mock-service-cli -f ./mock/test.js`
+
+### mock file template
+
+> e.g. `./mock/test.js`
+```javascript
+module.exports = {
+  '/mock/:id/test': { aa: 1, bb: '西西小飞龙' },
+  '/mock/video/test': (req, res) => {
+    res.json({ aa: 1, bb: 'asdf' });
+  },
+  '/mock/image/test': (req, res) => {
+    res.json({ aa: 1, bb: 'yyds' });
+  },
+};
+```
