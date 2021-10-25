@@ -117,7 +117,7 @@ if (specifiedFile) {
   // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(process.env.SPECIFIED_DIR);
 } else {
-  watchDir = process.env.SPECIFIED_DIR = path.join(__dirname, '../mock');
+  watchDir = process.env.SPECIFIED_DIR = path.join(process.cwd(), './mock');
   // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(watchDir);
 }

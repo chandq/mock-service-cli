@@ -17,7 +17,7 @@ const getRandomArr = ({ min, max, template }) => {
     }
   };
   return new Array(Math.round(Math.random() * (max - min) + min)).fill('').map(() => {
-    let newObj = {};
+    const newObj = {};
     Object.keys(template).forEach(key => {
       if (key.startsWith('$')) {
         newObj[key.split('$')[1]] = randomType(template[key]);
