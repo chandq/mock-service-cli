@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node ./bin/mock-service-cli",
-    "test": "tap --reporter=spec test/*.test.js",
+    "unit-test": "tap --reporter=spec test/*.test.js",
+    "test": "tap --cov --coverage-report=lcov --reporter=spec test/*.test.js ",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",
     "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
     "fix": "eslint --ext .js,.vue,.css --fix",
@@ -46,7 +47,6 @@
     "deasync": "^0.1.23",
     "minimist": "^1.2.5",
     "nodemon": "^2.0.14",
-    "ora": "^4.0.3",
     "express": "^4.17.1",
     "portfinder": "^1.0.28"
   },
@@ -61,8 +61,6 @@
     "husky": "^4.2.5",
     "lint-staged": "^10.2.2",
     "mockjs": "^1.1.0",
-    "nyc": "^15.0.1",
-    "prettier": "^2.4.1",
     "standard-version": "^8.0.0",
     "tap": "^15.0.10"
   },

@@ -1,9 +1,11 @@
-/* this test suit is incomplete  2015-12-18 */
+/* this test suit is complete  2021-10-25 */
 
 const test = require('tap').test;
 const request = require('request');
 const spawn = require('child_process').spawn;
 const portfinder = require('portfinder');
+const path = require('path');
+const { composeRoute, parseMockFiles } = require('../lib/mockServer');
 
 const node = process.execPath;
 
@@ -52,6 +54,18 @@ const getPort = function (p) {
   });
 };
 
+test('test composeRoute function', t => {
+  composeRoute(path.resolve(__dirname, '../mock/test.js'));
+  t.pass('ok');
+  t.end();
+});
+
+test('test parseMockFiles function', t => {
+  parseMockFiles(path.resolve(__dirname, '../mock'));
+  t.pass('ok');
+  t.end();
+});
+
 test('run mock server via cli - no args', t => {
   t.plan(1);
 
@@ -75,9 +89,6 @@ test('setting port via cli - custom ports 8091', t => {
     const server = startServer(options);
 
     tearDown(server, t);
-    // server.stdout.on('data', msg => {
-    //   checkServerIsRunning(`http://localhost:${port}`, msg, t)
-    // })
     t.pass('ok');
     t.end();
   });
@@ -105,9 +116,18 @@ test('setting mock file via cli - custom file mock/sub/test.js', t => {
   const server = startServer(options);
 
   tearDown(server, t);
-  // server.stdout.on('data', msg => {
-  //   checkServerIsRunning(`http://localhost:${port}`, msg, t)
-  // })
+
+  t.pass('ok');
+  t.end();
+});
+
+test('setting mock file and serve silently via cli - custom file mock/sub/test.js', t => {
+  t.plan(1);
+
+  const options = ['.', '-s', '-f', './mock/sub/test.js'];
+  const server = startServer(options);
+
+  tearDown(server, t);
 
   t.pass('ok');
   t.end();
