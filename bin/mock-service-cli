@@ -5,6 +5,7 @@ const colors = require('colors/safe'),
   path = require('path'),
   nodemon = require('nodemon');
 const argv = require('minimist')(process.argv.slice(2));
+const { logger } = require('../lib/utils');
 process.title = 'mock-service-cli';
 
 if (argv.h || argv.help) {
@@ -31,69 +32,17 @@ var port = argv.p || argv.port,
   watchDir = argv.d,
   specifiedFile = argv.f || argv.file,
   version = argv.v || argv.version,
-  logger;
-
-const watchMockFiles = function (watchDir) {
-  /**
-   * script 重启的脚本
-   * ext 检测的文件
-   */
-  nodemon({
-    script: path.join(__dirname, '../lib/mockServer.js'),
-    watch: [watchDir],
-    ext: 'js'
-  });
-
-  nodemon
-    .on('start', function () {
-      console.info('nodemon: mockServer has started');
-    })
-    .on('quit', function () {
-      console.info('nodemon: mockServer has quit');
-      process.exit();
-    })
-    .on('restart', function (files) {
-      console.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
-    });
-};
+  log;
 
 if (!argv.s && !argv.silent) {
-  logger = {
-    info: console.log
-    // request: function (req, res, error) {
-    //   const date = utc ? new Date().toUTCString() : new Date()
-    //   const ip = argv['log-ip'] ? req.headers['x-forwarded-for'] || '' + req.connection.remoteAddress : ''
-    //   if (error) {
-    //     logger.info(
-    //       '[%s] %s "%s %s" Error (%s): "%s"',
-    //       date,
-    //       ip,
-    //       colors.red(req.method),
-    //       colors.red(req.url),
-    //       colors.red(error.status.toString()),
-    //       colors.red(error.message)
-    //     )
-    //   } else {
-    //     logger.info(
-    //       '[%s] %s "%s %s" "%s"',
-    //       date,
-    //       ip,
-    //       colors.cyan(req.method),
-    //       colors.cyan(req.url),
-    //       req.headers['user-agent']
-    //     )
-    //   }
-    // }
-  };
+  log = logger(false);
 } else if (colors) {
-  logger = {
-    info: function () {},
-    request: function () {}
-  };
+  process.env.SILENT = true;
+  log = logger(true);
 }
 
 if (version) {
-  logger.info('v' + require('../package.json').version);
+  log.info('v' + require('../package.json').version);
   process.exit();
 }
 
@@ -109,15 +58,40 @@ if (!port) {
   process.env.PORT = port;
 }
 
+const watchMockFiles = function (watchDir) {
+  /**
+   * script 重启的脚本
+   * ext 检测的文件
+   */
+  nodemon({
+    script: path.join(__dirname, '../lib/mockServer.js'),
+    watch: [watchDir],
+    ext: 'js'
+  });
+
+  nodemon
+    .on('start', function () {
+      log.info('nodemon: mockServer has started');
+    })
+    .on('quit', function () {
+      log.info('nodemon: mockServer has quit');
+      process.exit();
+    })
+    .on('restart', function (files) {
+      process.env.RESTARTED = true;
+      log.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
+    });
+};
+
 if (specifiedFile) {
   process.env.SPECIFIED_FILE = path.join(process.cwd(), specifiedFile);
   watchMockFiles(process.env.SPECIFIED_FILE);
 } else if (watchDir) {
   process.env.SPECIFIED_DIR = path.join(process.cwd(), watchDir);
-  // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+  // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(process.env.SPECIFIED_DIR);
 } else {
   watchDir = process.env.SPECIFIED_DIR = path.join(process.cwd(), './mock');
-  // console.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+  // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(watchDir);
 }

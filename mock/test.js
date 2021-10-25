@@ -29,7 +29,7 @@ const getRandomArr = ({ min, max, template }) => {
   });
 };
 module.exports = {
-  '/mock/api/device/video/camera/': (req, res) => {
+  '/mock/api/cjx/video/camera/': (req, res) => {
     res.json({
       code: 0,
       data: {
