@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/chandq/mock-service-cli/compare/v0.2.1...v1.0.0) (2021-10-25)
+
+
+### Bug Fixes
+
+* default mock directory issue ([064cd90](https://github.com/chandq/mock-service-cli/commit/064cd903cbc891eaa068ac3c38606e37ec529257))
+* make silent argument take effect ([5aa472b](https://github.com/chandq/mock-service-cli/commit/5aa472b34cee4b93683a3cc282bba0b9ad52048e))
+
 ### [0.2.1](https://github.com/chandq/mock-service-cli/compare/v0.1.1...v0.2.1) (2021-10-22)
 
 
