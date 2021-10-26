@@ -71,15 +71,15 @@ const watchMockFiles = function (watchDir) {
 
   nodemon
     .on('start', function () {
-      log.info('nodemon: mockServer has started');
+      // log.info('nodemon: mockServer has started');
     })
     .on('quit', function () {
-      log.info('nodemon: mockServer has quit');
+      // log.info('nodemon: mockServer has quit');
       process.exit();
     })
     .on('restart', function (files) {
       process.env.RESTARTED = true;
-      log.info([colors.bgMagenta('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
+      log.info([colors.green('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
     });
 };
 
