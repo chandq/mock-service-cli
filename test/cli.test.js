@@ -54,13 +54,13 @@ const getPort = function (p) {
   });
 };
 
-test('test composeRoute function', t => {
+test('invoke composeRoute function', t => {
   composeRoute(path.resolve(__dirname, '../mock/test.js'));
   t.pass('ok');
   t.end();
 });
 
-test('test parseMockFiles function', t => {
+test('invoke parseMockFiles function', t => {
   parseMockFiles(path.resolve(__dirname, '../mock'));
   t.pass('ok');
   t.end();
@@ -109,10 +109,10 @@ test('setting mock directory via cli - custom directory mock/sub/', t => {
   t.end();
 });
 
-test('setting mock file via cli - custom file mock/sub/test.js', t => {
+test('setting mock file via cli - custom file mock/sub/sub-test.js', t => {
   t.plan(1);
 
-  const options = ['.', '-f', './mock/sub/test.js'];
+  const options = ['.', '-f', './mock/sub/sub-test.js'];
   const server = startServer(options);
 
   tearDown(server, t);
@@ -121,10 +121,10 @@ test('setting mock file via cli - custom file mock/sub/test.js', t => {
   t.end();
 });
 
-test('setting mock file and serve silently via cli - custom file mock/sub/test.js', t => {
+test('setting mock file and serve silently via cli - custom file mock/sub/sub-test.js', t => {
   t.plan(1);
 
-  const options = ['.', '-s', '-f', './mock/sub/test.js'];
+  const options = ['.', '-s', '-f', './mock/sub/sub-test.js'];
   const server = startServer(options);
 
   tearDown(server, t);

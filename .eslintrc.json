@@ -5,6 +5,7 @@
     "indent": ["warn", 2],
     "valid-jsdoc": "off",
     "no-sync": "off",
+    "quote-props": "off",
     "no-continue": "off",
     "no-console": "off",
     "guard-for-in": "warn",

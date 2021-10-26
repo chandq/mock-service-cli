@@ -1,59 +1,32 @@
 const Mock = require('mockjs');
-const Random = Mock.Random;
-/**
- * @description:  定义结合MockJs生成包含各种数据类型的随机数组的函数
- *  '$前缀的key和@前缀的value代表MockJs随机生成的数据'
- * @param {*} min
- * @param {*} max
- * @param {*} template
- * @return {*} [Array]
- */
-const getRandomArr = ({ min, max, template }) => {
-  const randomType = type => {
-    if (type.startsWith('@')) {
-      return Mock.mock(type);
-    } else if (type === 'string') {
-      return Random.string();
-    }
-  };
-  return new Array(Math.round(Math.random() * (max - min) + min)).fill('').map(() => {
-    const newObj = {};
-    Object.keys(template).forEach(key => {
-      if (key.startsWith('$')) {
-        newObj[key.split('$')[1]] = randomType(template[key]);
-      } else {
-        newObj[key] = template[key];
-      }
-    });
-    return newObj;
-  });
-};
+
 module.exports = {
-  '/mock/api/cjx/video/camera/': (req, res) => {
-    res.json({
-      code: 0,
-      data: {
-        pages: 10,
-        records: getRandomArr({
-          min: 200,
-          max: 200,
-          template: {
-            camType: 'NORMAL',
-            canDelete: true,
-            createdAt: '2021-07-21 20:49:08',
-            $devId: '@id',
-            $devName: '@ctitle',
-            driverId: '0958d9ec6c684519afc8a62721044fa1',
-            dvrChannel: 1,
-            dvrId: '1418024416622362625',
-            dvrName: 'title',
-            productKey: 'C18553Mn2W8',
-            videoStreamAddress: 'rtsp://admin:admin123@192.168.10.90:554/cam/realmonitor?channel=1%26subtype=0',
-            videoStreamProtocol: 'RTSP'
+  '/mock/:id/test': { aa: 1, bb: '西西小飞龙' },
+  '/mock/video/test': (req, res) => {
+    res.json({ aa: 1, bb: 'asdf' });
+  },
+  '/mock/image/test': (req, res) => {
+    res.json({ aa: 1, bb: 'yyds' });
+  },
+  '/mock/api/cjx/random/cn': (req, res) => {
+    res.json(
+      Mock.mock({
+        status: 200,
+        'dataSource|1-9': [
+          {
+            'key|+1': 1,
+            'mockTitle|1': ['肆无忌惮'],
+            'mockContent|1': [
+              '角色精湛主题略荒诞',
+              '理由太短 是让人不安',
+              '疑信参半 却无比期盼',
+              '你的惯犯 圆满',
+              '别让纠缠 显得 孤单'
+            ],
+            'mockAction|1': ['下载', '试听', '喜欢']
           }
-        })
-      }
-      // 'apiList|2-5': [{ id: Mock.mock('@id'), name: Mock.mock('@cname'), apiId: Mock.mock('@id') }]
-    });
+        ]
+      })
+    );
   }
 };
