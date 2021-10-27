@@ -1,4 +1,4 @@
-## 发布 node 模块
+## 发布 npm 包
 
 1. 登录 npm 官网https://www.npmjs.com/，注册账号
 2. 本地登录、验证 npm 账号:

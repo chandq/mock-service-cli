@@ -41,8 +41,8 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | Command             | Description                                                                                                    | Defaults |
 | ------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
 | `-p` or `--port`    | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`. | 8090     |
-| `-d`                | Special mock directory                                                                                         | ./mock   |
-| `-f`                | Special mock file                                                                                              |          |
+| `-d`                | Specify mock directory                                                                                         | ./mock   |
+| `-f`                | Specify mock file                                                                                              |          |
 | `-s` or `--silent`  | Suppress log messages from output                                                                              |          |
 | `-h` or `--help`    | Print this list and exit.                                                                                      |          |
 | `-v` or `--version` | Print the version and exit.                                                                                    |          |
@@ -64,6 +64,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 ### mock file template
 
 > e.g. `./mock/test.js`
+
 ```javascript
 module.exports = {
   '/mock/:id/test': { aa: 1, bb: '西西小飞龙' },
@@ -72,6 +73,6 @@ module.exports = {
   },
   '/mock/image/test': (req, res) => {
     res.json({ aa: 1, bb: 'yyds' });
-  },
+  }
 };
 ```

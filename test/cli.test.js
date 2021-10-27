@@ -4,8 +4,7 @@ const test = require('tap').test;
 const request = require('request');
 const spawn = require('child_process').spawn;
 const portfinder = require('portfinder');
-const path = require('path');
-const { composeRoute, parseMockFiles } = require('../lib/mockServer');
+const { dateFormat, logger } = require('../lib/utils');
 
 const node = process.execPath;
 
@@ -53,18 +52,6 @@ const getPort = function (p) {
     });
   });
 };
-
-test('invoke composeRoute function', t => {
-  composeRoute(path.resolve(__dirname, '../mock/test.js'));
-  t.pass('ok');
-  t.end();
-});
-
-test('invoke parseMockFiles function', t => {
-  parseMockFiles(path.resolve(__dirname, '../mock'));
-  t.pass('ok');
-  t.end();
-});
 
 test('run mock server via cli - no args', t => {
   t.plan(1);
@@ -129,6 +116,28 @@ test('setting mock file and serve silently via cli - custom file mock/sub/sub-te
 
   tearDown(server, t);
 
+  t.pass('ok');
+  t.end();
+});
+
+// test('invoke composeRoute function', t => {
+//   composeRoute(path.resolve(__dirname, '../mock/test.js'));
+//   t.pass('ok');
+//   t.end();
+// });
+
+// test('invoke parseMockFiles function', t => {
+//   parseMockFiles(path.resolve(__dirname, '../mock'));
+//   t.pass('ok');
+//   t.end();
+// });
+
+test('invoke dateFormat logger function', t => {
+  let log = logger(false);
+  log.info(dateFormat('YYYY-mm-dd HH:MM:SS', new Date()));
+  log.info(dateFormat('YYYY-mm-dd HH:MM:S', new Date()));
+  log = logger(true);
+  log.info('silent');
   t.pass('ok');
   t.end();
 });

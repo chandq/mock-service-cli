@@ -11,13 +11,13 @@ process.title = 'mock-service-cli';
 if (argv.h || argv.help) {
   console.log(
     [
-      'usage: http-server [path] [options]',
+      'usage: mock-service-cli [options]',
       '',
       'options:',
       '  -p --port    Port to use. If 0, look for open port. [8090]',
-      '  -d           Show directory listings [true], default [/mock] directory,',
+      '  -d           Specify mock directory, default [./mock] directory,',
       '               Also watch js files changes and support hot reload',
-      '  -f --file     Specify the input data source, support javascript or JSON file',
+      '  -f --file     Specify the input data source, support javascript ',
       '                     The priority is over the directory watches',
       '  -s --silent  Suppress log messages from output',
       '',
