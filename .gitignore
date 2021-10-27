@@ -31,4 +31,4 @@ yarn.lock
 *.sw*
 
 # CI
-.coveralls.yml
+# .coveralls.yml
