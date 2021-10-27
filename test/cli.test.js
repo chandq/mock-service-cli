@@ -132,7 +132,7 @@ test('setting mock file and serve silently via cli - custom file mock/sub/sub-te
 //   t.end();
 // });
 
-test('invoke dateFormat logger function', t => {
+test('#dateFormat() logger() function', t => {
   let log = logger(false);
   log.info(dateFormat('YYYY-mm-dd HH:MM:SS', new Date()));
   log.info(dateFormat('YYYY-mm-dd HH:MM:S', new Date()));

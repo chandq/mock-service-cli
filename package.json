@@ -8,10 +8,9 @@
   },
   "scripts": {
     "start": "node ./bin/mock-service-cli",
-    "unit-test": "tap --reporter=spec test/*.test.js",
+    "test:unit": "tap --reporter=spec test/*.test.js",
     "test": "tap --cov --coverage-report=lcov --reporter=spec test/*.test.js ",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",
-    "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
     "fix": "eslint --ext .js,.vue,.css --fix",
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
     "release:prerelease": "standard-version --prerelease",
@@ -45,16 +44,15 @@
   "dependencies": {
     "colors": "^1.4.0",
     "deasync": "^0.1.23",
+    "express": "^4.17.1",
     "minimist": "^1.2.5",
     "nodemon": "^2.0.14",
-    "express": "^4.17.1",
     "portfinder": "^1.0.28"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
     "babel-eslint": "^10.1.0",
-    "coveralls": "^3.1.0",
     "eslint": "^7.0.0",
     "eslint-config-populist": "^4.2.0",
     "eslint-plugin-mocha": "^9.0.0",
@@ -63,6 +61,9 @@
     "mockjs": "^1.1.0",
     "standard-version": "^8.0.0",
     "tap": "^15.0.10"
+  },
+  "tap": {
+    "check-coverage": false
   },
   "husky": {
     "hooks": {
