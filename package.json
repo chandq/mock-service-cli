@@ -10,6 +10,7 @@
     "start": "node ./bin/mock-service-cli",
     "test:unit": "tap --reporter=spec test/*.test.js",
     "test": "tap --cov --coverage-report=lcov --reporter=spec test/*.test.js ",
+    "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",
     "fix": "eslint --ext .js,.vue,.css --fix",
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",

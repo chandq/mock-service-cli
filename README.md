@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/chandq/mock-service-cli.svg?branch=master)](https://travis-ci.org/chandq/mock-service-cli)
+[![GitHub Workflow Status (master)](https://img.shields.io/github/workflow/status/chandq/mock-service-cli/Node.js%20CI/master?style=flat-square)](https://github.com/chandq/mock-service-cli/actions)
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
-[![mock-service-cli](https://img.shields.io/npm/v/mock-service-cli.svg)](https://www.npmjs.com/package/mock-service-cli)
+[![mock-service-cli](https://img.shields.io/npm/v/mock-service-cli.svg?style=flat-square)](https://www.npmjs.com/package/mock-service-cli)
 [![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://www.npmjs.com/package/mock-service-cli#license)
 [![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true)
 
