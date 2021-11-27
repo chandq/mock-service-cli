@@ -79,7 +79,9 @@ const watchMockFiles = function (watchDir) {
     })
     .on('restart', function (files) {
       process.env.RESTARTED = true;
-      log.info([colors.green('\nnodemon: mockServer restarted due to: '), files, '\n'].join(''));
+      log.info(
+        [colors.green('\nnodemon: mockServer restarted due to: '), files, colors.green(' have changed'), '\n'].join('')
+      );
     });
 };
 
