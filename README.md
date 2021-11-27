@@ -10,7 +10,7 @@
 
 ### 简介
 
-简单、零配置的命令行 Mock 服务器， 支持热更新，对于前端开发调试很实用，能提高前端开发者的开发效率。
+**使用简单**、**零配置**、**0 秒启动**的本地命令行 Mock 服务器， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，对工程代码无任何侵入性，可能是本地最好用的 Mock 工具。
 
 ## Installation:
 
@@ -69,7 +69,17 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 ```javascript
 module.exports = {
-  '/mock/:id/test': { aa: 1, bb: '西西小飞龙' },
+  '/mock/:id/test': { aa: 1, bb: '默认GET请求' },
+  'GET /mock/:id/test': { aa: 1, bb: '指定GET 方法' },
+  'POST /mock/:id/test': { aa: 1, bb: 'POST 方法' },
+  'DELETE /mock/:id/test': { aa: 1, bb: 'DELETE 方法' },
+  'PUT /mock/:id/test': { aa: 1, bb: 'PUT 方法' },
+  'PATCH /mock/:id/test': { aa: 1, bb: 'PATCH 方法' },
+  'OPTIONS /mock/:id/test': { aa: 1, bb: 'OPTIONS 方法' },
+  'COPY /mock/:id/test': { aa: 1, bb: 'COPY 方法' },
+  'LINK /mock/:id/test': { aa: 1, bb: 'LINK 方法' },
+  'UNLINK /mock/:id/test': { aa: 1, bb: 'UNLINK 方法' },
+  'PURGE /mock/:id/test': { aa: 1, bb: 'PURGE 方法' },
   '/mock/video/test': (req, res) => {
     res.json({ aa: 1, bb: 'asdf' });
   },
