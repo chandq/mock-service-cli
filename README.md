@@ -6,7 +6,7 @@
 [![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE.md)
 [![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true)
 
-# mock-service-cli： 🦅 一个基于 node 和 express 的 本地 Mock Server 命令行工具
+# 🦅 一个基于 [node](https://nodejs.org/en/) 和 [express](https://www.expressjs.com.cn/) 的 本地 Mock Server 命令行工具
 
 ### 简介
 
@@ -36,7 +36,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 ## Usage:
 
-     mock-service-cli [path] [options]
+     mock-service-cli [options] [path]
 
 `[path]` defaults to `./mock` .
 
@@ -63,28 +63,51 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `mock-service-cli -f ./mock/test.js`
 
-### mock file template
+### 编写 Mock 文件
 
-> e.g. `./mock/test.js`
+> mock 请求的类型支持`GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE`
+
+如果 `./mock/test.js` 的内容如下，
 
 ```javascript
 module.exports = {
-  '/mock/:id/test': { aa: 1, bb: '默认GET请求' },
-  'GET /mock/:id/test': { aa: 1, bb: '指定GET 方法' },
-  'POST /mock/:id/test': { aa: 1, bb: 'POST 方法' },
-  'DELETE /mock/:id/test': { aa: 1, bb: 'DELETE 方法' },
-  'PUT /mock/:id/test': { aa: 1, bb: 'PUT 方法' },
-  'PATCH /mock/:id/test': { aa: 1, bb: 'PATCH 方法' },
-  'OPTIONS /mock/:id/test': { aa: 1, bb: 'OPTIONS 方法' },
-  'COPY /mock/:id/test': { aa: 1, bb: 'COPY 方法' },
-  'LINK /mock/:id/test': { aa: 1, bb: 'LINK 方法' },
-  'UNLINK /mock/:id/test': { aa: 1, bb: 'UNLINK 方法' },
-  'PURGE /mock/:id/test': { aa: 1, bb: 'PURGE 方法' },
-  '/mock/video/test': (req, res) => {
+  // GET 可忽略
+  '/mock/mock/api/test': { aa: 1, bb: '默认GET请求' },
+  'GET /mock/api/:id/test': { aa: 1, bb: '使用id占位符' },
+  'GET /mock/api/test1': { aa: 1, bb: '指定GET 方法' },
+  'POST /mock/api/test': { aa: 1, bb: 'POST 方法' },
+  'DELETE /mock/api/test': { aa: 1, bb: 'DELETE 方法' },
+  'PUT /mock/api/test': { aa: 1, bb: 'PUT 方法' },
+  'PATCH /mock/api/test': { aa: 1, bb: 'PATCH 方法' },
+  'OPTIONS /mock/api/test': { aa: 1, bb: 'OPTIONS 方法' },
+  'COPY /mock/api/test': { aa: 1, bb: 'COPY 方法' },
+  'LINK /mock/api/test': { aa: 1, bb: 'LINK 方法' },
+  'UNLINK /mock/api/test': { aa: 1, bb: 'UNLINK 方法' },
+  'PURGE /mock/api/test': { aa: 1, bb: 'PURGE 方法' },
+  // 支持自定义函数，API 参考 express@4
+  '/mock/api/video/test': (req, res) => {
+    // 添加特定请求头token
+    res.setHeader('token', '5848778333359208');
     res.json({ aa: 1, bb: 'asdf' });
-  },
-  '/mock/image/test': (req, res) => {
-    res.json({ aa: 1, bb: 'yyds' });
   }
+};
+```
+
+然后访问 `本地代理地址` + `/mock/api/222/test` （例如`http://127.0.0.1:8090/mock/api/222/test`） 就能得到 { aa: 1, bb: '使用 id 占位符' } 的响应，其他以此类推。
+
+### 引入 Mock.js
+
+[Mock.js](http://mockjs.com/) 是常用的辅助生成模拟数据的三方库，借助他可以提升我们的 mock 数据能力。
+
+比如：
+
+```js
+const mockjs = require('mockjs');
+
+module.exports = {
+  // 使用 mockjs 等三方库
+  'GET /api/tags': mockjs.mock({
+    'list|100': [{ name: '@city', 'value|1-100': 50, 'type|0-2': 1 }]
+  })
 };
 ```
