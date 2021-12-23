@@ -11,6 +11,7 @@
     "guard-for-in": "warn",
     "no-undefined": "warn",
     "comma-dangle": "warn",
+    "maxstatements": 150,
     "callback-return": ["warn", ["next"]]
   }
 }

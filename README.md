@@ -87,7 +87,7 @@ module.exports = {
   // 支持自定义函数，API 参考 express@4
   '/mock/api/video/test': (req, res) => {
     // 添加特定请求头token
-    res.setHeader('token', '5848778333359208');
+    res.header('token', '5848778333359208');
     res.json({ aa: 1, bb: 'asdf' });
   }
 };

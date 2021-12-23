@@ -66,7 +66,7 @@ const watchMockFiles = function (watchDir) {
   nodemon({
     script: path.join(__dirname, '../lib/mockServer.js'),
     watch: [watchDir],
-    ext: 'js'
+    ext: 'js,json'
   });
 
   nodemon
