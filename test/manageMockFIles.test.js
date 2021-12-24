@@ -2,7 +2,7 @@
  * @description: Mock数据统计test unit
  * @Date: 2021-12-23 17:10:26
  * @LastEditors: chendq
- * @LastEditTime: 2021-12-23 20:35:10
+ * @LastEditTime: 2021-12-24 13:13:51
  * @Author: chendq
  */
 const test = require('tap').test;
@@ -11,7 +11,6 @@ const { genMockFiles, getMockStatFromDir, getMockStatFromFile, hasMockApi } = re
 
 test('run genMockFiles function - with args', t => {
   t.plan(1);
-
   genMockFiles(
     '/api/ops/config/user/desktop/getMenuList',
     'get',
@@ -50,6 +49,32 @@ test('run genMockFiles function - with args', t => {
     },
     path.resolve(__dirname, '../mock')
   );
+  genMockFiles(
+    '/api/ops/config/user/desktop/getMenuList',
+    'post',
+    {
+      code: '200',
+      message: 'success',
+      data: [
+        {
+          id: 194,
+          code: '6788',
+          version: '2.0.0',
+          name: '6788222',
+          redirectUrl: '/api/device/dm/twin/6788/',
+          type: 6,
+          secondType: 5,
+          status: 1,
+          inMenu: 1,
+          createTime: '2021-11-24 10:59:56',
+          surName: '6'
+        }
+      ]
+    },
+    path.resolve(__dirname, '../mock')
+  );
+  genMockFiles('/api/yyds', 'get', { type: 'get' }, path.resolve(__dirname, '../mock'));
+  genMockFiles('/api/yyds', 'post', { type: 'post' }, path.resolve(__dirname, '../mock'));
   t.pass('ok');
   t.end();
 });

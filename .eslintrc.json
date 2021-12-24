@@ -14,6 +14,7 @@
     "no-prototype-builtins": "off",
     "object-curly-spacing": "off",
     "max-statements": "off",
+    "complexity": "off",
     "callback-return": ["warn", ["next"]]
   }
 }
