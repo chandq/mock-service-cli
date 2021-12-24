@@ -11,7 +11,9 @@
     "guard-for-in": "warn",
     "no-undefined": "warn",
     "comma-dangle": "warn",
-    "maxstatements": 150,
+    "no-prototype-builtins": "off",
+    "object-curly-spacing": "off",
+    "max-statements": "off",
     "callback-return": ["warn", ["next"]]
   }
 }
