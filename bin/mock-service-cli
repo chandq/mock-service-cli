@@ -20,6 +20,7 @@ if (argv.h || argv.help) {
       '  -f --file     Specify the input data source, support javascript ',
       '                     The priority is over the directory watches',
       '  -s --silent  Suppress log messages from output',
+      '  --ss  Whether start socket server or not, default false.',
       '',
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
@@ -32,13 +33,18 @@ var port = argv.p || argv.port,
   watchDir = argv.d,
   specifiedFile = argv.f || argv.file,
   version = argv.v || argv.version,
-  log;
+  isStartSocketServer = argv.ss || false,
+  log = null;
 
 if (!argv.s && !argv.silent) {
   log = logger(false);
 } else if (colors) {
   process.env.SILENT = true;
   log = logger(true);
+}
+
+if (isStartSocketServer) {
+  process.env.SOCKETSERVER = true;
 }
 
 if (version) {

@@ -26,7 +26,7 @@
     "doc"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=12"
   },
   "author": "chendq <deqiaochen@gmail.com>",
   "keywords": [
@@ -50,7 +50,8 @@
     "lodash": "^4.17.21",
     "minimist": "^1.2.5",
     "nodemon": "^2.0.14",
-    "portfinder": "^1.0.28"
+    "portfinder": "^1.0.28",
+    "socket.io": "^4.4.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",

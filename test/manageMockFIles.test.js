@@ -2,7 +2,7 @@
  * @description: Mock数据统计test unit
  * @Date: 2021-12-23 17:10:26
  * @LastEditors: chendq
- * @LastEditTime: 2021-12-24 13:13:51
+ * @LastEditTime: 2021-12-25 15:50:02
  * @Author: chendq
  */
 const test = require('tap').test;
@@ -11,10 +11,10 @@ const { genMockFiles, getMockStatFromDir, getMockStatFromFile, hasMockApi } = re
 
 test('run genMockFiles function - with args', t => {
   t.plan(1);
-  genMockFiles(
-    '/api/ops/config/user/desktop/getMenuList',
-    'get',
-    {
+  genMockFiles({
+    url: '/api/ops/config/user/desktop/getMenuList',
+    method: 'get',
+    data: {
       code: '200',
       message: 'success',
       data: [
@@ -47,12 +47,12 @@ test('run genMockFiles function - with args', t => {
         }
       ]
     },
-    path.resolve(__dirname, '../mock')
-  );
-  genMockFiles(
-    '/api/ops/config/user/desktop/getMenuList',
-    'post',
-    {
+    dir: path.resolve(__dirname, '../mock')
+  });
+  genMockFiles({
+    url: '/api/ops/config/user/desktop/getMenuList',
+    method: 'post',
+    data: {
       code: '200',
       message: 'success',
       data: [
@@ -71,10 +71,10 @@ test('run genMockFiles function - with args', t => {
         }
       ]
     },
-    path.resolve(__dirname, '../mock')
-  );
-  genMockFiles('/api/yyds', 'get', { type: 'get' }, path.resolve(__dirname, '../mock'));
-  genMockFiles('/api/yyds', 'post', { type: 'post' }, path.resolve(__dirname, '../mock'));
+    dir: path.resolve(__dirname, '../mock')
+  });
+  genMockFiles({ url: '/api/yyds', method: 'get', data: { type: 'get' }, dir: path.resolve(__dirname, '../mock') });
+  genMockFiles({ url: '/api/yyds', method: 'post', data: { type: 'post' }, dir: path.resolve(__dirname, '../mock') });
   t.pass('ok');
   t.end();
 });
