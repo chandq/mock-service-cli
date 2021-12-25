@@ -111,3 +111,40 @@ module.exports = {
   })
 };
 ```
+
+### 借助 socket.io 保留接口数据
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io.connect('http://{MockServerIP}:{PORT}/write-mock-data', {
+  transports: ['websocket'],
+  path: '/ws/mock-service'
+});
+
+socket.emit('save-data', { url, method, data, dir });
+```
+
+在 axios.js 文件中完成所有接口请求响应数据的保存操作, 示例如下：
+
+```js
+import { io } from 'socket.io-client';
+import axios from 'axios';
+
+const socket = io.connect('http://192.168.31.54:8090/write-mock-data', {
+  transports: ['websocket'],
+  path: '/ws/mock-service',
+  query: {
+    token: 'yyds'
+  }
+});
+
+axios.interceptors.response.use(res => {
+  const {
+    config: { method, url },
+    data
+  } = res;
+  socket.emit('save-data', { url, method, data, dir: '/home/chen/projects/model-ui/mock' });
+  return res;
+});
+```
