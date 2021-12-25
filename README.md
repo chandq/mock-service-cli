@@ -120,14 +120,23 @@ module.exports = {
 ### 借助 socket.io 保留接口数据
 
 ```js
+// 连接SocketServer
 import { io } from 'socket.io-client';
 
-const socket = io.connect('http://{MockServerIP}:{PORT}/write-mock-data', {
+const socket = io.connect('http://{MockServerIP}:{PORT}/mock-data', {
   transports: ['websocket'],
   path: '/ws/mock-service'
 });
-
+// 向SocketServer发消息：保存接口数据
 socket.emit('save-data', { url, method, data, dir });
+// 向SocketServer发消息：获取指定目录的Mock统计信息
+socket.emit('mock-dir-stat', dir);
+// 监听SocketServer消息：获取指定目录的Mock统计信息
+socket.on('mock-dir-stat', function (mockDirStat) {});
+// 向SocketServer发消息：获取指定文件的Mock统计信息
+socket.emit('mock-file-stat', dir);
+// 监听SocketServer消息：获取指定文件的Mock统计信息
+socket.on('mock-file-stat', function (mockFileStat) {});
 ```
 
 在 axios.js 文件中完成所有接口请求响应数据的保存操作, 示例如下：
@@ -136,12 +145,17 @@ socket.emit('save-data', { url, method, data, dir });
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io.connect('http://192.168.31.54:8090/write-mock-data', {
+const socket = io.connect('http://192.168.31.54:8090/mock-data', {
   transports: ['websocket'],
   path: '/ws/mock-service',
   query: {
     token: 'yyds'
   }
+});
+
+socket.emit('mock-dir-stat', '/home/chen/projects/isc-twin-model-ui/mock');
+socket.on('mock-dir-stat', function (data) {
+  console.debug('mock-dir-stat:', data);
 });
 
 axios.interceptors.response.use(res => {
