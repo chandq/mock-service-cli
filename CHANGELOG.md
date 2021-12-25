@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/chandq/mock-service-cli/compare/v1.2.1...v2.0.0) (2021-12-25)
+
+
+### Features
+
+* 新增根据api自动生成mock文件、获取mock统计数据的工具函数 ([b22cb6f](https://github.com/chandq/mock-service-cli/commit/b22cb6fa15787a1343ec6d11606d2a59a670171b))
+* add c/s communication base on  socket.io ([d0ce542](https://github.com/chandq/mock-service-cli/commit/d0ce5422ece5f7c36d6e74f06620b54096e84f73))
+* add hasMockApi function ([e14231b](https://github.com/chandq/mock-service-cli/commit/e14231b8385835b59f4e0960b37b4379e4853155))
+* add mock-dir-stat mock-file-stat  event ([8d8b1fa](https://github.com/chandq/mock-service-cli/commit/8d8b1faf130c84fe35bf205e68ca9634ee8ff767))
+
+
+### Bug Fixes
+
+* logical judge issue ([1e40b13](https://github.com/chandq/mock-service-cli/commit/1e40b134cfcbfd908346ed701cfd18c39502153b))
+* mock-list.json未及时更新的问题 ([4bb42f5](https://github.com/chandq/mock-service-cli/commit/4bb42f506ca1bab6958554ba6043a721bc296555))
+
 ### [1.2.1](https://github.com/chandq/mock-service-cli/compare/v1.2.0...v1.2.1) (2021-11-28)
 
 ## [1.2.0](https://github.com/chandq/mock-service-cli/compare/v1.1.1...v1.2.0) (2021-11-27)
