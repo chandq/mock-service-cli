@@ -34,7 +34,9 @@
     "Mock",
     "MockServer",
     "mock-service-cli",
-    "CLI"
+    "CLI",
+    "Socket server",
+    "socket.io"
   ],
   "repository": {
     "type": "git",

@@ -2,15 +2,20 @@
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
 [![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://github.com/chandq/mock-service-cli)
 [![node](https://img.shields.io/badge/node-v14.0.0-blue)](https://nodejs.org/download/release/v14.0.0/)
-[![node](https://img.shields.io/badge/language-node-orange.svg)](https://nodejs.org/download/release/v14.0.0/)
+[![node](https://img.shields.io/badge/language-node-orange.svg)](https://nodejs.org/download/release/v12.0.0/)
 [![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE.md)
 [![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true)
 
-# 🦅 一个基于 [node](https://nodejs.org/en/) 和 [express](https://www.expressjs.com.cn/) 的 本地 Mock Server 命令行工具
+# 🦅 一个基于 [node](https://nodejs.org/en/) 和 [express](https://www.expressjs.com.cn/) 的 轻量级 Mock 套件 命令行工具
 
 ### 简介
 
-**使用简单**、**零配置**、**0 秒启动**的本地命令行 Mock 服务器， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，对工程代码无任何侵入性，可能是本地最好用的 Mock 工具。
+**简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具。支持以下常见业务场景：
+
+- [x] 无服务端演示项目的数据 Mock
+- [x] 业务开发接口联调前的数据 Mock
+- [x] 保留业务项目的所有或部分接口的响应数据(写入文件)
+- [x] 保障前端开发调试不受后端服务影响(当后端服务挂掉或部分接口响应异常时启用 Mock)
 
 ## Installation:
 
