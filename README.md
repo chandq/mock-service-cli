@@ -130,11 +130,11 @@ const socket = io.connect('http://{MockServerIP}:{PORT}/mock-data', {
 // 向SocketServer发消息：保存接口数据
 socket.emit('save-data', { url, method, data, dir });
 // 向SocketServer发消息：获取指定目录的Mock统计信息
-socket.emit('mock-dir-stat', dir);
+socket.emit('mock-dir-stat', dirPath);
 // 监听SocketServer消息：获取指定目录的Mock统计信息
 socket.on('mock-dir-stat', function (mockDirStat) {});
 // 向SocketServer发消息：获取指定文件的Mock统计信息
-socket.emit('mock-file-stat', dir);
+socket.emit('mock-file-stat', filePath);
 // 监听SocketServer消息：获取指定文件的Mock统计信息
 socket.on('mock-file-stat', function (mockFileStat) {});
 ```
