@@ -139,7 +139,7 @@ socket.emit('mock-file-stat', filePath);
 socket.on('mock-file-stat', function (mockFileStat) {});
 ```
 
-在 axios.js 文件中完成所有接口请求响应数据的保存操作, 示例如下：
+在 axios.js 文件中完成保存所有接口响应数据、根据 Mock 数据池自动 Mock 的操作, 示例如下：
 
 ```js
 import { io } from 'socket.io-client';
@@ -157,7 +157,7 @@ socket.emit('mock-dir-stat', '/home/chen/projects/isc-twin-model-ui/mock');
 socket.on('mock-dir-stat', function (data) {
   console.debug('mock-dir-stat:', data);
 });
-
+// 保存所有接口响应数据（也可过滤部分接口）
 axios.interceptors.response.use(res => {
   const {
     config: { method, url },
@@ -165,5 +165,12 @@ axios.interceptors.response.use(res => {
   } = res;
   socket.emit('save-data', { url, method, data, dir: '/home/chen/projects/model-ui/mock' });
   return res;
+});
+// 根据Mock数据池自动Mock（也可根据实际场景决定是否Mock）
+axios.interceptors.request.use(config => {
+  if (Object.keys(mockObj).includes(`${config.method} ${config.url}`)) {
+    config.baseURL = 'http://localhost:8090';
+  }
+  return config;
 });
 ```
