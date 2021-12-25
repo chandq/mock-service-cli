@@ -47,7 +47,8 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-f`                | Specify mock file                                                                                              |          |
 | `-s` or `--silent`  | Suppress log messages from output                                                                              |          |
 | `-h` or `--help`    | Print this list and exit.                                                                                      |          |
-| `-v` or `--version` | Print the version and exit.                                                                                    |          |
+| `-v` or `--version` | Print the version and exit.                                                                                    | false    |
+| `--ss`              | Start socket server which used to save api response data for future mock.                                      |          |
 
 ## Example
 
