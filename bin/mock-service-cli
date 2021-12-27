@@ -70,7 +70,7 @@ const watchMockFiles = function (watchDir) {
    * ext 检测的文件
    */
   nodemon({
-    script: path.join(__dirname, '../lib/mockServer.js'),
+    script: path.resolve(__dirname, '../lib/mockServer.js'),
     watch: [watchDir],
     ext: 'js,json'
   });
@@ -92,14 +92,14 @@ const watchMockFiles = function (watchDir) {
 };
 
 if (specifiedFile) {
-  process.env.SPECIFIED_FILE = path.join(process.cwd(), specifiedFile);
+  process.env.SPECIFIED_FILE = path.resolve(process.cwd(), specifiedFile);
   watchMockFiles(process.env.SPECIFIED_FILE);
 } else if (watchDir) {
-  process.env.SPECIFIED_DIR = path.join(process.cwd(), watchDir);
+  process.env.SPECIFIED_DIR = path.resolve(process.cwd(), watchDir);
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(process.env.SPECIFIED_DIR);
 } else {
-  watchDir = process.env.SPECIFIED_DIR = path.join(process.cwd(), './mock');
+  watchDir = process.env.SPECIFIED_DIR = path.resolve(process.cwd(), './mock');
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   watchMockFiles(watchDir);
 }
