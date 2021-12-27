@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.1](https://github.com/chandq/mock-service-cli/compare/v2.0.0...v2.0.1) (2021-12-27)
+
+
+### Bug Fixes
+
+* issue of executed failed under windows ([e160753](https://github.com/chandq/mock-service-cli/commit/e16075307e9fec8efcce464004b0881884f68ab8))
+
 ## [2.0.0](https://github.com/chandq/mock-service-cli/compare/v1.2.1...v2.0.0) (2021-12-25)
 
 
