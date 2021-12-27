@@ -120,8 +120,8 @@ test('setting mock file and serve silently via cli - custom file mock/sub/sub-te
   t.end();
 });
 
-// test('invoke composeRoute function', t => {
-//   composeRoute(path.resolve(__dirname, '../mock/test.js'));
+// test('invoke composeRouteFromJsFile function', t => {
+//   composeRouteFromJsFile(path.resolve(__dirname, '../mock/test.js'));
 //   t.pass('ok');
 //   t.end();
 // });
