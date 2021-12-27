@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.2](https://github.com/chandq/mock-service-cli/compare/v2.0.1...v2.0.2) (2021-12-27)
+
+
+### Bug Fixes
+
+* issue of convert path ([5276488](https://github.com/chandq/mock-service-cli/commit/527648866f20fd25b5df0dc55b3898d7e7a1ad2c))
+
 ### [2.0.1](https://github.com/chandq/mock-service-cli/compare/v2.0.0...v2.0.1) (2021-12-27)
 
 
