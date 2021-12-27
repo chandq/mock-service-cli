@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.4](https://github.com/chandq/mock-service-cli/compare/v2.0.3...v2.0.4) (2021-12-27)
+
+
+### Bug Fixes
+
+* get valid api url for route ([8770751](https://github.com/chandq/mock-service-cli/commit/877075107ea60244a52e345f37b7df855752d5f6))
+
 ### [2.0.3](https://github.com/chandq/mock-service-cli/compare/v2.0.2...v2.0.3) (2021-12-27)
 
 
