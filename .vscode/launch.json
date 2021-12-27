@@ -12,6 +12,7 @@
       "program": "${workspaceFolder}/bin/mock-service-cli",
       "cwd": "${workspaceFolder}",
       "args": ["--ss"]
+      // "args": ["--ss", "-d", "D:\\projects\\isc-twin-model\\mock"] // debug for windows
     }
   ]
 }
