@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.3](https://github.com/chandq/mock-service-cli/compare/v2.0.2...v2.0.3) (2021-12-27)
+
+
+### Bug Fixes
+
+* convert windows file path to api url ([1f15b33](https://github.com/chandq/mock-service-cli/commit/1f15b334ab5374bc102e5e11fbfaae994569bca5))
+
 ### [2.0.2](https://github.com/chandq/mock-service-cli/compare/v2.0.1...v2.0.2) (2021-12-27)
 
 
