@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.5](https://github.com/chandq/mock-service-cli/compare/v2.0.4...v2.0.5) (2021-12-28)
+
+
+### Bug Fixes
+
+* validate func parameter to avoid exception ([32e4d28](https://github.com/chandq/mock-service-cli/commit/32e4d28114a4907352491e16829d37345fbab9d9))
+
 ### [2.0.4](https://github.com/chandq/mock-service-cli/compare/v2.0.3...v2.0.4) (2021-12-27)
 
 
