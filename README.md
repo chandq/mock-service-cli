@@ -45,15 +45,16 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `[path]` defaults to `./mock` .
 
-| Command             | Description                                                                                                    | Defaults |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
-| `-p` or `--port`    | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`. | 8090     |
-| `-d`                | Specify mock directory                                                                                         | ./mock   |
-| `-f`                | Specify mock file                                                                                              |          |
-| `-s` or `--silent`  | Suppress log messages from output                                                                              |          |
-| `-h` or `--help`    | Print this list and exit.                                                                                      |          |
-| `-v` or `--version` | Print the version and exit.                                                                                    |          |
-| `--ss`              | Start socket server which used to save api response data for future mock.                                      | false    |
+| Command                   | Description                                                                                                    | Defaults |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
+| `-p` or `--port`          | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`. | 8090     |
+| `-d`                      | Specify mock directory                                                                                         | ./mock   |
+| `-f`                      | Specify mock file                                                                                              |          |
+| `-s` or `--silent`        | Suppress log messages from output                                                                              |          |
+| `-h` or `--help`          | Print this list and exit.                                                                                      |          |
+| `-v` or `--version`       | Print the version and exit.                                                                                    |          |
+| `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                      | false    |
+| `-a` or `--api-stat`      | Whether print api url and file path or not, default falsemock.                                                 | false    |
 
 ## Example
 

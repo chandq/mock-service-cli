@@ -11,7 +11,7 @@
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/bin/mock-service-cli",
       "cwd": "${workspaceFolder}",
-      "args": ["--ss"]
+      "args": ["-S"]
       // "args": ["--ss", "-d", "D:\\projects\\isc-twin-model\\mock"] // debug for windows
     }
   ]
