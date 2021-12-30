@@ -54,7 +54,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-h` or `--help`          | Print this list and exit.                                                                                      |          |
 | `-v` or `--version`       | Print the version and exit.                                                                                    |          |
 | `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                      | false    |
-| `-a` or `--api-stat`      | Whether print api url and file path or not, default falsemock.                                                 | false    |
+| `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                | false    |
 
 ## Example
 
@@ -72,7 +72,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 4. Start socket server for used to save api response data.
 
-`mock-service-cli --ss`
+`mock-service-cli -S`
 
 ### 编写 Mock 文件
 
@@ -124,6 +124,8 @@ module.exports = {
 ```
 
 ### 借助 socket.io 保留接口数据
+
+> `save-data` 和 `mock-dir-stat` 事件会自动生成 `mock-list.json` 文件（维护接口`<url, [method]>`的关系映射），方便查阅接口统计信息
 
 ```js
 // 连接SocketServer
