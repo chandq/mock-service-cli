@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/chandq/mock-service-cli/compare/v2.0.5...v2.1.0) (2021-12-30)
+
+
+### Features
+
+* 根据命令行参数决定是否 打印api统计信息 ([0e838db](https://github.com/chandq/mock-service-cli/commit/0e838db7820fd096163d14eb87abbd9b852b6a0e))
+* add arguments description ([097b373](https://github.com/chandq/mock-service-cli/commit/097b3733a1da0b43dae6b50080d270323b92f0d2))
+
+
+### Bug Fixes
+
+* issue of comment typo ([85297a5](https://github.com/chandq/mock-service-cli/commit/85297a5895fd7c0446ee8b90a58ebed90a02e9e7))
+* issue of maybe write content to file failed ([8ed910b](https://github.com/chandq/mock-service-cli/commit/8ed910b1e9687cae46ad6bdab641db0c305c83fb))
+* socket connection show datetime ([c6db3b4](https://github.com/chandq/mock-service-cli/commit/c6db3b47a2370dc1c9aba5495dbb6606c20eb0c9))
+
 ### [2.0.5](https://github.com/chandq/mock-service-cli/compare/v2.0.4...v2.0.5) (2021-12-28)
 
 
