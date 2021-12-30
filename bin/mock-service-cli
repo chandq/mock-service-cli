@@ -20,7 +20,8 @@ if (argv.h || argv.help) {
       '  -f --file     Specify the input data source, support javascript ',
       '                     The priority is over the directory watches',
       '  -s --silent  Suppress log messages from output',
-      '  --ss  Whether start socket server or not, default false.',
+      '  -S --socket-server  Whether start socket server or not, default false.',
+      '  -a --api-stat  Whether print api url and file path or not, default false.',
       '',
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
@@ -29,11 +30,14 @@ if (argv.h || argv.help) {
   process.exit();
 }
 
+// 保留命令行参数
+process.env.ARGV = JSON.stringify(argv);
+
 var port = argv.p || argv.port,
   watchDir = argv.d,
   specifiedFile = argv.f || argv.file,
   version = argv.v || argv.version,
-  isStartSocketServer = argv.ss || false,
+  isStartSocketServer = argv.S || false,
   log = null;
 
 if (!argv.s && !argv.silent) {
@@ -44,7 +48,7 @@ if (!argv.s && !argv.silent) {
 }
 
 if (isStartSocketServer) {
-  process.env.SOCKETSERVER = true;
+  process.env.SOCKET_SERVER = true;
 }
 
 if (version) {
