@@ -24,6 +24,7 @@ if (argv.h || argv.help) {
       '  -s --silent  Suppress log messages from output',
       '  -S --socket-server  Whether start socket server or not, default false.',
       '  -a --api-stat  Whether print api url and file path or not, default false.',
+      '  -l --log  Whether record operation info by write file, default false.',
       '',
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
