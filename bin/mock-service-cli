@@ -6,6 +6,8 @@ const colors = require('colors/safe'),
   nodemon = require('nodemon');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger } = require('../lib/utils');
+const spawn = require('child_process').spawn;
+const node = process.execPath;
 process.title = 'mock-service-cli';
 
 if (argv.h || argv.help) {
@@ -94,16 +96,34 @@ const watchMockFiles = function (watchDir) {
       );
     });
 };
+// Node子进程启动MockServer
+const startMockServer = function () {
+  spawn(node, [path.resolve(__dirname, '../lib/mockServer.js')], {
+    stdio: 'inherit'
+  });
+};
 
 if (specifiedFile) {
   process.env.SPECIFIED_FILE = path.resolve(process.cwd(), specifiedFile);
-  watchMockFiles(process.env.SPECIFIED_FILE);
+  if (isStartSocketServer) {
+    startMockServer();
+  } else {
+    watchMockFiles(process.env.SPECIFIED_FILE);
+  }
 } else if (watchDir) {
   process.env.SPECIFIED_DIR = path.resolve(process.cwd(), watchDir);
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
-  watchMockFiles(process.env.SPECIFIED_DIR);
+  if (isStartSocketServer) {
+    startMockServer();
+  } else {
+    watchMockFiles(process.env.SPECIFIED_DIR);
+  }
 } else {
   watchDir = process.env.SPECIFIED_DIR = path.resolve(process.cwd(), './mock');
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
-  watchMockFiles(watchDir);
+  if (isStartSocketServer) {
+    startMockServer();
+  } else {
+    watchMockFiles(watchDir);
+  }
 }
