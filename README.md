@@ -55,6 +55,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-v` or `--version`       | Print the version and exit.                                                                                    |          |
 | `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                      | false    |
 | `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                | false    |
+| `-l` or `--log`           | Whether record operation info by write file, default false.                                                    | false    |
 
 ## Example
 
