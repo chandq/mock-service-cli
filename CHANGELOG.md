@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/chandq/mock-service-cli/compare/v2.1.1...v2.2.0) (2021-12-31)
+
+
+### Features
+
+* 丰富日志工具函数 ([4dcd69c](https://github.com/chandq/mock-service-cli/commit/4dcd69c6400f65aaf77ea4a2923c9900d5954d09))
+* 监听文件变化和写文件互斥执行 ([cfeab8e](https://github.com/chandq/mock-service-cli/commit/cfeab8ede05573974125a9fa91f1db6afa8a898d))
+* record operation log ([42b74d8](https://github.com/chandq/mock-service-cli/commit/42b74d8be0e694600c999490d3fe93bfb3620051))
+
+
+### Bug Fixes
+
+* issue of write large file failed ([d1c470d](https://github.com/chandq/mock-service-cli/commit/d1c470daf9829916016b73993b114fc5ffe3c985))
+
 ### [2.1.1](https://github.com/chandq/mock-service-cli/compare/v2.1.0...v2.1.1) (2021-12-30)
 
 
