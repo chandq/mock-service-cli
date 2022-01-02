@@ -162,7 +162,7 @@ const socket = io.connect('http://192.168.31.54:8090/mock-data', {
   }
 });
 
-socket.emit('mock-dir-stat', '/home/chen/projects/isc-twin-model-ui/mock');
+socket.emit('mock-dir-stat', '/home/chen/projects/model-ui/mock');
 socket.on('mock-dir-stat', function (data) {
   console.debug('mock-dir-stat:', data);
 });
