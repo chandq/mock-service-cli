@@ -2,6 +2,7 @@
 
 const test = require('tap').test;
 const request = require('request');
+const path = require('path');
 const spawn = require('child_process').spawn;
 const portfinder = require('portfinder');
 const { dateFormat, logger } = require('../lib/utils');
@@ -116,6 +117,22 @@ test('setting mock file and serve silently via cli - custom file mock/sub/sub-te
 
   tearDown(server, t);
 
+  t.pass('ok');
+  t.end();
+});
+
+test('run genMockFiles function, log file - with args', async t => {
+  t.plan(1);
+  const options = ['-l'];
+  const server = startServer(options);
+  tearDown(server, t);
+  process.env.ARGV = JSON.stringify({ l: true });
+  await require('../lib/manageMockFiles.js').genMockFiles({
+    url: '/api/yyds/logfile',
+    method: 'post',
+    data: { type: 'post' },
+    dir: path.resolve(process.cwd(), './mock')
+  });
   t.pass('ok');
   t.end();
 });
