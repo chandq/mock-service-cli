@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.4.0](https://github.com/chandq/mock-service-cli/compare/v2.3.2...v2.4.0) (2022-01-05)
+
+
+### Features
+
+* 增加异步任务队列，移出不必要模块 ([c7f3608](https://github.com/chandq/mock-service-cli/commit/c7f3608e4d0185434154d6f8d84889f281147022))
+
 ### [2.3.2](https://github.com/chandq/mock-service-cli/compare/v2.3.1...v2.3.2) (2022-01-02)
 
 
