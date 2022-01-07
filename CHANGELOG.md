@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.2](https://github.com/chandq/mock-service-cli/compare/v2.4.1...v2.4.2) (2022-01-07)
+
+
+### Features
+
+* 缓存mock统计信息 ([1ee87cd](https://github.com/chandq/mock-service-cli/commit/1ee87cd041e68b9f17b64e9e3cb906681cb855fc))
+
 ### [2.4.1](https://github.com/chandq/mock-service-cli/compare/v2.4.0...v2.4.1) (2022-01-06)
 
 
