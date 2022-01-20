@@ -119,7 +119,18 @@ const mockjs = require('mockjs');
 module.exports = {
   // 使用 mockjs 等三方库
   'GET /api/tags': mockjs.mock({
-    'list|100': [{ name: '@city', 'value|1-100': 50, 'type|0-2': 1 }]
+    'list|100': [
+      {
+        'NO|+1': 1,
+        city: '@city',
+        maintainType: '@cname(3, 5)',
+        urgentType: '@cword(3, 5)',
+        'isCrash|1': 'true',
+        createTime: '@date',
+        'value|1-100': 50,
+        'type|0-2': 1
+      }
+    ]
   })
 };
 ```
