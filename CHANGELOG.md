@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.5.0](https://github.com/chandq/mock-service-cli/compare/v2.4.0...v2.5.0) (2022-04-25)
+
+
+### Features
+
+* **cors:** 支持cors-origin,cors-headers跨域配置 ([c2d2872](https://github.com/chandq/mock-service-cli/commit/c2d28723d047139a5165190b4ba197f46470f72f))
+* 缓存mock统计信息 ([1ee87cd](https://github.com/chandq/mock-service-cli/commit/1ee87cd041e68b9f17b64e9e3cb906681cb855fc))
+
+
+### Bug Fixes
+
+* 修复无法同时保留相同url不同请求类型的响应数据 ([90326dc](https://github.com/chandq/mock-service-cli/commit/90326dc556760eb81efadd76b031366452c95d2b))
+
 ### [2.4.3](https://github.com/chandq/mock-service-cli/compare/v2.4.2...v2.4.3) (2022-01-20)
 
 ### [2.4.2](https://github.com/chandq/mock-service-cli/compare/v2.4.1...v2.4.2) (2022-01-07)
