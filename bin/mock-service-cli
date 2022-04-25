@@ -25,9 +25,9 @@ if (argv.h || argv.help) {
       '  -S --socket-server  Whether start socket server or not, default false.',
       '  -a --api-stat  Whether print api url and file path or not, default false.',
       '  -l --log  Whether record operation info by write file, default false.',
-      '  -o --cors-origin   Allow origin by cors, list separated by commas, must not be * when withCredential is true, default *.',
-      '                     If specified, cors-headers will be "Authorization,Content-Type,Accept,Origin,User-Agent,DNT',
-      '                     ,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token"',
+      '  -o --cors-origin   Allow origin by cors, list separated by commas, must not be * when withCredential is true',
+      '                     .If specified, cors-headers will be "Authorization,Content-Type,Accept,Origin,User-Agent,DNT',
+      '                     ,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token", default *.',
       '  -H --cors-headers   Optionally provide CORS headers list separated by commas. default *',
       '',
       '  -h --help          Print this list and exit.',
@@ -70,7 +70,6 @@ if (argv.o || argv['cors-origin']) {
 if (argv.H || argv['cors-headers']) {
   process.env.CORS_HEADERS = argv.H || argv['cors-headers'];
 }
-console.log('pro::', process.env, argv);
 
 if (!port) {
   portfinder.basePort = 8090;

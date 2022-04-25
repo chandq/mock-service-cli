@@ -45,17 +45,19 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `[path]` defaults to `./mock` .
 
-| Command                   | Description                                                                                                    | Defaults |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
-| `-p` or `--port`          | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`. | 8090     |
-| `-d`                      | Specify mock directory                                                                                         | ./mock   |
-| `-f`                      | Specify mock file                                                                                              |          |
-| `-s` or `--silent`        | Suppress log messages from output                                                                              |          |
-| `-h` or `--help`          | Print this list and exit.                                                                                      |          |
-| `-v` or `--version`       | Print the version and exit.                                                                                    |          |
-| `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                      | false    |
-| `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                | false    |
-| `-l` or `--log`           | Whether record operation info by write file, default false.                                                    | false    |
+| Command                   | Description                                                                                                                                                                                                                                                                     | Defaults |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `-h` or `--help`          | Print this list and exit.                                                                                                                                                                                                                                                       |          |
+| `-p` or `--port`          | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`.                                                                                                                                                                  | 8090     |
+| `-d`                      | Specify mock directory                                                                                                                                                                                                                                                          | ./mock   |
+| `-f`                      | Specify mock file                                                                                                                                                                                                                                                               |          |
+| `-s` or `--silent`        | Suppress log messages from output                                                                                                                                                                                                                                               |          |
+| `-v` or `--version`       | Print the version and exit.                                                                                                                                                                                                                                                     |          |
+| `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                                                                                                                                                                                       | false    |
+| `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                                                                                                                                                                                 | false    |
+| `-l` or `--log`           | Whether record operation info by write file, default false.                                                                                                                                                                                                                     | false    |
+| `-o` or `--cors-origin`   | Allow origin by cors, list separated by commas, must not be \* when withCredential is true .If specified, cors-headers will be `Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token` | \*       |
+| `-H` or `--cors-headers`  | Optionally provide CORS headers list separated by commas                                                                                                                                                                                                                        | \*       |
 
 ## Example
 
@@ -63,15 +65,19 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `mock-service-cli -p 8085`
 
-2. Specify mock directory.
+2. Enable cors, specify origin and headers.
+
+`mock-service-cli -o "http://192.168.0.8:38200,http://10.30.30.3" -H "yy"`
+
+3. Specify mock directory.
 
 `mock-service-cli -d ./mock`
 
-3. Specify mock file.
+4. Specify mock file.
 
 `mock-service-cli -f ./mock/test.js`
 
-4. Start socket server for used to save api response data.
+5. Start socket server for used to save api response data.
 
 `mock-service-cli -S`
 
