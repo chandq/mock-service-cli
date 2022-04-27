@@ -4,6 +4,7 @@ const colors = require('colors/safe'),
   portfinder = require('portfinder'),
   { resolve } = require('path'),
   nodemon = require('nodemon');
+const { existsSync } = require('fs-extra');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger } = require('../lib/utils');
 const spawn = require('child_process').spawn;
@@ -78,10 +79,40 @@ injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
 injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
-injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
-// injectEnvVariable('PROXY_OPTIONS', argv.P || argv['proxy-options']);
+// injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
+// 解析Web代理配置项（来源js|config文件或命令行参数字符串）
+const proxyArg = argv.O || argv['proxy-options'];
+if (proxyArg) {
+  const proxyTable = {};
+  if (proxyArg.endsWith('.js') || proxyArg.endsWith('.json')) {
+    const proxyOptFile = resolve(process.cwd(), proxyArg);
+    if (!existsSync(proxyOptFile)) {
+      console.error(`proxy-options: 文件 ${proxyOptFile} 不存在`);
+      process.exit();
+    }
+    const proxyObj = require(proxyOptFile);
+    Object.keys(proxyObj).forEach(function (h) {
+      proxyTable[h] = proxyObj[h];
+    }, this);
+  } else {
+    try {
+      proxyArg.split(/\s*,\s*/).forEach(function (h) {
+        const [origin, target] = h.split('|');
+        proxyTable[origin] = target;
+      }, this);
+    } catch (error) {
+      console.warn(colors.yellow('\nParse web proxy options Failed:', error));
+      throw error;
+    }
+  }
+  process.env.PROXY_OPTIONS = JSON.stringify(proxyTable);
+}
 if (argv.D || argv['web-dir']) {
   process.env.WEB_ROOT = resolve(process.cwd(), argv.D || argv['web-dir']);
+  if (!existsSync(process.env.WEB_ROOT)) {
+    console.error(`web-dir: 目录 ${process.env.WEB_ROOT} 不存在`);
+    process.exit();
+  }
   // Web Server port
   portfinder.basePort = argv.P || argv['web-port'] || 9090;
   portfinder.getPort(function (err, port) {
