@@ -10,6 +10,8 @@
 
 ### 简介
 
+内置 Mock Server、Web Server、Http request proxy 等功能集。
+
 **简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具。支持以下常见业务场景：
 
 - [x] 无服务端演示项目的数据 Mock
@@ -45,29 +47,31 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `[path]` defaults to `./mock` .
 
-| Command                   | Description                                                                                                                                                                                                                                                                     | Defaults |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `-h` or `--help`          | Print this list and exit.                                                                                                                                                                                                                                                       |          |
-| `-p` or `--port`          | Port to use. Use `-p 0` to look for an open port, starting at 8090. It will also read from `process.env.PORT`.                                                                                                                                                                  | 8090     |
-| `-d`                      | Specify mock directory                                                                                                                                                                                                                                                          | ./mock   |
-| `-f`                      | Specify mock file                                                                                                                                                                                                                                                               |          |
-| `-s` or `--silent`        | Suppress log messages from output                                                                                                                                                                                                                                               |          |
-| `-v` or `--version`       | Print the version and exit.                                                                                                                                                                                                                                                     |          |
-| `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                                                                                                                                                                                       | false    |
-| `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                                                                                                                                                                                 | false    |
-| `-l` or `--log`           | Whether record operation info by write file, default false.                                                                                                                                                                                                                     | false    |
-| `-o` or `--cors-origin`   | Allow origin by cors, list separated by commas, must not be \* when withCredential is true .If specified, cors-headers will be `Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token` | \*       |
-| `-H` or `--cors-headers`  | Optionally provide CORS headers list separated by commas                                                                                                                                                                                                                        | \*       |
+| Command                   | Description                                                                                                                                                                                                                                                                                                          | Defaults |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `-h` or `--help`          | Print this list and exit.                                                                                                                                                                                                                                                                                            |          |
+| `-p` or `--port`          | Mock server port to use. Use `-p 8090` to look for an open port, starting at 8090.                                                                                                                                                                                                                                   | 8090     |
+| `-d`                      | Specify mock directory                                                                                                                                                                                                                                                                                               | ./mock   |
+| `-f`                      | Specify mock file                                                                                                                                                                                                                                                                                                    |          |
+| `-s` or `--silent`        | Suppress log messages from output                                                                                                                                                                                                                                                                                    |          |
+| `-v` or `--version`       | Print the version and exit.                                                                                                                                                                                                                                                                                          |          |
+| `-S` or `--socket-server` | Start socket server which used to save api response data for future mock.                                                                                                                                                                                                                                            | false    |
+| `-a` or `--api-stat`      | Whether print api url and file path info or not, default false.                                                                                                                                                                                                                                                      | false    |
+| `-l` or `--log`           | Whether record operation info by write file, default false.                                                                                                                                                                                                                                                          | false    |
+| `-o` or `--cors-origin`   | Allow origin by cors, list separated by commas, must not be \* when withCredential is true .If specified, cors-headers will be `Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token`                                     | \*       |
+| `-O` or `--proxy-options` | Optionally provide http request proxy options list, support accept js file、json file、cli arguments string. Examples: `-O '/api/apaas\|http://192.168.0.105:60700,/api/permission\| http://192.168.0.105:60700'`. Must start web server to use proxy for http request test under browser console or api test tools. | -        |
+| `-P` or `--web-port`      | Web server port to use. Use `-P 9090` to look for an open port, starting at 9090                                                                                                                                                                                                                                     | 9090     |
+| `-b` or `--web-baseurl`   | Specify public path of the static web server, can be base address of SPA route.                                                                                                                                                                                                                                      | -        |
 
 ## Example
 
-1. Specify server port.
+1. Specify mock server port.
 
 `mock-service-cli -p 8085`
 
-2. Enable cors, specify origin and headers.
+2. Enable cors of mock server, specify the origin and headers of http request.
 
-`mock-service-cli -o "http://192.168.0.8:38200,http://10.30.30.3" -H "yy"`
+`mock-service-cli -o "http://192.168.0.8:38200,http://10.30.30.3" -H "custom-header"`
 
 3. Specify mock directory.
 
@@ -80,6 +84,28 @@ This will install `mock-service-cli` globally so that it may be run from the com
 5. Start socket server for used to save api response data.
 
 `mock-service-cli -S`
+
+6. Start static web server for SPA, and optionally specify public path and port.
+   `mock-service-cli -D ../react-best-practice/dist [-b '/redbridge/'] [-P 9090]`
+
+7. Enable Proxy base on above item 6. support accept js file、json file、cli arguments string
+
+   - cli arguments string
+
+     `mock-service-cli -D ./ -O '/api/apaas|http://192.168.0.105:60700,/api/permission|http://192.168.0.105:60700'`
+
+   - js file
+
+     `mock-service-cli -D ./ -O ./proxy.js`
+
+     proxy.js file content as follows:
+
+```js
+module.exports = {
+  '/api/apaas': 'http://192.168.0.105:60700',
+  '/api/permission': 'http://192.168.0.105:60700'
+};
+```
 
 ### 编写 Mock 文件
 
@@ -113,6 +139,8 @@ module.exports = {
 
 然后访问 `本地代理地址` + `/mock/api/222/test` （例如`http://127.0.0.1:8090/mock/api/222/test`） 就能得到 { aa: 1, bb: '使用 id 占位符' } 的响应，其他以此类推。
 
+![Mock Server](/assets/mock-server.jpg)
+
 ### 引入 Mock.js
 
 [Mock.js](http://mockjs.com/) 是常用的辅助生成模拟数据的三方库，借助他可以提升我们的 mock 数据能力。
@@ -140,6 +168,14 @@ module.exports = {
   })
 };
 ```
+
+### 启动 Web Server, 在本地像 nginx 一样运行 dist 文件对应的 SPA
+
+![Web Server](/assets/web-server.jpg)
+
+### 启动 Web Server, 启用 Proxy
+
+![Web Server Proxy](/assets/web-server-proxy.jpg)
 
 ### 借助 socket.io 保留接口数据
 
