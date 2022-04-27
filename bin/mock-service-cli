@@ -2,7 +2,7 @@
 
 const colors = require('colors/safe'),
   portfinder = require('portfinder'),
-  path = require('path'),
+  { resolve } = require('path'),
   nodemon = require('nodemon');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger } = require('../lib/utils');
@@ -16,19 +16,24 @@ if (argv.h || argv.help) {
       'usage: mock-service-cli [options]',
       '',
       'options:',
-      '  -p --port    Port to use. If 0, look for open port. [8090]',
+      '  -p --port    Mock server port to use. If 0, look for open port. [8090]',
       '  -d           Specify mock directory, default [./mock] directory,',
       '               Also watch js files changes and support hot reload',
       '  -f --file     Specify the input data source, support javascript ',
       '                     The priority is over the directory watches',
-      '  -s --silent  Suppress log messages from output',
+      '  -s --silent          Suppress log messages from output',
       '  -S --socket-server  Whether start socket server or not, default false.',
-      '  -a --api-stat  Whether print api url and file path or not, default false.',
-      '  -l --log  Whether record operation info by write file, default false.',
-      '  -o --cors-origin   Allow origin by cors, list separated by commas, must not be * when withCredential is true',
-      '                     .If specified, cors-headers will be "Authorization,Content-Type,Accept,Origin,User-Agent,DNT',
-      '                     ,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token", default *.',
+      '  -a --api-stat       Whether print api url and file path or not, default false.',
+      '  -l --log  Whether   record operation info by write file, default false.',
+      '  -o --cors-origin    Allow origin by cors, list separated by commas, must not be * when withCredential is true',
+      '                      .If specified, cors-headers will be "Authorization,Content-Type,Accept,Origin,User-Agent,DNT',
+      '                      ,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token", default *.',
       '  -H --cors-headers   Optionally provide CORS headers list separated by commas. default *',
+      '',
+      '  -O --proxy-options          Optionally provide proxy options list separated by commas.',
+      '  -P --web-port                 Web server port to use. If 0, look for open port. [9090]',
+      '  -D --web-dir        Enable web server, specify web directory, default [./dist] directory',
+      '  -b --web-baseurl    Specify website public path when enabled web server.',
       '',
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
@@ -53,6 +58,12 @@ if (!argv.s && !argv.silent) {
   process.env.SILENT = true;
   log = logger(true);
 }
+// 注入环境变量
+const injectEnvVariable = (envName, envArgs) => {
+  if (envArgs) {
+    process.env[envName] = envArgs;
+  }
+};
 
 if (isStartSocketServer) {
   process.env.SOCKET_SERVER = true;
@@ -63,25 +74,32 @@ if (version) {
   process.exit();
 }
 
-if (argv.o || argv['cors-origin']) {
-  process.env.CORS_ORIGIN = argv.o || argv.origin;
-}
+injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
+injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
-if (argv.H || argv['cors-headers']) {
-  process.env.CORS_HEADERS = argv.H || argv['cors-headers'];
-}
-
-if (!port) {
-  portfinder.basePort = 8090;
+injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
+injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
+// injectEnvVariable('PROXY_OPTIONS', argv.P || argv['proxy-options']);
+if (argv.D || argv['web-dir']) {
+  process.env.WEB_ROOT = resolve(process.cwd(), argv.D || argv['web-dir']);
+  // Web Server port
+  portfinder.basePort = argv.P || argv['web-port'] || 9090;
   portfinder.getPort(function (err, port) {
     if (err) {
       throw err;
     }
-    process.env.PORT = port;
+    process.env.WEB_PORT = port;
   });
-} else {
-  process.env.PORT = port;
 }
+
+// Mock Server port
+portfinder.basePort = port || 8090;
+portfinder.getPort(function (err, port) {
+  if (err) {
+    throw err;
+  }
+  process.env.PORT = port;
+});
 
 const watchMockFiles = function (watchDir) {
   /**
@@ -89,7 +107,7 @@ const watchMockFiles = function (watchDir) {
    * ext 检测的文件
    */
   nodemon({
-    script: path.resolve(__dirname, '../lib/mockServer.js'),
+    script: resolve(__dirname, '../lib/mockServer.js'),
     watch: [watchDir],
     ext: 'js,json'
   });
@@ -111,20 +129,20 @@ const watchMockFiles = function (watchDir) {
 };
 // Node子进程启动MockServer
 const startMockServer = function () {
-  spawn(node, [path.resolve(__dirname, '../lib/mockServer.js')], {
+  spawn(node, [resolve(__dirname, '../lib/mockServer.js')], {
     stdio: 'inherit'
   });
 };
 
 if (specifiedFile) {
-  process.env.SPECIFIED_FILE = path.resolve(process.cwd(), specifiedFile);
+  process.env.SPECIFIED_FILE = resolve(process.cwd(), specifiedFile);
   if (isStartSocketServer) {
     startMockServer();
   } else {
     watchMockFiles(process.env.SPECIFIED_FILE);
   }
 } else if (watchDir) {
-  process.env.SPECIFIED_DIR = path.resolve(process.cwd(), watchDir);
+  process.env.SPECIFIED_DIR = resolve(process.cwd(), watchDir);
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   if (isStartSocketServer) {
     startMockServer();
@@ -132,7 +150,7 @@ if (specifiedFile) {
     watchMockFiles(process.env.SPECIFIED_DIR);
   }
 } else {
-  watchDir = process.env.SPECIFIED_DIR = path.resolve(process.cwd(), './mock');
+  watchDir = process.env.SPECIFIED_DIR = resolve(process.cwd(), './mock');
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   if (isStartSocketServer) {
     startMockServer();

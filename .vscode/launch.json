@@ -12,6 +12,7 @@
       "program": "${workspaceFolder}/bin/mock-service-cli",
       "cwd": "${workspaceFolder}",
       "args": ["-S", "-l"]
+      // "args": ["-w", "../react-best-practice/dist", "-b", "/redbridge/"],
       // "args": ["--ss", "-d", "D:\\projects\\isc-twin-model\\mock"] // debug for windows
     }
   ]
