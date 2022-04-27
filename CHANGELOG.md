@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.1.0](https://github.com/chandq/mock-service-cli/compare/v3.0.0...v3.1.0) (2022-04-27)
+
+
+### Features
+
+* **web-proxy:** proxy配置项支持文件和命令行参数字符串两种 ([ee1ce1f](https://github.com/chandq/mock-service-cli/commit/ee1ce1fbefa5ce9b3c074192d2d9893a4414d346))
+
 ## [3.0.0](https://github.com/chandq/mock-service-cli/compare/v2.5.1...v3.0.0) (2022-04-27)
 
 
