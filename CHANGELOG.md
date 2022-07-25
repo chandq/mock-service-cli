@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.1](https://github.com/chandq/mock-service-cli/compare/v3.1.0...v3.1.1) (2022-07-25)
+
+
+### Bug Fixes
+
+* node 18下chalk丢失问题 ([fb80d8d](https://github.com/chandq/mock-service-cli/commit/fb80d8d94feee8d3177b69a2c4509a390880bd56))
+* update some npm version for security ([f0aa1df](https://github.com/chandq/mock-service-cli/commit/f0aa1dfa51f36bde693b0da12bec2b653b1b6003))
+
 ## [3.1.0](https://github.com/chandq/mock-service-cli/compare/v3.0.0...v3.1.0) (2022-04-27)
 
 
