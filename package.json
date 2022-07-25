@@ -51,8 +51,8 @@
     "fs-extra": "^10.0.0",
     "http-proxy-middleware": "^2.0.6",
     "lodash": "^4.17.21",
-    "minimist": "^1.2.5",
-    "nodemon": "^2.0.14",
+    "minimist": "^1.2.6",
+    "nodemon": "^2.0.19",
     "portfinder": "^1.0.28",
     "socket.io": "^4.4.0"
   },
