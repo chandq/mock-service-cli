@@ -12,12 +12,29 @@
 
 内置 Mock Server、Web Server、Http request proxy 等功能集。
 
-**简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具。支持以下常见业务场景：
+**简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具之一。
+
+#### Mock Server - 本地 Mock 服务器
+
+支持以下常见业务场景：
 
 - [x] 无服务端演示项目的数据 Mock
 - [x] 业务开发接口联调前的数据 Mock
 - [x] 保留业务项目的所有或部分接口的响应数据(写入文件)
 - [x] 保障前端开发调试不受后端服务影响(当后端服务挂掉或部分接口响应异常时启用 Mock)
+
+#### Web Server - SPA Web 服务器
+
+对 React、Vue 等单页应用项目构建生成的 dist 目录，启动本地 web 服务器（相当于使用本地安装的 nginx 服务）来模拟运行生产环境下的 web 服务
+
+#### Http request proxy - 基于浏览器的本地代理服务
+
+实现了本地接口代理的能力，一般接口测试工具无法查看到 request 和 response 中 headers 的更多详情，这里实现了接口代理功能，在 Network 中可查看接口调用的详细信息。
+
+> 两种应用场景
+
+- 项目 dev 模式下的接口代理请求
+- Chrome 的 Console 执行 fetch 请求（用于接口测试）
 
 ## Installation:
 
