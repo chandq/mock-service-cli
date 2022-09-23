@@ -10,7 +10,7 @@
 
 ### 简介
 
-内置 Mock Server、Web Server、Http request proxy 等功能集。
+内置 Mock Server、Web Server、Http?s request proxy 等功能集。
 
 **简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具之一。
 

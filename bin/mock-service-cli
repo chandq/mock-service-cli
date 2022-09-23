@@ -32,6 +32,7 @@ if (argv.h || argv.help) {
       '  -H --cors-headers   Optionally provide CORS headers list separated by commas. default *',
       '',
       '  -O --proxy-options          Optionally provide proxy options list separated by commas.',
+      '  -r --rewrite          rewrite http or https request url prefix of proxy, default false.',
       '  -P --web-port                 Web server port to use. If 0, look for open port. [9090]',
       '  -D --web-dir        Enable web server, specify web directory, default [./dist] directory',
       '  -b --web-baseurl    Specify website public path when enabled web server.',
@@ -51,6 +52,7 @@ var port = argv.p || argv.port,
   specifiedFile = argv.f || argv.file,
   version = argv.v || argv.version,
   isStartSocketServer = argv.S || false,
+  rewrite = argv.r || argv.rewrite || false,
   log = null;
 
 if (!argv.s && !argv.silent) {
@@ -74,7 +76,7 @@ if (version) {
   log.info('v' + require('../package.json').version);
   process.exit();
 }
-
+injectEnvVariable('PREFIX_REWRITE', rewrite);
 injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
 injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
