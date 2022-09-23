@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.3](https://github.com/chandq/mock-service-cli/compare/v3.1.2...v3.1.3) (2022-09-23)
+
+
+### Bug Fixes
+
+* support rewrite proxy request url prefix ([621a2c5](https://github.com/chandq/mock-service-cli/commit/621a2c530f4003d7e29023a69bc22335e76a39c3))
+
 ### [3.1.2](https://github.com/chandq/mock-service-cli/compare/v3.1.1...v3.1.2) (2022-08-07)
 
 ### [3.1.1](https://github.com/chandq/mock-service-cli/compare/v3.1.0...v3.1.1) (2022-07-25)
