@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.4](https://github.com/chandq/mock-service-cli/compare/v3.1.3...v3.1.4) (2023-04-08)
+
+
+### Bug Fixes
+
+* 捕获单文件解析失败，不影响服务启动 ([9b80960](https://github.com/chandq/mock-service-cli/commit/9b80960cb933e15c352070568df57c595ab0ac78))
+
 ### [3.1.3](https://github.com/chandq/mock-service-cli/compare/v3.1.2...v3.1.3) (2022-09-23)
 
 
