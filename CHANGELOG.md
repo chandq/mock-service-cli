@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.7](https://github.com/chandq/mock-service-cli/compare/v3.1.6...v3.1.7) (2023-04-09)
+
+
+### Bug Fixes
+
+* 美化终端打印 ([0ee5753](https://github.com/chandq/mock-service-cli/commit/0ee57535036af45452f27d687a53fddf986ea93d))
+
 ### [3.1.6](https://github.com/chandq/mock-service-cli/compare/v3.1.5...v3.1.6) (2023-04-09)
 
 ### [3.1.5](https://github.com/chandq/mock-service-cli/compare/v3.1.4...v3.1.5) (2023-04-08)
