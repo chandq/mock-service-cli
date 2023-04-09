@@ -102,10 +102,16 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
 `mock-service-cli -S`
 
-6. Start static web server for SPA, and optionally specify public path and port.
-   `mock-service-cli -D ../react-best-practice/dist [-b '/redbridge/'] [-P 9090]`
+6. Only Used as api server for test on browser console or api request tools.
+   > must specified server directory which can be empty but not includes index.html file, and also need config API proxy.
 
-7. Enable Proxy base on above item 6. support accept js file、json file、cli arguments string
+`mock-service-cli -D server -O '/api/apaas|http://192.168.0.105:60700'`
+
+7. Start static web server for SPA, and optionally specify public path and port.
+
+`mock-service-cli -D ../react-best-practice/dist [-b '/redbridge/'] [-P 9090]`
+
+8. Enable Proxy base on above item 7. support accept js file、json file、cli arguments string
 
    - cli arguments string
 
