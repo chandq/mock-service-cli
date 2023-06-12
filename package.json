@@ -1,6 +1,6 @@
 {
   "name": "mock-service-cli",
-  "version": "3.1.7",
+  "version": "3.1.8",
   "description": "🦅 Local mock server",
   "main": "./lib/mockServer.js",
   "bin": {
@@ -45,6 +45,7 @@
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
+    "body-parser": "^1.20.2",
     "colors": "^1.4.0",
     "deasync": "^0.1.23",
     "express": "^4.17.1",
