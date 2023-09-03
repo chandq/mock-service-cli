@@ -32,3 +32,6 @@ stdout.log
 
 # CI
 # .coveralls.yml
+
+# mock
+/mock
