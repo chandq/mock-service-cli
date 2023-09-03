@@ -30,7 +30,7 @@
     "node": ">=12"
   },
   "author": "chendq <deqiaochen@gmail.com>",
-  "packageManager": "pnpm@8.7.1",
+  "packageManager": "yarn@1.22.19",
   "keywords": [
     "MIT-licensed",
     "Mock",

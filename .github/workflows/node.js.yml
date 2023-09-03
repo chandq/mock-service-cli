@@ -22,25 +22,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2.4.0
-        with:
-          version: next-8
+      # - name: Install pnpm
+      #   uses: pnpm/action-setup@v2.4.0
+      #   with:
+      #     version: next-8
+
+      - name: Install yarn
+        run: npm i yarn@1
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: 'npm'
 
       - name: Install deps
-        run: pnpm install
+        run: yarn install
 
       - name: Build
-        run: pnpm run build --if-present
+        run: npm run build --if-present
 
       - name: Test
-        run: pnpm test
+        run: npm test
 
       - name: Test docs
-        run: pnpm run coverage
+        run: npm run coverage
