@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.0](https://github.com/chandq/mock-service-cli/compare/v3.1.8...v3.2.0) (2023-09-03)
+
+
+### Bug Fixes
+
+* **publish:** use pnpm, update github workflow ([130ea18](https://github.com/chandq/mock-service-cli/commit/130ea183cf70ffabcd36e2df3d37356130b32850))
+
 ### [3.1.7](https://github.com/chandq/mock-service-cli/compare/v3.1.6...v3.1.7) (2023-04-09)
 
 
