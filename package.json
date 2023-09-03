@@ -18,7 +18,8 @@
     "release:prefix": "standard-version --prerelease alpha",
     "release:patch": "standard-version --release-as patch && git push origin master && npm publish",
     "release:minor": "standard-version --release-as minor && git push --follow-tags origin master",
-    "release:major": "standard-version --release-as major && git push --follow-tags origin master"
+    "release:major": "standard-version --release-as major && git push --follow-tags origin master",
+    "prepare": "husky install"
   },
   "files": [
     "lib",
@@ -64,7 +65,7 @@
     "eslint": "^7.0.0",
     "eslint-config-populist": "^4.2.0",
     "eslint-plugin-mocha": "^9.0.0",
-    "husky": "^4.2.5",
+    "husky": "^8.0.0",
     "lint-staged": "^10.2.2",
     "mockjs": "^1.1.0",
     "standard-version": "^8.0.0",
