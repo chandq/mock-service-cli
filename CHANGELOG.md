@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.2.1](https://github.com/chandq/mock-service-cli/compare/v3.2.0...v3.2.1) (2023-09-04)
+
+
+### Bug Fixes
+
+* downgrade husky to 4 ([2242a15](https://github.com/chandq/mock-service-cli/commit/2242a157f611d47d9d34a49bb219b4968fdad411))
+* publish issue ([d806b42](https://github.com/chandq/mock-service-cli/commit/d806b4246be4c9ec5e33c15b6ed11cfebadf50ae))
+* **publish:** issue of execute github workflow ([4180b16](https://github.com/chandq/mock-service-cli/commit/4180b16be86a3e0177d5b0574e0f2924802be08e))
+* remove prepare cli args ([6ca6508](https://github.com/chandq/mock-service-cli/commit/6ca650894c15986089a6fc6436687d9c3a36a9e7))
+* use yarn ([b6aafdd](https://github.com/chandq/mock-service-cli/commit/b6aafdd8f8bc7db84efa3201bbae5713862fc699))
+
 ## [3.2.0](https://github.com/chandq/mock-service-cli/compare/v3.1.8...v3.2.0) (2023-09-03)
 
 
