@@ -8,7 +8,6 @@ name: Create Release
 permissions: {}
 jobs:
   build:
-
     name: Create Release
     runs-on: ubuntu-latest
     steps:
@@ -16,8 +15,8 @@ jobs:
         uses: actions/checkout@master
       - name: Create Release for Tag
         id: release_tag
-        uses: ncipollo/release-action@v1
+        uses: chandq/release-action@main
         with:
-          generateReleaseNotes: "true"
+          generateReleaseNotes: 'true'
           body: |
             Please refer to [CHANGELOG.md](https://github.com/chandq/mock-service-cli/blob/master/CHANGELOG.md) for details.
