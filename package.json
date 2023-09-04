@@ -16,7 +16,7 @@
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
     "release:prerelease": "standard-version --prerelease",
     "release:prefix": "standard-version --prerelease alpha",
-    "release:patch": "standard-version --release-as patch && git push origin master && npm publish",
+    "release:patch": "standard-version --release-as patch && git push --follow-tags origin master",
     "release:minor": "standard-version --release-as minor && git push --follow-tags origin master",
     "release:major": "standard-version --release-as major && git push --follow-tags origin master"
   },
