@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.3.0](https://github.com/chandq/mock-service-cli/compare/v3.2.7...v3.3.0) (2023-12-03)
+
+
+### Features
+
+* add Static Server ([d9574e3](https://github.com/chandq/mock-service-cli/commit/d9574e3b6b696ca7646025db05e7aba6a449ac8a))
+
 ### [3.2.7](https://github.com/chandq/mock-service-cli/compare/v3.2.6...v3.2.7) (2023-09-04)
 
 ### [3.2.6](https://github.com/chandq/mock-service-cli/compare/v3.2.5...v3.2.6) (2023-09-04)
