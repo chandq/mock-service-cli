@@ -37,6 +37,8 @@ if (argv.h || argv.help) {
       '  -D --web-dir        Enable web server, specify web directory, default [./dist] directory',
       '  -b --web-baseurl    Specify website public path when enabled web server.',
       '',
+      '  -R --static-server    Specify static resource file directory when enabled static server.',
+      '',
       '  -h --help          Print this list and exit.',
       '  -v --version       Print the version and exit.'
     ].join('\n')
@@ -81,6 +83,7 @@ injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
 injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
+injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
 // injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
 // 解析Web代理配置项（来源js|config文件或命令行参数字符串）
 const proxyArg = argv.O || argv['proxy-options'];
@@ -110,6 +113,7 @@ if (proxyArg) {
   process.env.PROXY_OPTIONS = JSON.stringify(proxyTable);
 }
 if (argv.D || argv['web-dir']) {
+  // 解析SPA应用参数：SPA Web目录
   process.env.WEB_ROOT = resolve(process.cwd(), argv.D || argv['web-dir']);
   if (!existsSync(process.env.WEB_ROOT)) {
     console.error(`web-dir: 目录 ${process.env.WEB_ROOT} 不存在`);
@@ -160,6 +164,7 @@ const watchMockFiles = function (watchDir) {
       );
     });
 };
+
 // Node子进程启动MockServer
 const startMockServer = function () {
   spawn(node, [resolve(__dirname, '../lib/mockServer.js')], {
@@ -167,7 +172,15 @@ const startMockServer = function () {
   });
 };
 
+// Node子进程启动StaticServer
+const startStaticServer = function () {
+  spawn(node, [resolve(__dirname, '../lib/staticServer.js')], {
+    stdio: 'inherit'
+  });
+};
+
 if (specifiedFile) {
+  // Mock服务器：指定文件
   process.env.SPECIFIED_FILE = resolve(process.cwd(), specifiedFile);
   if (isStartSocketServer) {
     startMockServer();
@@ -175,6 +188,7 @@ if (specifiedFile) {
     watchMockFiles(process.env.SPECIFIED_FILE);
   }
 } else if (watchDir) {
+  // Mock服务器：指定目录
   process.env.SPECIFIED_DIR = resolve(process.cwd(), watchDir);
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   if (isStartSocketServer) {
@@ -182,7 +196,12 @@ if (specifiedFile) {
   } else {
     watchMockFiles(process.env.SPECIFIED_DIR);
   }
+} else if (process.env.STATIC_DIRECTORY) {
+  // 静态服务器
+  process.env.STATIC_DIRECTORY = resolve(process.cwd(), process.env.STATIC_DIRECTORY);
+  startStaticServer();
 } else {
+  // Mock服务：使用默认目录
   watchDir = process.env.SPECIFIED_DIR = resolve(process.cwd(), './mock');
   // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
   if (isStartSocketServer) {
