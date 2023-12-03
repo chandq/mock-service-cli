@@ -1,7 +1,6 @@
 [![Node.js CI](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml/badge.svg)](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml)
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
 [![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://github.com/chandq/mock-service-cli)
-[![node](https://img.shields.io/badge/node-v14.0.0-blue)](https://nodejs.org/download/release/v14.0.0/)
 [![node](https://img.shields.io/badge/language-node-orange.svg)](https://nodejs.org/download/release/v12.0.0/)
 [![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE.md)
 [![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true)
@@ -10,7 +9,7 @@
 
 ### 简介
 
-内置 Mock Server、Web Server、Http?s request proxy 等功能集。
+内置 **Static Server**、**Mock Server**、**SPA Web Server**、Http?s request proxy 等功能集。
 
 **简易轻量**、**B/S 架构**、**0 秒启动**的本地命令行 Mock 服务套件， 支持热更新，对于开发调试 mock 数据很实用，能提高前端开发者的开发效率。支持 `GET`,`POST`,`PUT`,`DELETE`,`PATCH`,`OPTIONS`,`COPY`,`LINK`,`UNLINK`,`PURGE` 等常用请求类型，无需布署后端，可能是本地最好用的 Mock 工具之一。
 
@@ -18,6 +17,10 @@
 
 - 支持统计 mock 的文件数量和 mock 请求数量
 - 支持终端打开 mock 文件的所在位置
+
+#### Static Server (和 Mock Server 互斥使用)
+
+简易的静态资源服务器，可用于开发调试，如需更多使用场景，请选择 [http-server](https://www.npmjs.com/package/http-server)
 
 #### Mock Server - 本地 Mock 服务器
 
@@ -83,40 +86,45 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-o` or `--cors-origin`   | Allow origin by cors, list separated by commas, must not be \* when withCredential is true .If specified, cors-headers will be `Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token`                                     | \*       |
 | `-O` or `--proxy-options` | Optionally provide http request proxy options list, support accept js file、json file、cli arguments string. Examples: `-O '/api/apaas\|http://192.168.0.105:60700,/api/permission\| http://192.168.0.105:60700'`. Must start web server to use proxy for http request test under browser console or api test tools. | -        |
 | `-P` or `--web-port`      | Web server port to use. Use `-P 9090` to look for an open port, starting at 9090                                                                                                                                                                                                                                     | 9090     |
-| `-b` or `--web-baseurl`   | Specify public path of the static web server, can be base address of SPA route.                                                                                                                                                                                                                                      | -        |
+| `-b` or `--web-baseurl`   | Specify public path of the SPA web server, can be base address of SPA route.                                                                                                                                                                                                                                         | -        |
+| `-R` or `--static-server` | Specify directory of the Static Web Server.                                                                                                                                                                                                                                                                          | -        |
 
 ## Example
 
-1. Specify mock server port.
+1. Specify static resource file directory to startup Static Server.
+
+`mock-service-cli -R ./test`
+
+2. Specify mock server port.
 
 `mock-service-cli -p 8085`
 
-2. Enable cors of mock server, specify the origin and headers of http request.
+3. Enable cors of mock server, specify the origin and headers of http request.
 
 `mock-service-cli -o "http://192.168.0.8:38200,http://10.30.30.3" -H "custom-header"`
 
-3. Specify mock directory.
+4. Specify mock directory to startup Mock Server.
 
 `mock-service-cli -d ./mock`
 
-4. Specify mock file.
+5. Specify mock file to startup Mock Server.
 
 `mock-service-cli -f ./mock/test.js`
 
-5. Start socket server for used to save api response data.
+6. Start socket server for used to save api response data.
 
 `mock-service-cli -S`
 
-6. Only Used as api server for test on browser console or api request tools.
+7. Only Used as api server for test on browser console or api request tools.
    > must specified server directory which can be empty but not includes index.html file, and also need config API proxy.
 
 `mock-service-cli -D server -O '/api/apaas|http://192.168.0.105:60700'`
 
-7. Start static web server for SPA, and optionally specify public path and port.
+8. Start static web server for SPA, and optionally specify public path and port.
 
 `mock-service-cli -D ../react-best-practice/dist [-b '/redbridge/'] [-P 9090]`
 
-8. Enable Proxy base on above item 7. support accept js file、json file、cli arguments string
+9. Enable Proxy base on above item 7. support accept js file、json file、cli arguments string
 
    - cli arguments string
 
