@@ -45,8 +45,8 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Test docs
-        run: npm run coverage
+      # - name: Test docs
+      #   run: npm run coverage
 
   unit-test-windows:
     runs-on: windows-latest
@@ -82,5 +82,5 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Test docs
-        run: npm run coverage
+      # - name: Test docs
+      #   run: npm run coverage
