@@ -24,6 +24,8 @@
 
 #### Mock Server - 本地 Mock 服务器
 
+> Mock File 仅支持 commonjs 规范的 js、cjs 文件，不支持 ES Module
+
 支持以下常见业务场景：
 
 - [x] 无服务端演示项目的数据 Mock

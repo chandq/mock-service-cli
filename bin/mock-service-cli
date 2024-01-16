@@ -16,6 +16,7 @@ if (argv.h || argv.help) {
     [
       'usage: mock-service-cli [options]',
       '',
+      'PS: Mock File仅支持commonjs规范的js、cjs文件，不支持ES Module',
       'options:',
       '  -p --port    Mock server port to use. If 0, look for open port. [8090]',
       '  -d           Specify mock directory, default [./mock] directory,',
@@ -146,7 +147,7 @@ const watchMockFiles = function (watchDir) {
   nodemon({
     script: resolve(__dirname, '../lib/mockServer.js'),
     watch: [watchDir],
-    ext: 'js,json'
+    ext: 'cjs,js,json'
   });
 
   nodemon
