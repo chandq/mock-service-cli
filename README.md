@@ -24,6 +24,8 @@
 
 #### Mock Server - 本地 Mock 服务器
 
+**支持热更新，即 Mock 文件改动后自动重启服务**
+
 > Mock File 仅支持 commonjs 规范的 js、cjs 文件，不支持 ES Module
 
 支持以下常见业务场景：

@@ -28,7 +28,6 @@
     "node": ">=12"
   },
   "author": "chendq <deqiaochen@gmail.com>",
-  "packageManager": "yarn@1.22.19",
   "keywords": [
     "Static Server",
     "Web Server",
