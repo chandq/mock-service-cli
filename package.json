@@ -30,14 +30,12 @@
   "author": "chendq <deqiaochen@gmail.com>",
   "packageManager": "yarn@1.22.19",
   "keywords": [
-    "MIT-licensed",
     "Static Server",
-    "Mock",
+    "Web Server",
+    "Mock Server CLI",
     "MockServer",
     "mock-service-cli",
-    "CLI",
-    "Socket server",
-    "socket.io"
+    "Socket server"
   ],
   "repository": {
     "type": "git",
