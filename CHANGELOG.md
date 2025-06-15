@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.3.3](https://github.com/chandq/mock-service-cli/compare/v3.3.2...v3.3.3) (2025-06-15)
+
+
+### Bug Fixes
+
+* allow not start mock serve when use web serve ([bd6875e](https://github.com/chandq/mock-service-cli/commit/bd6875e174777130b0ffc7d5037b2b020d48427f))
+
 ### [3.3.2](https://github.com/chandq/mock-service-cli/compare/v3.3.1...v3.3.2) (2025-06-15)
 
 ### [3.3.1](https://github.com/chandq/mock-service-cli/compare/v3.3.0...v3.3.1) (2024-01-16)
