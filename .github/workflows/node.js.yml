@@ -12,6 +12,7 @@ on:
 jobs:
   unit-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -31,10 +32,10 @@ jobs:
       #   run: npm i -g yarn@1
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          # cache: 'npm'
 
       - name: Install deps
         run: npm ci
@@ -50,6 +51,7 @@ jobs:
 
   unit-test-windows:
     runs-on: windows-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         node-version: [12.x, 14.x, 16.x, 18.x, 20.x]
