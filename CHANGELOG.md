@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.3.4](https://github.com/chandq/mock-service-cli/compare/v3.3.3...v3.3.4) (2025-07-29)
+
+
+### Features
+
+* optionally add response headers when start Mock/Web/Static Server ([2413314](https://github.com/chandq/mock-service-cli/commit/2413314fbd2914a453a19af4182f966466ab3028))
+
+
+### Bug Fixes
+
+* support to set response headers for static server ([9673032](https://github.com/chandq/mock-service-cli/commit/9673032431e4f6a275f229544dda71958c542d63))
+
 ### [3.3.3](https://github.com/chandq/mock-service-cli/compare/v3.3.2...v3.3.3) (2025-06-15)
 
 
