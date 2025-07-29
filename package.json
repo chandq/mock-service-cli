@@ -1,7 +1,7 @@
 {
   "name": "mock-service-cli",
   "version": "3.3.3",
-  "description": "🦅 Local mock server, Static server, SPA server, Http?s request proxy",
+  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy",
   "main": "./lib/mockServer.js",
   "bin": {
     "mock-service-cli": "bin/mock-service-cli"
@@ -29,10 +29,11 @@
   },
   "author": "chendq <deqiaochen@gmail.com>",
   "keywords": [
+    "Mock",
     "Static Server",
     "Web Server",
     "Mock Server CLI",
-    "MockServer",
+    "SPA Server",
     "mock-service-cli",
     "Socket server"
   ],
