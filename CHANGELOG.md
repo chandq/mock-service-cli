@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.3.5](https://github.com/chandq/mock-service-cli/compare/v3.3.4...v3.3.5) (2025-07-29)
+
+
+### Bug Fixes
+
+* improve readme ([f5f04ae](https://github.com/chandq/mock-service-cli/commit/f5f04aecba649a228094af333453d6baede29a59))
+
 ### [3.3.4](https://github.com/chandq/mock-service-cli/compare/v3.3.3...v3.3.4) (2025-07-29)
 
 
