@@ -1,7 +1,57 @@
 const Mock = require('mockjs');
 
 module.exports = {
-  '/mock/api/randomList': (req, res) => {
+  '/mock/gists/db6e5d2d200192e98e6d7f14dc4c5be1/file-versions/versionned.json?limit=10': {
+    success: true,
+    data: [
+      {
+        version: '5c47c9eec3556ce4d32282e66b030edeb0a70b94',
+        committed_at: '2025-10-28T02:42:49Z',
+        change_status: {
+          total: 2,
+          additions: 1,
+          deletions: 1
+        }
+      },
+      {
+        version: 'a452377ef72022525dee49ca276c52f07f571a26',
+        committed_at: '2025-10-28T02:42:36Z',
+        change_status: {
+          total: 1,
+          additions: 1,
+          deletions: 0
+        }
+      }
+    ],
+    pagination: {
+      cursor: null,
+      hasMore: false,
+      limit: 10,
+      count: 2
+    }
+  },
+  'get /mock/gists/db6e5d2d200192e98e6d7f14dc4c5be1/file-versions/versionned2.json?limit=10': {
+    success: true,
+    data: [
+      {
+        version: '5c47c9eec3556ce4d32282e66b030edeb0a70b94',
+        committed_at: '2025-10-28T02:42:49Z',
+        change_status: {
+          total: 2,
+          additions: 1,
+          deletions: 1
+        }
+      }
+    ],
+    pagination: {
+      cursor: null,
+      hasMore: false,
+      limit: 10,
+      count: 1
+    }
+  },
+  '/mock/api/randomList/:id': (req, res) => {
+    console.log('req', req);
     res.json({
       code: 0,
       message: '成功',
