@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.3.6](https://github.com/chandq/mock-service-cli/compare/v3.3.5...v3.3.6) (2025-11-01)
+
+
+### Bug Fixes
+
+* can not match route when req path includes .json suffix ([760305a](https://github.com/chandq/mock-service-cli/commit/760305a588d25984b870bb771641152a656157d4))
+
 ### [3.3.5](https://github.com/chandq/mock-service-cli/compare/v3.3.4...v3.3.5) (2025-07-29)
 
 
