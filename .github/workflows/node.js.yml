@@ -84,5 +84,5 @@ jobs:
       - name: Test
         run: npm test
 
-      # - name: Test docs
-      #   run: npm run coverage
+      - name: Test docs
+        run: npm run coverage

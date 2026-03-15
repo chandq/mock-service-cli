@@ -31,6 +31,7 @@
 ## 📦 安装
 
 ### 全局安装
+
 ```bash
 npm install --global mock-service-cli
 # 或
@@ -38,42 +39,45 @@ brew install mock-service-cli
 ```
 
 ### 局部安装
+
 ```bash
 npm install mock-service-cli --save-dev
 ```
 
 ### 直接运行
+
 ```bash
 npx mock-service-cli [options] [path]
 ```
 
 ## 🛠️ 命令行选项
 
-| 选项                      | 描述                                                                                                         | 默认值    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------ | --------- |
-| `-h` 或 `--help`          | 显示帮助信息                                                                                                 | -         |
-| `-p` 或 `--port`          | Mock 服务器端口                                                                                              | 8090      |
-| `-d`                      | 指定 mock 目录                                                                                               | ./mock    |
-| `-f`                      | 指定单个 mock 文件                                                                                           | -         |
-| `-s` 或 `--silent`        | 抑制日志输出                                                                                                 | -         |
-| `-v` 或 `--version`       | 显示版本信息                                                                                                 | -         |
-| `-S` 或 `--socket-server` | 启动 socket 服务器，用于保存 API 响应数据                                                                    | false     |
-| `-a` 或 `--api-stat`      | 打印 API URL 和文件路径信息                                                                                  | false     |
-| `-t` 或 `--track`         | 记录操作信息到文件                                                                                           | false     |
-| `-o` 或 `--cors-origin`   | 配置 CORS 允许的源，多个源用逗号分隔                                                                        | *         |
-| `-O` 或 `--proxy-options` | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数                                                  | -         |
-| `-H` 或 `--cors-headers`  | 配置 CORS 头信息                                                                                            | *         |
-| `-A` 或 `--append-headers`| 添加响应头信息，多个头用逗号分隔                                                                            | -         |
-| `-D` 或 `--web-dir`       | 启用 Web 服务器，指定 web 目录（SPA 应用）                                                                  | -         |
-| `-P` 或 `--web-port`       | Web 服务器端口                                                                                               | 9090      |
-| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                                                                                | -         |
-| `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                                                                            | -         |
-| `-w` 或 `--open`           | 自动打开 API 概览页面                                                                                       | false     |
-| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                                                                      | ./        |
+| 选项                       | 描述                                                        | 默认值 |
+| -------------------------- | ----------------------------------------------------------- | ------ |
+| `-h` 或 `--help`           | 显示帮助信息                                                | -      |
+| `-p` 或 `--port`           | Mock 服务器端口                                             | 8090   |
+| `-d`                       | 指定 mock 目录                                              | ./mock |
+| `-f`                       | 指定单个 mock 文件                                          | -      |
+| `-s` 或 `--silent`         | 抑制日志输出                                                | -      |
+| `-v` 或 `--version`        | 显示版本信息                                                | -      |
+| `-S` 或 `--socket-server`  | 启动 socket 服务器，用于保存 API 响应数据                   | false  |
+| `-a` 或 `--api-stat`       | 打印 API URL 和文件路径信息                                 | false  |
+| `-t` 或 `--track`          | 记录操作信息到文件                                          | false  |
+| `-o` 或 `--cors-origin`    | 配置 CORS 允许的源，多个源用逗号分隔                        | \*     |
+| `-O` 或 `--proxy-options`  | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数 | -      |
+| `-H` 或 `--cors-headers`   | 配置 CORS 头信息                                            | \*     |
+| `-A` 或 `--append-headers` | 添加响应头信息，多个头用逗号分隔                            | -      |
+| `-D` 或 `--web-dir`        | 启用 Web 服务器，指定 web 目录（SPA 应用）                  | -      |
+| `-P` 或 `--web-port`       | Web 服务器端口                                              | 9090   |
+| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                               | -      |
+| `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                            | -      |
+| `-w` 或 `--open`           | 自动打开 API 概览页面                                       | false  |
+| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                      | ./     |
 
 ## 📖 使用示例
 
 ### Mock 服务器
+
 ```bash
 # 使用默认配置启动 Mock 服务器
 mock-service-cli
@@ -89,12 +93,14 @@ mock-service-cli -f ./mock.js
 ```
 
 ### 静态服务器
+
 ```bash
 # 启动静态服务器
 mock-service-cli -R ./public
 ```
 
 ### Web 服务器 (SPA)
+
 ```bash
 # 启动 SPA 服务器
 mock-service-cli -D ./dist
@@ -104,6 +110,7 @@ mock-service-cli -D ./dist -b /app -P 9090
 ```
 
 ### HTTP 代理
+
 ```bash
 # 启动带代理的 Web 服务器
 mock-service-cli -D ./ -O '/api|http://localhost:3000'
@@ -113,6 +120,7 @@ mock-service-cli -D ./ -O ./proxy.js
 ```
 
 ### 文件浏览器
+
 ```bash
 # 浏览当前目录
 mock-service-cli -e ./
@@ -153,11 +161,13 @@ const mockjs = require('mockjs');
 
 module.exports = {
   'GET /api/tags': mockjs.mock({
-    'list|100': [{
-      'NO|+1': 1,
-      city: '@city',
-      'value|1-100': 50
-    }]
+    'list|100': [
+      {
+        'NO|+1': 1,
+        city: '@city',
+        'value|1-100': 50
+      }
+    ]
   })
 };
 ```
@@ -167,6 +177,7 @@ module.exports = {
 现代化的 Web 界面，用于展示和测试所有已注册的 Mock API 接口。
 
 ### 功能特性
+
 - 📁 按目录分类展示 API
 - 🔍 支持搜索接口
 - 🎯 每种 HTTP 方法使用不同颜色标签
@@ -174,6 +185,7 @@ module.exports = {
 - 📋 响应数据格式化展示
 
 ### 访问方式
+
 - **自动打开**：使用 `--open` 参数
 - **手动访问**：`http://localhost:8090/__api-overview`
 
@@ -182,6 +194,7 @@ module.exports = {
 现代化的文件浏览界面，支持目录导航、文件预览和管理。
 
 ### 功能特性
+
 - 📁 **目录导航**：面包屑导航，支持快速跳转
 - 👁️ **文件预览**：
   - 图片文件：直接预览（JPG、PNG、GIF、WebP 等）
@@ -202,6 +215,7 @@ module.exports = {
   - `Backspace`：返回上级
 
 ### 界面预览
+
 - 渐变紫色现代化设计
 - 响应式布局
 - 流畅的交互体验
@@ -225,7 +239,7 @@ socket.emit('save-data', { url, method, data, dir });
 
 // 获取目录统计信息
 socket.emit('mock-dir-stat', dirPath);
-socket.on('mock-dir-stat', (data) => {
+socket.on('mock-dir-stat', data => {
   console.log('统计信息:', data);
 });
 ```
