@@ -1,7 +1,7 @@
 {
   "name": "mock-service-cli",
   "version": "3.4.0",
-  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page",
+  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page, File explorer",
   "main": "./lib/mockServer.js",
   "bin": {
     "mock-service-cli": "bin/mock-service-cli"
@@ -35,7 +35,12 @@
     "Mock Server CLI",
     "SPA Server",
     "mock-service-cli",
-    "Socket server"
+    "Socket server",
+    "API overview page",
+    "File explorer",
+    "File browser",
+    "File manager",
+    "express"
   ],
   "repository": {
     "type": "git",
