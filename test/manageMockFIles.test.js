@@ -2,7 +2,7 @@
  * @description: Mock数据统计test unit
  * @Date: 2021-12-23 17:10:26
  * @LastEditors: chendq
- * @LastEditTime: 2022-01-02 12:05:47
+ * @LastEditTime: 2026-03-15 17:30:25
  * @Author: chendq
  */
 const test = require('tap').test;
@@ -109,5 +109,36 @@ test('run hasMockApi function - with args', t => {
   const mockStat = getMockStatFromDir(path.resolve(__dirname, '../mock'));
   hasMockApi(mockStat, '/api/ops/config/user/desktop/getMenuList', 'get');
   t.pass('ok');
+  t.end();
+});
+
+test('run hasMockApi function - invalid parameters', t => {
+  t.plan(4);
+
+  t.equal(hasMockApi(null, '/api/test', 'get'), undefined, 'should handle null mockDataMap');
+  t.equal(hasMockApi({}, '', 'get'), undefined, 'should handle empty apiUrl');
+  t.equal(hasMockApi({}, '/api/test', ''), undefined, 'should handle empty method');
+  t.equal(hasMockApi('not-object', '/api/test', 'get'), undefined, 'should handle non-object mockDataMap');
+  t.end();
+});
+
+test('run hasMockApi function - valid and invalid APIs', t => {
+  t.plan(2);
+
+  const mockStat = getMockStatFromDir(path.resolve(__dirname, '../mock'));
+  const exists = hasMockApi(mockStat, '/api/ops/config/user/desktop/getMenuList', 'get');
+  const notExists = hasMockApi(mockStat, '/api/this/does/not/exist', 'get');
+  t.ok(exists, 'should find existing API');
+  t.ok(!notExists, 'should not find non-existing API');
+  t.end();
+});
+
+test('run getMockStatFromFile function - with different formats', t => {
+  t.plan(2);
+
+  const stat1 = getMockStatFromFile(path.resolve(__dirname, '../mock/element-template.js'));
+  t.ok(typeof stat1 === 'object', 'should return object for js file');
+  t.ok(Object.keys(stat1).length > 0, 'js file should have some APIs');
+
   t.end();
 });
