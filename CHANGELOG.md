@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/chandq/mock-service-cli/compare/v3.3.6...v3.4.0) (2026-03-15)
+
+
+### Features
+
+* support generate api doc html and open in browser ([aee3e5a](https://github.com/chandq/mock-service-cli/commit/aee3e5a2fbd88a782a3a8b0ec3f5e59d5f8e03da))
+
 ### [3.3.6](https://github.com/chandq/mock-service-cli/compare/v3.3.5...v3.3.6) (2025-11-01)
 
 
