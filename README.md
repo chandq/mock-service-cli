@@ -1,9 +1,10 @@
 [![Node.js CI](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml/badge.svg)](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml)
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
-[![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://github.com/chandq/mock-service-cli)
+[![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://www.npmjs.com/package/mock-service-cli)
 [![node](https://img.shields.io/badge/language-node-orange.svg)](https://nodejs.org/download/release/v12.0.0/)
 [![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE.md)
-[![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true)
+
+<!-- [![Downloads:?](https://img.shields.io/npm/dm/mock-service-cli.svg?sanitize=true)](https://npmcharts.com/compare/mock-service-cli?minimal=true) -->
 
 # 🦅 一个基于 [node](https://nodejs.org/en/) 和 [express](https://www.expressjs.com.cn/) 的 轻量级 Mock 套件 命令行工具
 
@@ -17,6 +18,7 @@
 
 - 支持统计 mock 的文件数量和 mock 请求数量
 - 支持终端打开 mock 文件的所在位置
+- 支持自动生成和打开现代化的 API 概览页面（按目录分类、可折叠展开、可点击测试 API）
 
 #### Static Server (和 Mock Server 互斥使用)
 
@@ -94,6 +96,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-P` or `--web-port`       | Web server port to use. Use `-P 9090` to look for an open port, starting at 9090.                                                                                                                                                                                                                                    | 9090     |
 | `-b` or `--web-baseurl`    | Specify public path of the SPA web server, can be base address of SPA route.                                                                                                                                                                                                                                         | -        |
 | `-R` or `--static-server`  | Specify directory of the Static Web Server.                                                                                                                                                                                                                                                                          | -        |
+| `-w` or `--open`           | Open API overview page automatically.                                                                                                                                                                                                                                                                                | false    |
 
 ## Example
 
@@ -138,9 +141,9 @@ This will install `mock-service-cli` globally so that it may be run from the com
 
    - js file
 
-     `mock-service-cli -D ./ -O ./proxy.js`
+   `mock-service-cli -D ./ -O ./proxy.js`
 
-     proxy.js file content as follows:
+   proxy.js file content as follows:
 
 ```js
 module.exports = {
@@ -148,6 +151,14 @@ module.exports = {
   '/api/permission': 'http://192.168.0.105:60700'
 };
 ```
+
+10. Start Mock Server and automatically open API overview page.
+
+`mock-service-cli --open`
+
+11. Start Mock Server with custom port and automatically open API overview page.
+
+`mock-service-cli -p 8080 --open`
 
 ### 编写 Mock 文件
 
@@ -218,6 +229,42 @@ module.exports = {
 ### 启动 Web Server, 启用 Proxy
 
 ![Web Server Proxy](/assets/web-server-proxy.jpg)
+
+### API 概览页面
+
+API 概览页面是一个现代化的 Web 界面，用于展示和测试所有已注册的 Mock API 接口。
+
+#### 功能特性
+
+- 按目录分类展示 API 接口
+- 目录可折叠/展开
+- 支持按 URL 或 HTTP 方法搜索接口
+- 每种 HTTP 方法使用不同颜色的标签（GET、POST、PUT、DELETE 等）
+- 点击接口可查看详细信息
+- 支持直接在页面中测试 API（发送请求并查看响应）
+- 响应数据格式化展示
+
+#### 访问方式
+
+1. **自动打开**：使用 `--open` 参数启动服务时，会自动在浏览器中打开 API 概览页面
+
+   ```bash
+   mock-service-cli --open
+   ```
+
+2. **手动访问**：在浏览器中访问以下地址
+   ```
+   http://localhost:8090/__api-overview
+   ```
+
+#### 页面预览
+
+API 概览页面采用现代化的响应式设计，包含以下部分：
+
+- 统计卡片：展示总接口数、目录数、各 HTTP 方法数量
+- 搜索框：快速查找接口
+- 目录列表：按目录分组展示所有接口
+- 测试面板：点击接口后可进行测试
 
 ### 借助 socket.io 保留接口数据
 
