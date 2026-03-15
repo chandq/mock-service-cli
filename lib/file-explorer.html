@@ -82,6 +82,60 @@
         display: flex;
         gap: 12px;
         align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .search-box {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .search-box input:focus {
+        border-color: #667eea;
+      }
+
+      .sort-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .sort-select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .sort-select:focus {
+        border-color: #667eea;
+      }
+
+      .sort-order-btn {
+        padding: 8px 12px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .sort-order-btn:hover {
+        background: #e0e0e0;
       }
 
       .back-btn {
@@ -363,6 +417,19 @@
             </svg>
             返回上级
           </button>
+          <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索文件名..." oninput="handleSearch()" />
+          </div>
+          <div class="sort-controls">
+            <select class="sort-select" id="sortSelect" onchange="handleSort()">
+              <option value="name">名称</option>
+              <option value="time">时间</option>
+              <option value="size">大小</option>
+            </select>
+            <button class="sort-order-btn" id="sortOrderBtn" onclick="toggleSortOrder()">
+              <span id="sortOrderIcon">↑</span>
+            </button>
+          </div>
           <div class="view-toggle">
             <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">网格</button>
             <button class="view-btn" id="listViewBtn" onclick="setView('list')">列表</button>
@@ -386,6 +453,10 @@
       let currentPath = '/';
       let currentView = 'grid';
       let currentFiles = [];
+      let allFiles = [];
+      let searchQuery = '';
+      let sortBy = 'name';
+      let sortAscending = true;
 
       document.addEventListener('DOMContentLoaded', () => {
         loadDirectory('/');
@@ -404,14 +475,71 @@
           }
 
           currentPath = data.currentPath;
-          currentFiles = data.files;
+          allFiles = data.files;
 
           renderBreadcrumb(data.currentPath, data.parentPath);
-          renderFiles(data.files);
+          processAndRenderFiles();
           updateBackButton(data.parentPath);
+
+          // 清空搜索框
+          document.getElementById('searchInput').value = '';
+          searchQuery = '';
         } catch (error) {
           fileGrid.innerHTML = `<div class="empty-state"><p>错误: ${error.message}</p></div>`;
         }
+      }
+
+      function processAndRenderFiles() {
+        let files = [...allFiles];
+
+        // 搜索过滤
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          files = files.filter(file => file.name.toLowerCase().includes(query));
+        }
+
+        // 排序
+        files.sort((a, b) => {
+          let result = 0;
+
+          // 目录始终排在前面
+          if (a.isDirectory !== b.isDirectory) {
+            return a.isDirectory ? -1 : 1;
+          }
+
+          switch (sortBy) {
+            case 'name':
+              result = a.name.localeCompare(b.name);
+              break;
+            case 'time':
+              result = new Date(a.mtime) - new Date(b.mtime);
+              break;
+            case 'size':
+              result = a.size - b.size;
+              break;
+          }
+
+          return sortAscending ? result : -result;
+        });
+
+        currentFiles = files;
+        renderFiles(files);
+      }
+
+      function handleSearch() {
+        searchQuery = document.getElementById('searchInput').value;
+        processAndRenderFiles();
+      }
+
+      function handleSort() {
+        sortBy = document.getElementById('sortSelect').value;
+        processAndRenderFiles();
+      }
+
+      function toggleSortOrder() {
+        sortAscending = !sortAscending;
+        document.getElementById('sortOrderIcon').textContent = sortAscending ? '↑' : '↓';
+        processAndRenderFiles();
       }
 
       function renderBreadcrumb(currentPath, parentPath) {
