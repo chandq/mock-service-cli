@@ -182,6 +182,54 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
+      .refresh-btn {
+        padding: 8px 12px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .refresh-btn:hover {
+        background: #e0e0e0;
+      }
+
+      .toggle-hidden-btn {
+        padding: 8px 12px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .toggle-hidden-btn:hover {
+        background: #e0e0e0;
+      }
+
+      .toggle-hidden-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .copy-btn {
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .copy-btn:hover {
+        background: #ffc107;
+        color: #333;
+      }
+
       .file-grid {
         padding: 20px;
         display: grid;
@@ -273,6 +321,39 @@
 
       .hidden-file {
         opacity: 0.6;
+      }
+
+      .action-buttons {
+        display: none;
+        gap: 6px;
+      }
+
+      .list-view .action-buttons {
+        display: flex;
+      }
+
+      .action-btn {
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .action-btn:hover {
+        background: #e0e0e0;
+      }
+
+      .action-btn.open:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      .action-btn.download:hover {
+        background: #28a745;
+        color: white;
       }
 
       .modal {
@@ -417,6 +498,15 @@
             </svg>
             返回上级
           </button>
+          <button class="refresh-btn" onclick="loadDirectory(currentPath)" title="刷新">🔄</button>
+          <button
+            class="toggle-hidden-btn"
+            id="toggleHiddenBtn"
+            onclick="toggleHiddenFiles()"
+            title="显示/隐藏隐藏文件"
+          >
+            👁️
+          </button>
           <div class="search-box">
             <input type="text" id="searchInput" placeholder="搜索文件名..." oninput="handleSearch()" />
           </div>
@@ -457,6 +547,7 @@
       let searchQuery = '';
       let sortBy = 'name';
       let sortAscending = true;
+      let showHiddenFiles = true;
 
       document.addEventListener('DOMContentLoaded', () => {
         loadDirectory('/');
@@ -492,6 +583,11 @@
       function processAndRenderFiles() {
         let files = [...allFiles];
 
+        // 隐藏文件过滤
+        if (!showHiddenFiles) {
+          files = files.filter(file => !file.isHidden);
+        }
+
         // 搜索过滤
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
@@ -526,6 +622,31 @@
         renderFiles(files);
       }
 
+      function toggleHiddenFiles() {
+        showHiddenFiles = !showHiddenFiles;
+        const btn = document.getElementById('toggleHiddenBtn');
+        if (showHiddenFiles) {
+          btn.classList.add('active');
+          btn.innerHTML = '👁️';
+          btn.title = '隐藏隐藏文件';
+        } else {
+          btn.classList.remove('active');
+          btn.innerHTML = '👁️‍🗨️';
+          btn.title = '显示隐藏文件';
+        }
+        processAndRenderFiles();
+      }
+
+      async function copyToClipboard(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          alert('路径已复制到剪贴板: ' + text);
+        } catch (error) {
+          console.error('复制失败:', error);
+          alert('复制失败: ' + error.message);
+        }
+      }
+
       function handleSearch() {
         searchQuery = document.getElementById('searchInput').value;
         processAndRenderFiles();
@@ -540,6 +661,37 @@
         sortAscending = !sortAscending;
         document.getElementById('sortOrderIcon').textContent = sortAscending ? '↑' : '↓';
         processAndRenderFiles();
+      }
+
+      async function openInExplorer(path) {
+        try {
+          const response = await fetch('/__api/open-in-explorer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: path })
+          });
+
+          const data = await response.json();
+
+          if (!data.success) {
+            alert('打开失败: ' + (data.error || '未知错误'));
+          }
+        } catch (error) {
+          console.error('打开失败:', error);
+          alert('打开失败: ' + error.message);
+        }
+      }
+
+      function downloadFile(filePath, fileName) {
+        const url = `/__api/file?path=${encodeURIComponent(filePath)}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }
 
       function renderBreadcrumb(currentPath, parentPath) {
@@ -580,16 +732,31 @@
 
           if (currentView === 'list') {
             html += `
-                        <div class="file-item ${hiddenClass}" onclick="handleItemClick('${file.path}', ${
+                        <div class="file-item ${hiddenClass}">
+                            <div class="file-icon" onclick="handleItemClick('${file.path}', ${
               file.isDirectory
-            })">
-                            <div class="file-icon">${icon}</div>
-                            <div class="file-info">
+            })">${icon}</div>
+                            <div class="file-info" onclick="handleItemClick('${file.path}', ${file.isDirectory})">
                                 <div class="file-name">${escapeHtml(file.name)}</div>
                                 <div class="file-meta">
                                     ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
                                     <span>${mtime}</span>
                                 </div>
+                            </div>
+                            <div class="action-buttons">
+                                <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${
+                                  file.path
+                                }')" title="复制路径">📋</button>
+                                <button class="action-btn open" onclick="event.stopPropagation(); openInExplorer('${
+                                  file.path
+                                }')" title="在文件管理器中打开">📂</button>
+                                ${
+                                  !file.isDirectory
+                                    ? `<button class="action-btn download" onclick="event.stopPropagation(); downloadFile('${
+                                        file.path
+                                      }', '${escapeHtml(file.name)}')" title="下载">⬇️</button>`
+                                    : ''
+                                }
                             </div>
                         </div>
                     `;
