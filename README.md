@@ -97,6 +97,7 @@ This will install `mock-service-cli` globally so that it may be run from the com
 | `-b` or `--web-baseurl`    | Specify public path of the SPA web server, can be base address of SPA route.                                                                                                                                                                                                                                         | -        |
 | `-R` or `--static-server`  | Specify directory of the Static Web Server.                                                                                                                                                                                                                                                                          | -        |
 | `-w` or `--open`           | Open API overview page automatically.                                                                                                                                                                                                                                                                                | false    |
+| `-e` or `--explorer`       | Enable file explorer server, specify directory to browse, default [./].                                                                                                                                                                                                                                              | ./       |
 
 ## Example
 
@@ -325,3 +326,49 @@ axios.interceptors.request.use(config => {
   return config;
 });
 ```
+
+### 文件浏览器 (File Explorer)
+
+文件浏览器是一个现代化的 Web 界面，用于浏览和预览本地文件和目录，类似于 http-server，但提供了更丰富的交互体验。
+
+#### 功能特性
+
+- **目录导航**：点击目录进入子目录，支持面包屑导航快速跳转
+- **文件预览**：
+  - 图片文件：直接预览（支持 JPG、PNG、GIF、BMP、WebP、SVG、ICO）
+  - 文本文件：代码高亮预览（支持 JS、JSON、HTML、CSS、MD、TXT 等）
+  - 其他文件：提供下载链接
+- **图标标识**：
+  - 不同文件类型使用不同颜色的图标
+  - 隐藏文件（以 . 开头）使用半透明效果
+- **视图切换**：支持网格视图和列表视图
+- **文件信息**：显示文件大小和修改时间
+- **键盘快捷键**：
+  - `Escape`：关闭预览窗口
+  - `Backspace`：返回上级目录
+
+#### 使用方式
+
+```bash
+# 浏览当前目录
+mock-service-cli -e ./
+
+# 浏览指定目录
+mock-service-cli -e /path/to/directory
+
+# 指定端口并浏览
+mock-service-cli -e ./ -p 9090
+```
+
+启动后，浏览器会自动打开文件浏览器页面（如未自动打开，可手动访问 `http://localhost:8090`）。
+
+#### 界面预览
+
+文件浏览器采用现代化的渐变紫色设计，包含以下部分：
+
+- 面包屑导航：显示当前路径，点击可快速跳转
+- 工具栏：返回上级按钮、视图切换按钮
+- 文件列表：
+  - 网格视图：大图标展示，适合快速浏览
+  - 列表视图：详细信息展示，适合管理文件
+- 文件预览弹窗：点击文件后打开，支持图片和文本预览

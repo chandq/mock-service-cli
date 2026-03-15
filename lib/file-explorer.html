@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>文件浏览器 - File Explorer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      .header h1 {
+        color: #333;
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+
+      .breadcrumb-item {
+        padding: 6px 12px;
+        background: #f0f0f0;
+        border-radius: 6px;
+        font-size: 14px;
+        color: #666;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .breadcrumb-item:hover {
+        background: #e0e0e0;
+      }
+
+      .breadcrumb-item.current {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        cursor: default;
+      }
+
+      .breadcrumb-separator {
+        color: #999;
+      }
+
+      .file-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .toolbar {
+        padding: 16px 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .back-btn {
+        padding: 8px 16px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s;
+      }
+
+      .back-btn:hover:not(:disabled) {
+        background: #e0e0e0;
+      }
+
+      .back-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .view-toggle {
+        display: flex;
+        background: #f0f0f0;
+        border-radius: 6px;
+        padding: 4px;
+      }
+
+      .view-btn {
+        padding: 6px 12px;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+
+      .view-btn.active {
+        background: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .file-grid {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+      }
+
+      .file-grid.list-view {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .file-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .file-item:hover {
+        background: #f8f9fa;
+      }
+
+      .list-view .file-item {
+        flex-direction: row;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        border-radius: 0;
+      }
+
+      .file-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .list-view .file-icon {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 0;
+        margin-right: 12px;
+      }
+
+      .file-icon svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .file-info {
+        text-align: center;
+        word-break: break-all;
+      }
+
+      .list-view .file-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        text-align: left;
+        flex: 1;
+      }
+
+      .file-name {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+
+      .list-view .file-name {
+        margin-bottom: 0;
+        flex: 1;
+      }
+
+      .file-meta {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .list-view .file-meta {
+        display: flex;
+        gap: 16px;
+      }
+
+      .hidden-file {
+        opacity: 0.6;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        padding: 20px;
+        overflow: auto;
+      }
+
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: white;
+        border-radius: 12px;
+        max-width: 900px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        word-break: break-all;
+      }
+
+      .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #f0f0f0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+
+      .close-btn:hover {
+        background: #e0e0e0;
+      }
+
+      .modal-body {
+        padding: 20px;
+        overflow: auto;
+        flex: 1;
+      }
+
+      .image-preview {
+        max-width: 100%;
+        max-height: 70vh;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .text-preview {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 70vh;
+        overflow: auto;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+      }
+
+      .empty-state svg {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f0f0f0;
+        border-radius: 50%;
+        border-top-color: #667eea;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📁 文件浏览器</h1>
+        <div class="breadcrumb" id="breadcrumb"></div>
+      </div>
+
+      <div class="file-container">
+        <div class="toolbar">
+          <button class="back-btn" id="backBtn" onclick="goBack()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            返回上级
+          </button>
+          <div class="view-toggle">
+            <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">网格</button>
+            <button class="view-btn" id="listViewBtn" onclick="setView('list')">列表</button>
+          </div>
+        </div>
+        <div class="file-grid" id="fileGrid"></div>
+      </div>
+    </div>
+
+    <div class="modal" id="previewModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="previewTitle"></div>
+          <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="previewBody"></div>
+      </div>
+    </div>
+
+    <script>
+      let currentPath = '/';
+      let currentView = 'grid';
+      let currentFiles = [];
+
+      document.addEventListener('DOMContentLoaded', () => {
+        loadDirectory('/');
+      });
+
+      async function loadDirectory(path) {
+        const fileGrid = document.getElementById('fileGrid');
+        fileGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+        try {
+          const response = await fetch(`/__api/list?path=${encodeURIComponent(path)}`);
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          currentPath = data.currentPath;
+          currentFiles = data.files;
+
+          renderBreadcrumb(data.currentPath, data.parentPath);
+          renderFiles(data.files);
+          updateBackButton(data.parentPath);
+        } catch (error) {
+          fileGrid.innerHTML = `<div class="empty-state"><p>错误: ${error.message}</p></div>`;
+        }
+      }
+
+      function renderBreadcrumb(currentPath, parentPath) {
+        const breadcrumb = document.getElementById('breadcrumb');
+        const parts = currentPath.split('/').filter(Boolean);
+
+        let html = '<div class="breadcrumb-item" onclick="loadDirectory(\'/\')">根目录</div>';
+
+        let current = '';
+        parts.forEach((part, index) => {
+          current += '/' + part;
+          const isLast = index === parts.length - 1;
+          html += '<span class="breadcrumb-separator">/</span>';
+          if (isLast) {
+            html += `<div class="breadcrumb-item current">${escapeHtml(part)}</div>`;
+          } else {
+            html += `<div class="breadcrumb-item" onclick="loadDirectory('${current}')">${escapeHtml(part)}</div>`;
+          }
+        });
+
+        breadcrumb.innerHTML = html;
+      }
+
+      function renderFiles(files) {
+        const fileGrid = document.getElementById('fileGrid');
+
+        if (files.length === 0) {
+          fileGrid.innerHTML = '<div class="empty-state"><p>该目录为空</p></div>';
+          return;
+        }
+
+        let html = '';
+        files.forEach(file => {
+          const icon = getFileIcon(file);
+          const size = formatSize(file.size);
+          const mtime = formatDate(file.mtime);
+          const hiddenClass = file.isHidden ? 'hidden-file' : '';
+
+          if (currentView === 'list') {
+            html += `
+                        <div class="file-item ${hiddenClass}" onclick="handleItemClick('${file.path}', ${
+              file.isDirectory
+            })">
+                            <div class="file-icon">${icon}</div>
+                            <div class="file-info">
+                                <div class="file-name">${escapeHtml(file.name)}</div>
+                                <div class="file-meta">
+                                    ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
+                                    <span>${mtime}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+          } else {
+            html += `
+                        <div class="file-item ${hiddenClass}" onclick="handleItemClick('${file.path}', ${
+              file.isDirectory
+            })">
+                            <div class="file-icon">${icon}</div>
+                            <div class="file-info">
+                                <div class="file-name">${escapeHtml(file.name)}</div>
+                                <div class="file-meta">
+                                    ${file.isDirectory ? '目录' : size}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+          }
+        });
+
+        fileGrid.innerHTML = html;
+      }
+
+      function handleItemClick(path, isDirectory) {
+        if (isDirectory) {
+          loadDirectory(path);
+        } else {
+          previewFile(path);
+        }
+      }
+
+      async function previewFile(path) {
+        const modal = document.getElementById('previewModal');
+        const title = document.getElementById('previewTitle');
+        const body = document.getElementById('previewBody');
+
+        title.textContent = path.split('/').pop();
+        body.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+        modal.classList.add('active');
+
+        try {
+          const ext = path.split('.').pop().toLowerCase();
+          const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+
+          if (imageExts.includes(ext)) {
+            body.innerHTML = `<img src="/__api/file?path=${encodeURIComponent(
+              path
+            )}" class="image-preview" alt="Preview">`;
+          } else {
+            const response = await fetch(`/__api/file?path=${encodeURIComponent(path)}`);
+            const contentType = response.headers.get('content-type');
+
+            if (contentType && contentType.includes('application/json')) {
+              const data = await response.json();
+              if (data.type === 'text') {
+                body.innerHTML = `<pre class="text-preview">${escapeHtml(data.content)}</pre>`;
+              } else {
+                body.innerHTML = `<div class="empty-state"><p>该文件类型暂不支持预览</p><p><a href="/__api/file?path=${encodeURIComponent(
+                  path
+                )}" download>点击下载</a></p></div>`;
+              }
+            } else {
+              const blob = await response.blob();
+              const url = URL.createObjectURL(blob);
+              body.innerHTML = `<div class="empty-state"><p>该文件类型暂不支持预览</p><p><a href="${url}" download="${path
+                .split('/')
+                .pop()}">点击下载</a></p></div>`;
+            }
+          }
+        } catch (error) {
+          body.innerHTML = `<div class="empty-state"><p>预览失败: ${error.message}</p></div>`;
+        }
+      }
+
+      function closeModal() {
+        document.getElementById('previewModal').classList.remove('active');
+      }
+
+      function goBack() {
+        if (currentPath !== '/') {
+          const dirname = currentPath.split('/').slice(0, -1).join('/') || '/';
+          loadDirectory(dirname);
+        }
+      }
+
+      function updateBackButton(parentPath) {
+        document.getElementById('backBtn').disabled = !parentPath;
+      }
+
+      function setView(view) {
+        currentView = view;
+        const fileGrid = document.getElementById('fileGrid');
+        const gridBtn = document.getElementById('gridViewBtn');
+        const listBtn = document.getElementById('listViewBtn');
+
+        if (view === 'list') {
+          fileGrid.classList.add('list-view');
+          listBtn.classList.add('active');
+          gridBtn.classList.remove('active');
+        } else {
+          fileGrid.classList.remove('list-view');
+          gridBtn.classList.add('active');
+          listBtn.classList.remove('active');
+        }
+
+        renderFiles(currentFiles);
+      }
+
+      function getFileIcon(file) {
+        if (file.isDirectory) {
+          return `<svg viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>`;
+        }
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        const iconColors = {
+          js: '#f7df1e',
+          json: '#292929',
+          html: '#e34f26',
+          css: '#264de4',
+          md: '#083fa1',
+          jpg: '#ff6b6b',
+          jpeg: '#ff6b6b',
+          png: '#ff6b6b',
+          gif: '#ff6b6b',
+          svg: '#ff6b6b',
+          zip: '#4ecdc4',
+          '7z': '#4ecdc4',
+          rar: '#4ecdc4',
+          tar: '#4ecdc4',
+          gz: '#4ecdc4',
+          txt: '#95a5a6',
+          log: '#95a5a6',
+          py: '#3776ab',
+          java: '#007396',
+          go: '#00add8',
+          rs: '#dea584',
+          ts: '#3178c6'
+        };
+
+        const color = iconColors[ext] || '#95a5a6';
+
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>`;
+      }
+
+      function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+
+      function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN');
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      document.getElementById('previewModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          closeModal();
+        }
+      });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+        if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          goBack();
+        }
+      });
+    </script>
+  </body>
+</html>

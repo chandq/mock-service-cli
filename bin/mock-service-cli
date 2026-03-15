@@ -46,7 +46,8 @@ if (argv.h || argv.help) {
       '',
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
-      '  -w --open            Open API overview page automatically, default false.'
+      '  -w --open            Open API overview page automatically, default false.',
+      '  -e --explorer        Enable file explorer server, specify directory to browse, default [./].'
     ].join('\n')
   );
   process.exit();
@@ -62,6 +63,7 @@ var port = argv.p || argv.port,
   isStartSocketServer = argv.S || false,
   rewrite = argv.r || argv.rewrite || false,
   isOpenApiOverview = argv.w || argv.open || false,
+  explorerDir = argv.e || argv.explorer,
   log = null;
 
 if (!argv.s && !argv.silent) {
@@ -95,6 +97,7 @@ injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
 injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
+injectEnvVariable('EXPLORER_DIRECTORY', explorerDir);
 // injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
 // 解析Web代理配置项（来源js|config文件或命令行参数字符串）
 const proxyArg = argv.O || argv['proxy-options'];
@@ -204,11 +207,26 @@ function startStaticServer() {
     stdio: 'inherit'
   });
 }
+
+// Node子进程启动FileExplorerServer
+function startFileExplorerServer() {
+  spawn(node, [resolve(__dirname, '../lib/fileExplorerServer.js')], {
+    stdio: 'inherit'
+  });
+}
 /**
  * 初始化服务
  */
 function initServe() {
-  if (specifiedFile) {
+  if (explorerDir) {
+    // 文件浏览器：指定目录
+    process.env.EXPLORER_DIRECTORY = resolve(process.cwd(), explorerDir);
+    if (!existsSync(process.env.EXPLORER_DIRECTORY)) {
+      console.error(`explorer: 目录 ${process.env.EXPLORER_DIRECTORY} 不存在`);
+      process.exit();
+    }
+    startFileExplorerServer();
+  } else if (specifiedFile) {
     // Mock服务器：指定文件
     process.env.SPECIFIED_FILE = resolve(process.cwd(), specifiedFile);
     if (isStartSocketServer) {
