@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.6.0](https://github.com/chandq/mock-service-cli/compare/v3.5.0...v3.6.0) (2026-03-15)
+
+
+### Features
+
+* add copy function for pure text ([215a537](https://github.com/chandq/mock-service-cli/commit/215a53748b8aa585984aaefd52caa30db950c986))
+
 ## [3.5.0](https://github.com/chandq/mock-service-cli/compare/v3.4.0...v3.5.0) (2026-03-15)
 
 
