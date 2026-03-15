@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.5.0](https://github.com/chandq/mock-service-cli/compare/v3.4.0...v3.5.0) (2026-03-15)
+
+
+### Features
+
+* add function for File Explorer ([c202444](https://github.com/chandq/mock-service-cli/commit/c202444782b238a38e8a30a8671524b59bd3148d))
+* add functions of refresh, show/hide hidden file, copy relative path, open file/dir in filesystem ([6657d7b](https://github.com/chandq/mock-service-cli/commit/6657d7bf8ac498459cbaec52d34940418529e5d1))
+* support fuzzy search and sort by createTime/fileSize/fileName ([7521fb1](https://github.com/chandq/mock-service-cli/commit/7521fb10310564721d00aa9802ae6fad825fe25a))
+
 ## [3.4.0](https://github.com/chandq/mock-service-cli/compare/v3.3.6...v3.4.0) (2026-03-15)
 
 
