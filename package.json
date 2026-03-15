@@ -1,7 +1,7 @@
 {
   "name": "mock-service-cli",
   "version": "3.3.6",
-  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy",
+  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page",
   "main": "./lib/mockServer.js",
   "bin": {
     "mock-service-cli": "bin/mock-service-cli"
