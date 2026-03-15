@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 概览 - Mock Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .api-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .search-box {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .directory {
+            border-bottom: 1px solid #eee;
+        }
+
+        .directory-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            cursor: pointer;
+            background: #f8f9fa;
+            transition: background 0.3s;
+        }
+
+        .directory-header:hover {
+            background: #e9ecef;
+        }
+
+        .toggle-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .directory-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .api-count {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .directory-content {
+            max-height: 5000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .directory-content.collapsed {
+            max-height: 0;
+        }
+
+        .api-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px 14px 52px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .api-item:hover {
+            background: #f8f9fa;
+        }
+
+        .api-item:last-child {
+            border-bottom: none;
+        }
+
+        .method-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-right: 12px;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .method-get { background: #61affe; color: white; }
+        .method-post { background: #49cc90; color: white; }
+        .method-put { background: #fca130; color: white; }
+        .method-delete { background: #f93e3e; color: white; }
+        .method-patch { background: #50e3c2; color: white; }
+        .method-head { background: #9012fe; color: white; }
+        .method-options { background: #0d5aa7; color: white; }
+
+        .api-url {
+            flex: 1;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .test-btn {
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .api-info-row {
+            display: flex;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+
+        .api-info-label {
+            width: 100px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .api-info-value {
+            flex: 1;
+            color: #333;
+        }
+
+        .request-section {
+            margin-top: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .request-body-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .request-body-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            margin-top: 16px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .response-section {
+            margin-top: 24px;
+        }
+
+        .response-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .response-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .response-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .response-output {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 API 概览</h1>
+            <p>探索和测试您的 Mock API 接口</p>
+        </div>
+
+        <div class="stat-cards" id="statCards">
+        </div>
+
+        <div class="api-container">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索 API 接口 (输入 URL 或 HTTP 方法)...">
+            </div>
+            <div id="apiList">
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="apiModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">API 测试</div>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let apiData = null;
+        let currentApi = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchApiData();
+            document.getElementById('searchInput').addEventListener('input', filterApis);
+        });
+
+        async function fetchApiData() {
+            try {
+                const response = await fetch('/__api-data');
+                apiData = await response.json();
+                renderStatCards();
+                renderApiList();
+            } catch (error) {
+                console.error('Failed to fetch API data:', error);
+            }
+        }
+
+        function renderStatCards() {
+            const methodCounts = {};
+            apiData.apis.forEach(api => {
+                methodCounts[api.method] = (methodCounts[api.method] || 0) + 1;
+            });
+
+            const container = document.getElementById('statCards');
+            let html = `
+                <div class="stat-card">
+                    <div class="number">${apiData.apis.length}</div>
+                    <div class="label">总接口数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${Object.keys(apiData.groupedApis).length}</div>
+                    <div class="label">目录数</div>
+                </div>
+            `;
+
+            Object.entries(methodCounts).forEach(([method, count]) => {
+                html += `
+                    <div class="stat-card">
+                        <div class="number">${count}</div>
+                        <div class="label">${method.toUpperCase()}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderApiList(filterText = '') {
+            const container = document.getElementById('apiList');
+            const searchLower = filterText.toLowerCase();
+
+            let html = '';
+            let hasResults = false;
+
+            Object.entries(apiData.groupedApis).forEach(([dir, apis]) => {
+                const filteredApis = apis.filter(api => 
+                    api.url.toLowerCase().includes(searchLower) ||
+                    api.method.toLowerCase().includes(searchLower)
+                );
+
+                if (filteredApis.length === 0) return;
+                hasResults = true;
+
+                const dirName = dir.replace(/\\/g, '/');
+                html += `
+                    <div class="directory">
+                        <div class="directory-header" onclick="toggleDirectory(this)">
+                            <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                            <span class="directory-name">📁 ${dirName}</span>
+                            <span class="api-count">${filteredApis.length}</span>
+                        </div>
+                        <div class="directory-content">
+                            ${filteredApis.map(api => renderApiItem(api)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (!hasResults) {
+                html = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <h3>没有找到匹配的接口</h3>
+                        <p>尝试使用其他关键词搜索</p>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderApiItem(api) {
+            return `
+                <div class="api-item" onclick="openApiModal('${api.method}', '${api.url.replace(/'/g, "\\'")}', '${api.file.replace(/'/g, "\\'")}')">
+                    <span class="method-badge method-${api.method.toLowerCase()}">${api.method}</span>
+                    <span class="api-url">${api.url}</span>
+                    <button class="test-btn" onclick="event.stopPropagation(); testApi('${api.method}', '${api.url.replace(/'/g, "\\'")}')">测试</button>
+                </div>
+            `;
+        }
+
+        function toggleDirectory(header) {
+            const icon = header.querySelector('.toggle-icon');
+            const content = header.nextElementSibling;
+            icon.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        }
+
+        function filterApis(e) {
+            renderApiList(e.target.value);
+        }
+
+        function openApiModal(method, url, file) {
+            currentApi = { method, url, file };
+            const modal = document.getElementById('apiModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+
+            title.innerHTML = `<span class="method-badge method-${method.toLowerCase()}">${method}</span> ${url}`;
+
+            body.innerHTML = `
+                <div class="api-info-row">
+                    <span class="api-info-label">文件路径:</span>
+                    <span class="api-info-value">${file}</span>
+                </div>
+                ${(method === 'POST' || method === 'PUT' || method === 'PATCH') ? `
+                <div class="request-section">
+                    <div class="section-title">请求体 (JSON)</div>
+                    <textarea class="request-body-input" id="requestBody" placeholder='{"key": "value"}'></textarea>
+                </div>
+                ` : ''}
+                <button class="send-btn" id="sendBtn" onclick="sendRequest()">发送请求</button>
+                <div class="response-section" id="responseSection" style="display: none;">
+                    <div class="section-title">响应</div>
+                    <div class="response-status" id="responseStatus"></div>
+                    <pre class="response-output" id="responseOutput"></pre>
+                </div>
+            `;
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('apiModal').classList.remove('active');
+            currentApi = null;
+        }
+
+        async function testApi(method, url) {
+            currentApi = { method, url };
+            await sendRequestDirect(method, url);
+        }
+
+        async function sendRequest() {
+            if (!currentApi) return;
+            await sendRequestDirect(currentApi.method, currentApi.url);
+        }
+
+        async function sendRequestDirect(method, url) {
+            const sendBtn = document.getElementById('sendBtn');
+            const responseSection = document.getElementById('responseSection');
+            const responseStatus = document.getElementById('responseStatus');
+            const responseOutput = document.getElementById('responseOutput');
+
+            let requestBody = null;
+            const requestBodyEl = document.getElementById('requestBody');
+            if (requestBodyEl) {
+                const bodyText = requestBodyEl.value.trim();
+                if (bodyText) {
+                    try {
+                        requestBody = JSON.parse(bodyText);
+                    } catch (e) {
+                        alert('请求体 JSON 格式错误');
+                        return;
+                    }
+                }
+            }
+
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<span class="loading"></span>发送中...';
+            }
+
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                if (requestBody) {
+                    options.body = JSON.stringify(requestBody);
+                }
+
+                const response = await fetch(url, options);
+                const data = await response.json();
+
+                if (responseSection) responseSection.style.display = 'block';
+                if (responseStatus) {
+                    responseStatus.className = 'response-status success';
+                    responseStatus.textContent = `✓ ${response.status} ${response.statusText}`;
+                }
+                if (responseOutput) {
+                    responseOutput.textContent = JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                if (responseSection) responseSection.style.display = 'block';
+                if (responseStatus) {
+                    responseStatus.className = 'response-status error';
+                    responseStatus.textContent = '✗ 请求失败';
+                }
+                if (responseOutput) {
+                    responseOutput.textContent = error.message;
+                }
+            }
+
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '发送请求';
+            }
+        }
+
+        document.getElementById('apiModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

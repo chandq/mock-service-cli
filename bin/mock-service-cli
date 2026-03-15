@@ -45,7 +45,8 @@ if (argv.h || argv.help) {
       '  -R --static-server   Specify static resource file directory when enabled static server.',
       '',
       '  -h --help            Print this list and exit.',
-      '  -v --version         Print the version and exit.'
+      '  -v --version         Print the version and exit.',
+      '  -w --open            Open API overview page automatically, default false.'
     ].join('\n')
   );
   process.exit();
@@ -60,6 +61,7 @@ var port = argv.p || argv.port,
   version = argv.v || argv.version,
   isStartSocketServer = argv.S || false,
   rewrite = argv.r || argv.rewrite || false,
+  isOpenApiOverview = argv.w || argv.open || false,
   log = null;
 
 if (!argv.s && !argv.silent) {
@@ -77,6 +79,10 @@ const injectEnvVariable = (envName, envArgs) => {
 
 if (isStartSocketServer) {
   process.env.SOCKET_SERVER = true;
+}
+
+if (isOpenApiOverview) {
+  process.env.OPEN_API_OVERVIEW = true;
 }
 
 if (version) {
