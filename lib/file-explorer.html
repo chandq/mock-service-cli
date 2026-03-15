@@ -434,16 +434,55 @@
       }
 
       .text-preview {
-        background: #f8f9fa;
-        padding: 16px;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 20px;
         border-radius: 8px;
-        font-family: 'Courier New', monospace;
+        max-height: 70vh;
+        overflow: auto;
+        font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
         font-size: 13px;
         line-height: 1.6;
         white-space: pre-wrap;
-        word-break: break-all;
-        max-height: 70vh;
-        overflow: auto;
+        word-wrap: break-word;
+        margin: 0;
+      }
+
+      .preview-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .preview-header {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 12px;
+      }
+
+      .preview-header .copy-btn {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+      }
+
+      .preview-header .copy-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      }
+
+      .preview-header .copy-btn:active {
+        transform: translateY(0);
       }
 
       .empty-state {
@@ -548,39 +587,69 @@
       let sortBy = 'name';
       let sortAscending = true;
       let showHiddenFiles = true;
+      let currentPreviewContent = '';
 
       document.addEventListener('DOMContentLoaded', () => {
         loadDirectory('/');
       });
 
       async function loadDirectory(path) {
+        // console.log('Loading directory:', path);
         const fileGrid = document.getElementById('fileGrid');
+
+        // 重置所有状态
+        currentPath = '/';
+        allFiles = [];
+        currentFiles = [];
+
+        // 显示加载状态
         fileGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
 
         try {
           const response = await fetch(`/__api/list?path=${encodeURIComponent(path)}`);
+          // console.log('Response status:', response.status);
+
           const data = await response.json();
+          // console.log('API response data:', data);
 
           if (data.error) {
             throw new Error(data.error);
           }
 
           currentPath = data.currentPath;
-          allFiles = data.files;
+          allFiles = data.files || [];
+
+          // console.log('allFiles set to:', allFiles);
 
           renderBreadcrumb(data.currentPath, data.parentPath);
-          processAndRenderFiles();
+
+          // 确保在调用 processAndRenderFiles 之前 allFiles 已经设置好
+          setTimeout(() => {
+            processAndRenderFiles();
+          }, 10);
+
           updateBackButton(data.parentPath);
 
           // 清空搜索框
-          document.getElementById('searchInput').value = '';
+          if (document.getElementById('searchInput')) {
+            document.getElementById('searchInput').value = '';
+          }
           searchQuery = '';
         } catch (error) {
+          console.error('Error loading directory:', error);
           fileGrid.innerHTML = `<div class="empty-state"><p>错误: ${error.message}</p></div>`;
         }
       }
 
       function processAndRenderFiles() {
+        // console.log('processAndRenderFiles called, allFiles:', allFiles);
+
+        if (!allFiles) {
+          console.error('allFiles is null or undefined');
+          renderFiles([]);
+          return;
+        }
+
         let files = [...allFiles];
 
         // 隐藏文件过滤
@@ -619,6 +688,7 @@
         });
 
         currentFiles = files;
+        // console.log('Rendering', files.length, 'files');
         renderFiles(files);
       }
 
@@ -718,7 +788,14 @@
       function renderFiles(files) {
         const fileGrid = document.getElementById('fileGrid');
 
-        if (files.length === 0) {
+        // 确保视图类名正确
+        if (currentView === 'list') {
+          fileGrid.classList.add('list-view');
+        } else {
+          fileGrid.classList.remove('list-view');
+        }
+
+        if (!files || files.length === 0) {
           fileGrid.innerHTML = '<div class="empty-state"><p>该目录为空</p></div>';
           return;
         }
@@ -777,6 +854,7 @@
           }
         });
 
+        // 强制更新 DOM
         fileGrid.innerHTML = html;
       }
 
@@ -786,6 +864,74 @@
         } else {
           previewFile(path);
         }
+      }
+
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            showToast('已复制到剪贴板');
+          } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('已复制到剪贴板');
+          }
+        } catch (error) {
+          console.error('复制失败:', error);
+          showToast('复制失败');
+        }
+      }
+
+      function copyPreviewContent() {
+        if (currentPreviewContent !== '') {
+          copyText(currentPreviewContent);
+        }
+      }
+
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(139, 92, 246, 0.95);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          z-index: 10000;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          animation: fadeInOut 2s ease-in-out;
+        `;
+        document.body.appendChild(toast);
+
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+          }
+        `;
+        document.head.appendChild(style);
+
+        setTimeout(() => {
+          if (toast.parentNode) {
+            document.body.removeChild(toast);
+          }
+          if (style.parentNode) {
+            document.head.removeChild(style);
+          }
+        }, 2000);
       }
 
       async function previewFile(path) {
@@ -812,7 +958,15 @@
             if (contentType && contentType.includes('application/json')) {
               const data = await response.json();
               if (data.type === 'text') {
-                body.innerHTML = `<pre class="text-preview">${escapeHtml(data.content)}</pre>`;
+                currentPreviewContent = data.content;
+                body.innerHTML = `
+                  <div class="preview-container">
+                    <div class="preview-header">
+                      <button class="copy-btn" onclick="copyPreviewContent()">📋 复制全部</button>
+                    </div>
+                    <pre class="text-preview">${escapeHtml(data.content)}</pre>
+                  </div>
+                `;
               } else {
                 body.innerHTML = `<div class="empty-state"><p>该文件类型暂不支持预览</p><p><a href="/__api/file?path=${encodeURIComponent(
                   path
