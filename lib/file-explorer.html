@@ -15,41 +15,47 @@
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
-        padding: 20px;
+        padding: 12px;
+        margin: 0;
+        box-sizing: border-box;
       }
 
       .container {
         max-width: 1200px;
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 24px);
       }
 
       .header {
         background: white;
-        padding: 24px;
-        border-radius: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        margin-bottom: 12px;
+        flex-shrink: 0;
       }
 
       .header h1 {
         color: #333;
-        font-size: 28px;
-        margin-bottom: 8px;
+        font-size: 20px;
+        margin-bottom: 4px;
       }
 
       .breadcrumb {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        margin-top: 16px;
+        margin-top: 8px;
       }
 
       .breadcrumb-item {
-        padding: 6px 12px;
+        padding: 4px 8px;
         background: #f0f0f0;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 12px;
         color: #666;
         cursor: pointer;
         transition: background 0.2s;
@@ -71,31 +77,43 @@
 
       .file-container {
         background: white;
-        border-radius: 12px;
+        border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
       }
 
       .toolbar {
-        padding: 16px 20px;
+        padding: 10px 12px;
         border-bottom: 1px solid #eee;
         display: flex;
-        gap: 12px;
+        gap: 8px;
         align-items: center;
         flex-wrap: wrap;
+        flex-shrink: 0;
+      }
+
+      .stats-info {
+        font-size: 12px;
+        color: #666;
+        padding: 4px 8px;
+        background: #f8f8f8;
+        border-radius: 4px;
       }
 
       .search-box {
         flex: 1;
-        min-width: 200px;
+        min-width: 150px;
       }
 
       .search-box input {
         width: 100%;
-        padding: 8px 16px;
+        padding: 6px 12px;
         border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 12px;
         outline: none;
         transition: border-color 0.2s;
       }
@@ -106,15 +124,15 @@
 
       .sort-controls {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
       }
 
       .sort-select {
-        padding: 8px 12px;
+        padding: 6px 10px;
         border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 12px;
         cursor: pointer;
         outline: none;
         transition: border-color 0.2s;
@@ -125,11 +143,11 @@
       }
 
       .sort-order-btn {
-        padding: 8px 12px;
+        padding: 6px 10px;
         background: #f0f0f0;
         border: none;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 12px;
         cursor: pointer;
         transition: background 0.2s;
       }
@@ -139,15 +157,15 @@
       }
 
       .back-btn {
-        padding: 8px 16px;
+        padding: 6px 12px;
         background: #f0f0f0;
         border: none;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 12px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         transition: background 0.2s;
       }
 
@@ -163,31 +181,31 @@
       .view-toggle {
         display: flex;
         background: #f0f0f0;
-        border-radius: 6px;
-        padding: 4px;
+        border-radius: 4px;
+        padding: 3px;
       }
 
       .view-btn {
-        padding: 6px 12px;
+        padding: 4px 10px;
         background: transparent;
         border: none;
-        border-radius: 4px;
+        border-radius: 3px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 12px;
         transition: all 0.2s;
       }
 
       .view-btn.active {
         background: white;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       }
 
       .refresh-btn {
-        padding: 8px 12px;
+        padding: 6px 10px;
         background: #f0f0f0;
         border: none;
-        border-radius: 6px;
-        font-size: 16px;
+        border-radius: 4px;
+        font-size: 14px;
         cursor: pointer;
         transition: background 0.2s;
       }
@@ -197,10 +215,10 @@
       }
 
       .toggle-hidden-btn {
-        padding: 8px 12px;
+        padding: 6px 10px;
         background: #f0f0f0;
         border: none;
-        border-radius: 6px;
+        border-radius: 4px;
         font-size: 14px;
         cursor: pointer;
         transition: background 0.2s;
@@ -213,6 +231,47 @@
       .toggle-hidden-btn.active {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+      }
+
+      .context-menu {
+        position: fixed;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 8px 0;
+        z-index: 10000;
+        min-width: 160px;
+        display: none;
+      }
+
+      .context-menu.active {
+        display: block;
+      }
+
+      .context-menu-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+      }
+
+      .context-menu-item:hover {
+        background: #f0f0f0;
+      }
+
+      .context-menu-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .context-menu-divider {
+        height: 1px;
+        background: #eee;
+        margin: 4px 0;
       }
 
       .copy-btn {
@@ -231,23 +290,26 @@
       }
 
       .file-grid {
-        padding: 20px;
+        padding: 8px;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+        overflow: auto;
+        flex: 1;
       }
 
       .file-grid.list-view {
         grid-template-columns: 1fr;
         gap: 0;
+        padding: 4px 0;
       }
 
       .file-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 16px;
-        border-radius: 8px;
+        padding: 10px 8px;
+        border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s;
       }
@@ -258,25 +320,26 @@
 
       .list-view .file-item {
         flex-direction: row;
-        padding: 12px 16px;
+        padding: 6px 12px;
         border-bottom: 1px solid #f0f0f0;
         border-radius: 0;
+        min-height: auto;
       }
 
       .file-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 12px;
+        width: 40px;
+        height: 40px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
       }
 
       .list-view .file-icon {
-        width: 32px;
-        height: 32px;
+        width: 20px;
+        height: 20px;
         margin-bottom: 0;
-        margin-right: 12px;
+        margin-right: 8px;
       }
 
       .file-icon svg {
@@ -292,31 +355,34 @@
       .list-view .file-info {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 10px;
         text-align: left;
         flex: 1;
       }
 
       .file-name {
-        font-size: 14px;
+        font-size: 12px;
         color: #333;
         font-weight: 500;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+        line-height: 1.3;
       }
 
       .list-view .file-name {
         margin-bottom: 0;
         flex: 1;
+        font-size: 12px;
       }
 
       .file-meta {
-        font-size: 12px;
+        font-size: 10px;
         color: #999;
       }
 
       .list-view .file-meta {
         display: flex;
-        gap: 16px;
+        gap: 10px;
+        font-size: 10px;
       }
 
       .hidden-file {
@@ -378,9 +444,10 @@
       .modal-content {
         background: white;
         border-radius: 12px;
-        max-width: 900px;
+        max-width: 95vw;
+        max-height: 95vh;
         width: 100%;
-        max-height: 90vh;
+        height: 100%;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -431,6 +498,130 @@
         max-height: 70vh;
         display: block;
         margin: 0 auto;
+        transition: transform 0.3s ease;
+      }
+
+      .image-preview-container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: 100%;
+        overflow: auto;
+      }
+
+      .image-preview-controls {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .nav-btn {
+        padding: 12px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .nav-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .nav-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 16px;
+      }
+
+      .zoom-btn {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .zoom-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .zoom-level {
+        font-size: 14px;
+        color: #666;
+        font-weight: 500;
+        min-width: 60px;
+        text-align: center;
+      }
+
+      .rotate-btn {
+        padding: 8px 16px;
+        background: #f0f0f0;
+        color: #333;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .rotate-btn:hover {
+        background: #e0e0e0;
+      }
+
+      .binary-preview {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 20px;
+        border-radius: 8px;
+        max-height: 70vh;
+        overflow: auto;
+        font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 0;
+      }
+
+      .binary-info {
+        margin-bottom: 12px;
+        padding: 12px;
+        background: #2d2d2d;
+        border-radius: 6px;
+        color: #9cdcfe;
       }
 
       .text-preview {
@@ -445,6 +636,19 @@
         line-height: 1.6;
         white-space: pre-wrap;
         word-wrap: break-word;
+        margin: 0;
+      }
+
+      .html-rendered {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-height: 70vh;
+        overflow: auto;
+        border: 1px solid #eee;
+      }
+
+      .html-source .text-preview {
         margin: 0;
       }
 
@@ -532,7 +736,7 @@
       <div class="file-container">
         <div class="toolbar">
           <button class="back-btn" id="backBtn" onclick="goBack()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
             返回上级
@@ -546,6 +750,7 @@
           >
             👁️
           </button>
+          <div class="stats-info" id="statsInfo"></div>
           <div class="search-box">
             <input type="text" id="searchInput" placeholder="搜索文件名..." oninput="handleSearch()" />
           </div>
@@ -578,6 +783,16 @@
       </div>
     </div>
 
+    <div class="context-menu" id="contextMenu">
+      <div class="context-menu-item" id="ctxOpen" onclick="handleContextMenuAction('open')">📂 打开</div>
+      <div class="context-menu-item" id="ctxCopyPath" onclick="handleContextMenuAction('copyPath')">📋 复制路径</div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" id="ctxOpenInExplorer" onclick="handleContextMenuAction('openInExplorer')">
+        🖥️ 在文件管理器中打开
+      </div>
+      <div class="context-menu-item" id="ctxDownload" onclick="handleContextMenuAction('download')">⬇️ 下载</div>
+    </div>
+
     <script>
       let currentPath = '/';
       let currentView = 'grid';
@@ -588,17 +803,98 @@
       let sortAscending = true;
       let showHiddenFiles = true;
       let currentPreviewContent = '';
+      let currentZoom = 1;
+      let currentRotation = 0;
+      let currentContextMenuFile = null;
+      let currentImageIndex = -1;
+      let imageFiles = [];
 
       document.addEventListener('DOMContentLoaded', () => {
         loadDirectory('/');
+
+        const fileGrid = document.getElementById('fileGrid');
+        fileGrid.addEventListener('contextmenu', e => {
+          const fileItem = e.target.closest('.file-item');
+          if (fileItem) {
+            e.preventDefault();
+            const filePath = fileItem.dataset.path;
+            const isDirectory = fileItem.dataset.isDirectory === 'true';
+            showContextMenu(e.clientX, e.clientY, filePath, isDirectory);
+          }
+        });
+
+        document.addEventListener('click', () => {
+          hideContextMenu();
+        });
+
+        document.addEventListener('scroll', () => {
+          hideContextMenu();
+        });
       });
+
+      function showContextMenu(x, y, filePath, isDirectory) {
+        currentContextMenuFile = { path: filePath, isDirectory };
+
+        const menu = document.getElementById('contextMenu');
+        const ctxDownload = document.getElementById('ctxDownload');
+
+        if (isDirectory) {
+          ctxDownload.classList.add('disabled');
+        } else {
+          ctxDownload.classList.remove('disabled');
+        }
+
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.classList.add('active');
+
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+          menu.style.left = `${x - rect.width}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+          menu.style.top = `${y - rect.height}px`;
+        }
+      }
+
+      function hideContextMenu() {
+        const menu = document.getElementById('contextMenu');
+        menu.classList.remove('active');
+      }
+
+      function handleContextMenuAction(action) {
+        if (!currentContextMenuFile) return;
+
+        const { path, isDirectory } = currentContextMenuFile;
+
+        switch (action) {
+          case 'open':
+            handleItemClick(path, isDirectory);
+            break;
+          case 'copyPath':
+            copyToClipboard(path);
+            break;
+          case 'openInExplorer':
+            openInExplorer(path);
+            break;
+          case 'download':
+            if (!isDirectory) {
+              downloadFile(path, path.split('/').pop());
+            }
+            break;
+        }
+
+        hideContextMenu();
+      }
 
       async function loadDirectory(path) {
         // console.log('Loading directory:', path);
         const fileGrid = document.getElementById('fileGrid');
 
+        // 保存旧路径，以便失败时可以回退
+        const oldCurrentPath = currentPath;
+
         // 重置所有状态
-        currentPath = '/';
         allFiles = [];
         currentFiles = [];
 
@@ -637,8 +933,22 @@
           searchQuery = '';
         } catch (error) {
           console.error('Error loading directory:', error);
+          // 回退到旧路径
+          currentPath = oldCurrentPath;
+          // 计算旧路径的父路径
+          const parentPath = currentPath === '/' ? null : currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+          updateBackButton(parentPath);
           fileGrid.innerHTML = `<div class="empty-state"><p>错误: ${error.message}</p></div>`;
         }
+      }
+
+      function updateStatsInfo(files) {
+        const statsInfo = document.getElementById('statsInfo');
+        if (!statsInfo) return;
+
+        const dirCount = files.filter(f => f.isDirectory).length;
+        const fileCount = files.length - dirCount;
+        statsInfo.textContent = `${dirCount} 个文件夹, ${fileCount} 个文件`;
       }
 
       function processAndRenderFiles() {
@@ -647,6 +957,7 @@
         if (!allFiles) {
           console.error('allFiles is null or undefined');
           renderFiles([]);
+          updateStatsInfo([]);
           return;
         }
 
@@ -689,6 +1000,7 @@
 
         currentFiles = files;
         // console.log('Rendering', files.length, 'files');
+        updateStatsInfo(files);
         renderFiles(files);
       }
 
@@ -809,7 +1121,9 @@
 
           if (currentView === 'list') {
             html += `
-                        <div class="file-item ${hiddenClass}">
+                        <div class="file-item ${hiddenClass}" data-path="${file.path}" data-is-directory="${
+              file.isDirectory
+            }">
                             <div class="file-icon" onclick="handleItemClick('${file.path}', ${
               file.isDirectory
             })">${icon}</div>
@@ -839,9 +1153,9 @@
                     `;
           } else {
             html += `
-                        <div class="file-item ${hiddenClass}" onclick="handleItemClick('${file.path}', ${
+                        <div class="file-item ${hiddenClass}" data-path="${file.path}" data-is-directory="${
               file.isDirectory
-            })">
+            }" onclick="handleItemClick('${file.path}', ${file.isDirectory})">
                             <div class="file-icon">${icon}</div>
                             <div class="file-info">
                                 <div class="file-name">${escapeHtml(file.name)}</div>
@@ -934,6 +1248,193 @@
         }, 2000);
       }
 
+      function getImageFilesList() {
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+        return currentFiles.filter(file => {
+          if (file.isDirectory) return false;
+          const ext = file.name.split('.').pop().toLowerCase();
+          return imageExts.includes(ext);
+        });
+      }
+
+      function findCurrentImageIndex(path) {
+        return imageFiles.findIndex(file => file.path === path);
+      }
+
+      async function navigateImage(direction) {
+        if (imageFiles.length === 0) return;
+
+        let newIndex = currentImageIndex + direction;
+        if (newIndex < 0) newIndex = imageFiles.length - 1;
+        if (newIndex >= imageFiles.length) newIndex = 0;
+
+        if (imageFiles[newIndex]) {
+          previewFile(imageFiles[newIndex].path);
+        }
+      }
+
+      async function getFileInfo(path) {
+        try {
+          const file = allFiles.find(f => f.path === path);
+          if (file) {
+            return {
+              size: file.size,
+              mtime: file.mtime,
+              name: file.name
+            };
+          }
+        } catch (e) {
+          console.error('Error getting file info:', e);
+        }
+        return null;
+      }
+
+      const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
+      const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+      const HTML_EXTS = ['html', 'htm'];
+      const BINARY_EXTS = [
+        'exe',
+        'dll',
+        'so',
+        'dylib',
+        'bin',
+        'dat',
+        'class',
+        'pyc',
+        'pyd',
+        'obj',
+        'o',
+        'a',
+        'lib',
+        'la',
+        'lo',
+        'elf',
+        'mach-o',
+        'coff',
+        'pe',
+        'msi',
+        'sys',
+        'drv',
+        'vxd',
+        'ocx',
+        'cpl',
+        'scr',
+        'com',
+        'bat',
+        'cmd',
+        'ps1',
+        'psm1',
+        'psd1',
+        'jar',
+        'war',
+        'ear',
+        'nar',
+        'sar',
+        'rar',
+        'zip',
+        '7z',
+        'tar',
+        'gz',
+        'bz2',
+        'xz',
+        'lz',
+        'lzma',
+        'z',
+        'Z',
+        'cab',
+        'iso',
+        'img',
+        'dmg',
+        'pkg',
+        'deb',
+        'rpm',
+        'apk',
+        'msix',
+        'appx',
+        'snap',
+        'flatpak',
+        'appimage',
+        'swf',
+        'flv',
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'odt',
+        'ods',
+        'odp',
+        'odg',
+        'odf',
+        'rtf',
+        'wps',
+        'wks',
+        'wdb',
+        'mdb',
+        'accdb',
+        'pub',
+        'vsd',
+        'vsdx',
+        'mpp',
+        'mpx',
+        'one',
+        'onetoc2',
+        'msg',
+        'eml',
+        'pst',
+        'ost',
+        'ics',
+        'vcf',
+        'dwg',
+        'dxf',
+        'dgn',
+        'stl',
+        '3ds',
+        'max',
+        'ma',
+        'mb',
+        'blend'
+      ];
+      let currentPreviewContentData = '';
+      let isHtmlRenderMode = false;
+
+      function toggleHtmlPreview() {
+        isHtmlRenderMode = !isHtmlRenderMode;
+        const contentDiv = document.getElementById('htmlPreviewContent');
+        const toggleBtn = document.getElementById('toggleHtmlBtn');
+
+        if (!contentDiv) return;
+
+        if (isHtmlRenderMode) {
+          contentDiv.innerHTML = currentPreviewContentData;
+          contentDiv.className = 'html-rendered';
+          toggleBtn.textContent = '📝 查看源码';
+        } else {
+          contentDiv.innerHTML = `<pre class="text-preview">${escapeHtml(currentPreviewContentData)}</pre>`;
+          contentDiv.className = 'html-source';
+          toggleBtn.textContent = '🌐 渲染预览';
+        }
+      }
+
+      function renderBinaryPreview(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        return `
+          <div class="preview-container">
+            <div class="binary-info">
+              <strong>文件信息</strong><br>
+              文件大小: ${formatSize(blob.size)}<br>
+              文件类型: ${blob.type || 'Unknown'}
+            </div>
+            <div class="empty-state">
+              <p>该文件类型暂不支持预览</p>
+              <p><a href="${url}" download="${filename}">点击下载</a></p>
+            </div>
+          </div>
+        `;
+      }
+
       async function previewFile(path) {
         const modal = document.getElementById('previewModal');
         const title = document.getElementById('previewTitle');
@@ -943,46 +1444,164 @@
         body.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
         modal.classList.add('active');
 
+        currentZoom = 1;
+        currentRotation = 0;
+        currentPreviewContentData = '';
+        isHtmlRenderMode = false;
+
+        imageFiles = getImageFilesList();
+        currentImageIndex = findCurrentImageIndex(path);
+
         try {
           const ext = path.split('.').pop().toLowerCase();
-          const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'ico'];
 
-          if (imageExts.includes(ext)) {
-            body.innerHTML = `<img src="/__api/file?path=${encodeURIComponent(
-              path
-            )}" class="image-preview" alt="Preview">`;
+          const fileInfo = await getFileInfo(path);
+          const isLargeFile = fileInfo && fileInfo.size > LARGE_FILE_THRESHOLD;
+
+          if (IMAGE_EXTS.includes(ext)) {
+            const hasPrev = imageFiles.length > 0 && currentImageIndex > 0;
+            const hasNext = imageFiles.length > 0 && currentImageIndex < imageFiles.length - 1;
+
+            body.innerHTML = `
+              <div class="image-preview-container">
+                <div class="nav-container">
+                  <button class="nav-btn" onclick="navigateImage(-1)" ${!hasPrev ? 'disabled' : ''}>
+                    ◀ 上一张
+                  </button>
+                  <span style="font-size: 14px; color: #666;">
+                    ${imageFiles.length > 0 ? `${currentImageIndex + 1}/${imageFiles.length}` : ''}
+                    ${fileInfo ? ` | ${formatSize(fileInfo.size)}` : ''}
+                  </span>
+                  <button class="nav-btn" onclick="navigateImage(1)" ${!hasNext ? 'disabled' : ''}>
+                    下一张 ▶
+                  </button>
+                </div>
+                <div class="image-preview-controls">
+                  <button class="zoom-btn" onclick="zoomImage(-0.1)">➖</button>
+                  <div class="zoom-level" id="zoomLevel">100%</div>
+                  <button class="zoom-btn" onclick="zoomImage(0.1)">➕</button>
+                  <button class="rotate-btn" onclick="rotateImage(-90)">↺</button>
+                  <button class="rotate-btn" onclick="rotateImage(90)">↻</button>
+                  <button class="zoom-btn" onclick="resetImage()">🔄 重置</button>
+                </div>
+                <img
+                  src="/__api/file?path=${encodeURIComponent(path)}"
+                  class="image-preview"
+                  id="previewImage"
+                  alt="Preview"
+                  style="transform: scale(1) rotate(0deg)"
+                >
+              </div>
+            `;
+          } else if (BINARY_EXTS.includes(ext)) {
+            const downloadUrl = `/__api/file?path=${encodeURIComponent(path)}`;
+            const fileSize = fileInfo ? formatSize(fileInfo.size) : '未知大小';
+
+            body.innerHTML = `
+              <div class="preview-container">
+                <div class="binary-info">
+                  <strong>二进制/特殊文件</strong><br>
+                  文件大小: ${fileSize}<br>
+                  文件类型: ${ext.toUpperCase()}
+                </div>
+                <div class="empty-state">
+                  <p>此文件类型无法预览内容</p>
+                  <p><a href="${downloadUrl}" download="${path.split('/').pop()}">点击下载</a></p>
+                </div>
+              </div>
+            `;
           } else {
-            const response = await fetch(`/__api/file?path=${encodeURIComponent(path)}`);
-            const contentType = response.headers.get('content-type');
-
-            if (contentType && contentType.includes('application/json')) {
-              const data = await response.json();
-              if (data.type === 'text') {
-                currentPreviewContent = data.content;
-                body.innerHTML = `
-                  <div class="preview-container">
-                    <div class="preview-header">
-                      <button class="copy-btn" onclick="copyPreviewContent()">📋 复制全部</button>
-                    </div>
-                    <pre class="text-preview">${escapeHtml(data.content)}</pre>
+            if (isLargeFile) {
+              const downloadUrl = `/__api/file?path=${encodeURIComponent(path)}`;
+              body.innerHTML = `
+                <div class="preview-container">
+                  <div class="binary-info">
+                    <strong>大文件</strong><br>
+                    文件大小: ${formatSize(fileInfo.size)}<br>
+                    <span style="color: #ff9800;">⚠️ 文件较大，为避免性能问题，请下载后查看</span>
                   </div>
-                `;
-              } else {
-                body.innerHTML = `<div class="empty-state"><p>该文件类型暂不支持预览</p><p><a href="/__api/file?path=${encodeURIComponent(
-                  path
-                )}" download>点击下载</a></p></div>`;
-              }
+                  <div class="empty-state">
+                    <p>该文件超过 ${formatSize(LARGE_FILE_THRESHOLD)}，不建议在线预览</p>
+                    <p><a href="${downloadUrl}" download="${path.split('/').pop()}">点击下载</a></p>
+                  </div>
+                </div>
+              `;
             } else {
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              body.innerHTML = `<div class="empty-state"><p>该文件类型暂不支持预览</p><p><a href="${url}" download="${path
-                .split('/')
-                .pop()}">点击下载</a></p></div>`;
+              const response = await fetch(`/__api/file?path=${encodeURIComponent(path)}`);
+              const contentType = response.headers.get('content-type');
+
+              if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (data.type === 'text') {
+                  currentPreviewContent = data.content;
+                  currentPreviewContentData = data.content;
+
+                  if (HTML_EXTS.includes(ext)) {
+                    body.innerHTML = `
+                      <div class="preview-container">
+                        <div class="preview-header">
+                          <button class="copy-btn" onclick="copyPreviewContent()">📋 复制全部</button>
+                          <button class="copy-btn" id="toggleHtmlBtn" onclick="toggleHtmlPreview()" style="margin-left: 8px;">🌐 渲染预览</button>
+                        </div>
+                        <div id="htmlPreviewContent" class="html-source">
+                          <pre class="text-preview">${escapeHtml(data.content)}</pre>
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    body.innerHTML = `
+                      <div class="preview-container">
+                        <div class="preview-header">
+                          <button class="copy-btn" onclick="copyPreviewContent()">📋 复制全部</button>
+                        </div>
+                        <pre class="text-preview">${escapeHtml(data.content)}</pre>
+                      </div>
+                    `;
+                  }
+                } else {
+                  const blob = await response.blob();
+                  body.innerHTML = renderBinaryPreview(blob, path.split('/').pop());
+                }
+              } else {
+                const blob = await response.blob();
+                body.innerHTML = renderBinaryPreview(blob, path.split('/').pop());
+              }
             }
           }
         } catch (error) {
           body.innerHTML = `<div class="empty-state"><p>预览失败: ${error.message}</p></div>`;
         }
+      }
+
+      function zoomImage(delta) {
+        const img = document.getElementById('previewImage');
+        if (!img) return;
+
+        currentZoom = Math.max(0.1, Math.min(5, currentZoom + delta));
+        updateImageTransform();
+        document.getElementById('zoomLevel').textContent = Math.round(currentZoom * 100) + '%';
+      }
+
+      function rotateImage(degrees) {
+        const img = document.getElementById('previewImage');
+        if (!img) return;
+
+        currentRotation = (currentRotation + degrees) % 360;
+        updateImageTransform();
+      }
+
+      function resetImage() {
+        currentZoom = 1;
+        currentRotation = 0;
+        updateImageTransform();
+        document.getElementById('zoomLevel').textContent = '100%';
+      }
+
+      function updateImageTransform() {
+        const img = document.getElementById('previewImage');
+        if (!img) return;
+
+        img.style.transform = `scale(${currentZoom}) rotate(${currentRotation}deg)`;
       }
 
       function closeModal() {
@@ -1038,18 +1657,70 @@
           png: '#ff6b6b',
           gif: '#ff6b6b',
           svg: '#ff6b6b',
+          webp: '#ff6b6b',
+          bmp: '#ff6b6b',
+          ico: '#ff6b6b',
           zip: '#4ecdc4',
           '7z': '#4ecdc4',
           rar: '#4ecdc4',
           tar: '#4ecdc4',
           gz: '#4ecdc4',
+          tgz: '#4ecdc4',
+          xz: '#4ecdc4',
           txt: '#95a5a6',
           log: '#95a5a6',
           py: '#3776ab',
           java: '#007396',
           go: '#00add8',
           rs: '#dea584',
-          ts: '#3178c6'
+          ts: '#3178c6',
+          vue: '#42b883',
+          react: '#61dafb',
+          php: '#777bb4',
+          rb: '#cc342d',
+          c: '#555555',
+          cpp: '#00599c',
+          h: '#555555',
+          hpp: '#00599c',
+          cs: '#239120',
+          swift: '#fa7343',
+          kotlin: '#a97bff',
+          dart: '#0175c2',
+          sql: '#003b57',
+          sh: '#4eaa25',
+          bash: '#4eaa25',
+          ps1: '#012456',
+          bat: '#4caf50',
+          cmd: '#4caf50',
+          exe: '#ff4444',
+          dll: '#ff4444',
+          so: '#ff4444',
+          dylib: '#ff4444',
+          bin: '#ff4444',
+          dat: '#ff4444',
+          class: '#ea2d2e',
+          jar: '#ea2d2e',
+          war: '#ea2d2e',
+          pyc: '#3776ab',
+          pyd: '#3776ab',
+          obj: '#555555',
+          o: '#555555',
+          pdf: '#f40f02',
+          doc: '#2b579a',
+          docx: '#2b579a',
+          xls: '#217346',
+          xlsx: '#217346',
+          ppt: '#d24726',
+          pptx: '#d24726',
+          mp3: '#ff5722',
+          wav: '#ff5722',
+          flac: '#ff5722',
+          aac: '#ff5722',
+          mp4: '#2196f3',
+          avi: '#2196f3',
+          mov: '#2196f3',
+          mkv: '#2196f3',
+          webm: '#2196f3'
         };
 
         const color = iconColors[ext] || '#95a5a6';
@@ -1085,6 +1756,19 @@
         }
       });
 
+      document.getElementById('previewModal').addEventListener(
+        'wheel',
+        e => {
+          const img = document.getElementById('previewImage');
+          if (!img) return;
+
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? -0.1 : 0.1;
+          zoomImage(delta);
+        },
+        { passive: false }
+      );
+
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
           closeModal();
@@ -1092,6 +1776,24 @@
         if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
           e.preventDefault();
           goBack();
+        }
+        const img = document.getElementById('previewImage');
+        if (img) {
+          if (e.key === '+' || e.key === '=') {
+            zoomImage(0.1);
+          } else if (e.key === '-') {
+            zoomImage(-0.1);
+          } else if (e.key === '0') {
+            resetImage();
+          } else if (e.key === '[' || e.key === '{') {
+            rotateImage(-90);
+          } else if (e.key === ']' || e.key === '}') {
+            rotateImage(90);
+          } else if (e.key === 'ArrowLeft') {
+            navigateImage(-1);
+          } else if (e.key === 'ArrowRight') {
+            navigateImage(1);
+          }
         }
       });
     </script>
