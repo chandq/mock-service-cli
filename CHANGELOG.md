@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.3](https://github.com/chandq/mock-service-cli/compare/v3.6.2...v3.6.3) (2026-03-16)
+
+
+### Bug Fixes
+
+* solved issue of only access root directory when use fileExplorer mode ([c73c8ba](https://github.com/chandq/mock-service-cli/commit/c73c8ba7ceed0718d3de00224876604671b07dbf))
+
 ### [3.6.2](https://github.com/chandq/mock-service-cli/compare/v3.6.1...v3.6.2) (2026-03-16)
 
 
