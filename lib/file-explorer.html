@@ -295,7 +295,6 @@
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
         gap: 8px;
         overflow: auto;
-        flex: 1;
       }
 
       .file-grid.list-view {
@@ -811,28 +810,140 @@
       let currentImageIndex = -1;
       let imageFiles = [];
 
+      let eventHandlers = [];
+      let searchDebounceTimer = null;
+
+      function debounce(func, wait) {
+        return function (...args) {
+          clearTimeout(searchDebounceTimer);
+          searchDebounceTimer = setTimeout(() => func.apply(this, args), wait);
+        };
+      }
+
+      function addEventListenerWithCleanup(element, event, handler, options) {
+        element.addEventListener(event, handler, options);
+        eventHandlers.push({ element, event, handler, options });
+      }
+
+      function cleanupEventListeners() {
+        if (searchDebounceTimer) {
+          clearTimeout(searchDebounceTimer);
+          searchDebounceTimer = null;
+        }
+        eventHandlers.forEach(({ element, event, handler, options }) => {
+          element.removeEventListener(event, handler, options);
+        });
+        eventHandlers = [];
+      }
+
+      function handleFileGridClick(e) {
+        const actionBtn = e.target.closest('[data-action]');
+        if (actionBtn) {
+          e.stopPropagation();
+          const action = actionBtn.dataset.action;
+          const path = actionBtn.dataset.path;
+          const filename = actionBtn.dataset.filename;
+
+          switch (action) {
+            case 'copyPath':
+              copyToClipboard(path);
+              break;
+            case 'openInExplorer':
+              openInExplorer(path);
+              break;
+            case 'download':
+              downloadFile(path, filename);
+              break;
+          }
+          return;
+        }
+
+        const fileItem = e.target.closest('.file-item');
+        if (fileItem) {
+          const filePath = fileItem.dataset.path;
+          const isDirectory = fileItem.dataset.isDirectory === 'true';
+          handleItemClick(filePath, isDirectory);
+        }
+      }
+
+      function handleFileGridContextmenu(e) {
+        const fileItem = e.target.closest('.file-item');
+        if (fileItem) {
+          e.preventDefault();
+          const filePath = fileItem.dataset.path;
+          const isDirectory = fileItem.dataset.isDirectory === 'true';
+          showContextMenu(e.clientX, e.clientY, filePath, isDirectory);
+        }
+      }
+
+      function handleDocumentClick() {
+        hideContextMenu();
+      }
+
+      function handleDocumentScroll() {
+        hideContextMenu();
+      }
+
+      function handleModalClick(e) {
+        if (e.target === e.currentTarget) {
+          closeModal();
+        }
+      }
+
+      function handleModalWheel(e) {
+        const img = document.getElementById('previewImage');
+        if (!img) return;
+
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        zoomImage(delta);
+      }
+
+      function handleDocumentKeydown(e) {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+        if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          goBack();
+        }
+        const img = document.getElementById('previewImage');
+        if (img) {
+          if (e.key === '+' || e.key === '=') {
+            zoomImage(0.1);
+          } else if (e.key === '-') {
+            zoomImage(-0.1);
+          } else if (e.key === '0') {
+            resetImage();
+          } else if (e.key === '[' || e.key === '{') {
+            rotateImage(-90);
+          } else if (e.key === ']' || e.key === '}') {
+            rotateImage(90);
+          } else if (e.key === 'ArrowLeft') {
+            navigateImage(-1);
+          } else if (e.key === 'ArrowRight') {
+            navigateImage(1);
+          }
+        }
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         loadDirectory('/');
 
         const fileGrid = document.getElementById('fileGrid');
-        fileGrid.addEventListener('contextmenu', e => {
-          const fileItem = e.target.closest('.file-item');
-          if (fileItem) {
-            e.preventDefault();
-            const filePath = fileItem.dataset.path;
-            const isDirectory = fileItem.dataset.isDirectory === 'true';
-            showContextMenu(e.clientX, e.clientY, filePath, isDirectory);
-          }
-        });
+        const previewModal = document.getElementById('previewModal');
 
-        document.addEventListener('click', () => {
-          hideContextMenu();
-        });
-
-        document.addEventListener('scroll', () => {
-          hideContextMenu();
-        });
+        addEventListenerWithCleanup(fileGrid, 'click', handleFileGridClick);
+        addEventListenerWithCleanup(fileGrid, 'contextmenu', handleFileGridContextmenu);
+        addEventListenerWithCleanup(document, 'click', handleDocumentClick);
+        addEventListenerWithCleanup(document, 'scroll', handleDocumentScroll);
+        addEventListenerWithCleanup(previewModal, 'click', handleModalClick);
+        addEventListenerWithCleanup(previewModal, 'wheel', handleModalWheel, { passive: false });
+        addEventListenerWithCleanup(document, 'keydown', handleDocumentKeydown);
       });
+
+      window.addEventListener('beforeunload', cleanupEventListeners);
+      window.addEventListener('pagehide', cleanupEventListeners);
 
       function showContextMenu(x, y, filePath, isDirectory) {
         currentContextMenuFile = { path: filePath, isDirectory };
@@ -1031,10 +1142,10 @@
         }
       }
 
-      function handleSearch() {
+      const handleSearch = debounce(() => {
         searchQuery = document.getElementById('searchInput').value;
         processAndRenderFiles();
-      }
+      }, 200);
 
       function handleSort() {
         sortBy = document.getElementById('sortSelect').value;
@@ -1114,64 +1225,61 @@
           return;
         }
 
-        let html = '';
+        const fragment = document.createDocumentFragment();
+
         files.forEach(file => {
           const icon = getFileIcon(file);
           const size = formatSize(file.size);
           const mtime = formatDate(file.mtime);
           const hiddenClass = file.isHidden ? 'hidden-file' : '';
 
+          const fileItem = document.createElement('div');
+          fileItem.className = `file-item ${hiddenClass}`;
+          fileItem.dataset.path = file.path;
+          fileItem.dataset.isDirectory = file.isDirectory;
+
           if (currentView === 'list') {
-            html += `
-                        <div class="file-item ${hiddenClass}" data-path="${file.path}" data-is-directory="${
-              file.isDirectory
-            }">
-                            <div class="file-icon" onclick="handleItemClick('${file.path}', ${
-              file.isDirectory
-            })">${icon}</div>
-                            <div class="file-info" onclick="handleItemClick('${file.path}', ${file.isDirectory})">
-                                <div class="file-name">${escapeHtml(file.name)}</div>
-                                <div class="file-meta">
-                                    ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
-                                    <span>${mtime}</span>
-                                </div>
-                            </div>
-                            <div class="action-buttons">
-                                <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${
-                                  file.path
-                                }')" title="复制路径">📋</button>
-                                <button class="action-btn open" onclick="event.stopPropagation(); openInExplorer('${
-                                  file.path
-                                }')" title="在文件管理器中打开">📂</button>
-                                ${
-                                  !file.isDirectory
-                                    ? `<button class="action-btn download" onclick="event.stopPropagation(); downloadFile('${
-                                        file.path
-                                      }', '${escapeHtml(file.name)}')" title="下载">⬇️</button>`
-                                    : ''
-                                }
-                            </div>
-                        </div>
-                    `;
+            fileItem.innerHTML = `
+              <div class="file-icon">${icon}</div>
+              <div class="file-info">
+                <div class="file-name">${escapeHtml(file.name)}</div>
+                <div class="file-meta">
+                  ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
+                  <span>${mtime}</span>
+                </div>
+              </div>
+              <div class="action-buttons">
+                <button class="copy-btn" data-action="copyPath" data-path="${file.path}" title="复制路径">📋</button>
+                <button class="action-btn open" data-action="openInExplorer" data-path="${
+                  file.path
+                }" title="在文件管理器中打开">📂</button>
+                ${
+                  !file.isDirectory
+                    ? `<button class="action-btn download" data-action="download" data-path="${
+                        file.path
+                      }" data-filename="${escapeHtml(file.name)}" title="下载">⬇️</button>`
+                    : ''
+                }
+              </div>
+            `;
           } else {
-            html += `
-                        <div class="file-item ${hiddenClass}" data-path="${file.path}" data-is-directory="${
-              file.isDirectory
-            }" onclick="handleItemClick('${file.path}', ${file.isDirectory})">
-                            <div class="file-icon">${icon}</div>
-                            <div class="file-info">
-                                <div class="file-name">${escapeHtml(file.name)}</div>
-                                <div class="file-meta">
-                                    ${file.isDirectory ? '目录' : size}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+            fileItem.innerHTML = `
+              <div class="file-icon">${icon}</div>
+              <div class="file-info">
+                <div class="file-name">${escapeHtml(file.name)}</div>
+                <div class="file-meta">
+                  ${file.isDirectory ? '目录' : size}
+                </div>
+              </div>
+            `;
           }
+
+          fragment.appendChild(fileItem);
         });
 
-        // 强制更新 DOM
-        fileGrid.innerHTML = html;
+        // 清空并一次性更新 DOM
+        fileGrid.innerHTML = '';
+        fileGrid.appendChild(fragment);
       }
 
       function handleItemClick(path, isDirectory) {
@@ -1751,53 +1859,6 @@
         div.textContent = text;
         return div.innerHTML;
       }
-
-      document.getElementById('previewModal').addEventListener('click', e => {
-        if (e.target === e.currentTarget) {
-          closeModal();
-        }
-      });
-
-      document.getElementById('previewModal').addEventListener(
-        'wheel',
-        e => {
-          const img = document.getElementById('previewImage');
-          if (!img) return;
-
-          e.preventDefault();
-          const delta = e.deltaY > 0 ? -0.1 : 0.1;
-          zoomImage(delta);
-        },
-        { passive: false }
-      );
-
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-          closeModal();
-        }
-        if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
-          e.preventDefault();
-          goBack();
-        }
-        const img = document.getElementById('previewImage');
-        if (img) {
-          if (e.key === '+' || e.key === '=') {
-            zoomImage(0.1);
-          } else if (e.key === '-') {
-            zoomImage(-0.1);
-          } else if (e.key === '0') {
-            resetImage();
-          } else if (e.key === '[' || e.key === '{') {
-            rotateImage(-90);
-          } else if (e.key === ']' || e.key === '}') {
-            rotateImage(90);
-          } else if (e.key === 'ArrowLeft') {
-            navigateImage(-1);
-          } else if (e.key === 'ArrowRight') {
-            navigateImage(1);
-          }
-        }
-      });
     </script>
   </body>
 </html>
