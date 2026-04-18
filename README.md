@@ -71,7 +71,7 @@ npx mock-service-cli [options] [path]
 | `-P` 或 `--web-port`       | Web 服务器端口                                              | 9090   |
 | `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                               | -      |
 | `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                            | -      |
-| `-w` 或 `--open`           | 自动打开 API 概览页面                                       | false  |
+| `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                           | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                      | ./     |
 
 ## 📖 使用示例
