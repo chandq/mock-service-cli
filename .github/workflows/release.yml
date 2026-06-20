@@ -1,0 +1,90 @@
+# This workflow will do a clean install of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/**' # 当 src 目录下的文件变化时触发
+      - 'lib/**' # 当 lib 目录下的文件变化时触发
+
+jobs:
+  unit-test:
+    name: Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x, 16.x, 18.x, 20.x, 22.x, 24.x]
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+      - name: Test
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build --if-present
+
+  release:
+    name: Release
+    needs: [unit-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - run: npm install -g npm@latest # Trusted Publishing requires npm 11.5.1 or later
+      - name: Install deps
+        run: npm ci
+      - name: Test
+        run: npm test --if-present
+
+      - name: Git config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Bump version with NPM version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx standard-version -m "chore: release version %s"
+          git push --follow-tags origin master
+          echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        uses: chandq/release-action@main
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          generateReleaseNotes: 'true'
+          body: |
+            Please refer to [CHANGELOG.md](https://github.com/chandq/mock-service-cli/blob/master/CHANGELOG.md) for details.
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public --registry https://registry.npmjs.org

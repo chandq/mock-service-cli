@@ -1,4 +1,4 @@
-[![Node.js CI](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml/badge.svg)](https://github.com/chandq/mock-service-cli/actions/workflows/node.js.yml)
+[![release status](https://github.com/chandq/mock-service-cli/actions/workflows/release.yml/badge.svg)](https://github.com/chandq/mock-service-cli/actions/workflows/release.yml)
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
 [![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://www.npmjs.com/package/mock-service-cli)
 [![node](https://img.shields.io/badge/language-node-orange.svg)](https://nodejs.org/download/release/v12.0.0/)
