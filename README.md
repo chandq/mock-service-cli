@@ -52,27 +52,28 @@ npx mock-service-cli [options] [path]
 
 ## 🛠️ 命令行选项
 
-| 选项                       | 描述                                                        | 默认值 |
-| -------------------------- | ----------------------------------------------------------- | ------ |
-| `-h` 或 `--help`           | 显示帮助信息                                                | -      |
-| `-p` 或 `--port`           | Mock 服务器端口                                             | 8090   |
-| `-d`                       | 指定 mock 目录                                              | ./mock |
-| `-f`                       | 指定单个 mock 文件                                          | -      |
-| `-s` 或 `--silent`         | 抑制日志输出                                                | -      |
-| `-v` 或 `--version`        | 显示版本信息                                                | -      |
-| `-S` 或 `--socket-server`  | 启动 socket 服务器，用于保存 API 响应数据                   | false  |
-| `-a` 或 `--api-stat`       | 打印 API URL 和文件路径信息                                 | false  |
-| `-t` 或 `--track`          | 记录操作信息到文件                                          | false  |
-| `-o` 或 `--cors-origin`    | 配置 CORS 允许的源，多个源用逗号分隔                        | \*     |
-| `-O` 或 `--proxy-options`  | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数 | -      |
-| `-H` 或 `--cors-headers`   | 配置 CORS 头信息                                            | \*     |
-| `-A` 或 `--append-headers` | 添加响应头信息，多个头用逗号分隔                            | -      |
-| `-D` 或 `--web-dir`        | 启用 Web 服务器，指定 web 目录（SPA 应用）                  | -      |
-| `-P` 或 `--web-port`       | Web 服务器端口                                              | 9090   |
-| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                               | -      |
-| `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                            | -      |
-| `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                           | false  |
-| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                      | ./     |
+| 选项                       | 描述                                                              | 默认值 |
+| -------------------------- | ----------------------------------------------------------------- | ------ |
+| `-h` 或 `--help`           | 显示帮助信息                                                      | -      |
+| `-p` 或 `--port`           | Mock 服务器端口                                                   | 8090   |
+| `-d`                       | 指定 mock 目录                                                    | ./mock |
+| `-f`                       | 指定单个 mock 文件                                                | -      |
+| `-s` 或 `--silent`         | 抑制日志输出                                                      | -      |
+| `-v` 或 `--version`        | 显示版本信息                                                      | -      |
+| `-S` 或 `--socket-server`  | 启动 socket 服务器，用于保存 API 响应数据                         | false  |
+| `-a` 或 `--api-stat`       | 打印 API URL 和文件路径信息                                       | false  |
+| `-t` 或 `--track`          | 记录操作信息到文件                                                | false  |
+| `-o` 或 `--cors-origin`    | 配置 CORS 允许的源，多个源用逗号分隔                              | \*     |
+| `-O` 或 `--proxy-options`  | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数       | -      |
+| `-r` 或 `--rewrite`        | rewrite http or https request url prefix of proxy, default false. | false  |
+| `-H` 或 `--cors-headers`   | 配置 CORS 头信息                                                  | \*     |
+| `-A` 或 `--append-headers` | 添加响应头信息，多个头用逗号分隔                                  | -      |
+| `-D` 或 `--web-dir`        | 启用 Web 服务器，指定 web 目录（SPA 应用）                        | -      |
+| `-P` 或 `--web-port`       | Web 服务器端口                                                    | 9090   |
+| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                                     | -      |
+| `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                                  | -      |
+| `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                                 | false  |
+| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
 
 ## 📖 使用示例
 
