@@ -13,7 +13,7 @@
     "start": "node ./bin/mock-service-cli",
     "start:src": "node ./src/bin/mock-service-cli",
     "pretest": "npm run build",
-    "test:src": "node ./scripts/run-tests.js smoke",
+    "test:src": "npm run build --if-present && node ./scripts/run-tests.js smoke",
     "test:unit": "node ./scripts/run-tests.js unit",
     "test": "node ./scripts/run-tests.js unit",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",

@@ -1,6 +1,5 @@
 const express = require('express'),
-  { readdirSync, existsSync, readFileSync, statSync, createReadStream, rmSync, mkdirSync, writeFileSync, renameSync } =
-    require('fs'),
+  { readdirSync, existsSync, readFileSync, statSync, rmSync, mkdirSync, writeFileSync, renameSync } = require('fs'),
   os = require('os'),
   path = require('path'),
   colors = require('colors/safe'),
@@ -22,20 +21,22 @@ function isPathInsideRoot(fullPath, resolvedRoot) {
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
 }
 
-function resolveExplorerPath(inputPath) {
-  const targetPath = decodeURIComponent(inputPath || '/');
-  let fullPath;
-  const resolvedRoot = path.resolve(explorerRoot);
-  const rootPath = path.parse(resolvedRoot).root;
-
-  if (resolvedRoot === rootPath) {
-    fullPath = path.resolve(targetPath);
-  } else {
-    const relativePath = targetPath.startsWith('/') ? targetPath.substring(1) : targetPath;
-    fullPath = path.resolve(resolvedRoot, relativePath);
+function normalizeExplorerInputPath(inputPath) {
+  const decodedPath = decodeURIComponent(String(inputPath || '/')).replace(/\\/g, '/');
+  if (!decodedPath || decodedPath === '.') {
+    return '/';
   }
 
-  if (resolvedRoot !== rootPath && !isPathInsideRoot(fullPath, resolvedRoot)) {
+  return decodedPath.startsWith('/') ? decodedPath : `/${decodedPath}`;
+}
+
+function resolveExplorerPath(inputPath) {
+  const targetPath = normalizeExplorerInputPath(inputPath);
+  const resolvedRoot = path.resolve(explorerRoot);
+  const relativePath = targetPath.replace(/^\/+/, '');
+  const fullPath = path.resolve(resolvedRoot, relativePath);
+
+  if (!isPathInsideRoot(fullPath, resolvedRoot)) {
     const error = new Error('Access denied');
     error.statusCode = 403;
     throw error;
@@ -58,6 +59,41 @@ function validateEntryName(name) {
     return 'Name contains invalid characters';
   }
 
+  if (process.platform === 'win32') {
+    const upperName = normalizedName
+      .replace(/[. ]+$/g, '')
+      .split('.')[0]
+      .toUpperCase();
+    const reservedNames = new Set([
+      'CON',
+      'PRN',
+      'AUX',
+      'NUL',
+      'COM1',
+      'COM2',
+      'COM3',
+      'COM4',
+      'COM5',
+      'COM6',
+      'COM7',
+      'COM8',
+      'COM9',
+      'LPT1',
+      'LPT2',
+      'LPT3',
+      'LPT4',
+      'LPT5',
+      'LPT6',
+      'LPT7',
+      'LPT8',
+      'LPT9'
+    ]);
+
+    if (reservedNames.has(upperName) || normalizedName.endsWith(' ') || normalizedName.endsWith('.')) {
+      return 'Name is not supported on Windows';
+    }
+  }
+
   return null;
 }
 
@@ -78,9 +114,8 @@ function getChildPath(parentPath, name) {
 
   const childPath = path.resolve(parentFullPath, name.trim());
   const resolvedRoot = path.resolve(explorerRoot);
-  const rootPath = path.parse(resolvedRoot).root;
 
-  if (resolvedRoot !== rootPath && !isPathInsideRoot(childPath, resolvedRoot)) {
+  if (!isPathInsideRoot(childPath, resolvedRoot)) {
     const error = new Error('Access denied');
     error.statusCode = 403;
     throw error;
@@ -136,8 +171,7 @@ function init() {
 
   // 获取目录内容 API
   app.get('/__api/list', (req, res) => {
-    let dirPath = req.query.path || '/';
-    dirPath = decodeURIComponent(dirPath);
+    const dirPath = normalizeExplorerInputPath(req.query.path || '/');
 
     let fullPath;
     try {
@@ -170,7 +204,7 @@ function init() {
           hasError = true;
         }
 
-        const relativePath = path.join(dirPath, file.name);
+        const relativePath = path.posix.join(dirPath, file.name);
 
         // 使用 statSync 的结果，因为 readdirSync 在根目录对某些特殊目录识别不准确
         const isDirectory = hasError ? file.isDirectory() : fileStats.isDirectory();
@@ -197,7 +231,7 @@ function init() {
 
       res.json({
         currentPath: dirPath,
-        parentPath: dirPath === '/' ? null : path.dirname(dirPath).replace(/\\/g, '/'),
+        parentPath: dirPath === '/' ? null : path.posix.dirname(dirPath),
         files: result
       });
     } catch (error) {
@@ -207,8 +241,7 @@ function init() {
 
   // 文件预览 API
   app.get('/__api/file', (req, res) => {
-    let filePath = req.query.path || '/';
-    filePath = decodeURIComponent(filePath);
+    const filePath = normalizeExplorerInputPath(req.query.path || '/');
 
     let fullPath;
     try {
@@ -253,8 +286,7 @@ function init() {
 
   // 在系统文件管理器中打开目录/文件 API
   app.post('/__api/open-in-explorer', (req, res) => {
-    let filePath = req.body.path || '/';
-    filePath = decodeURIComponent(filePath);
+    const filePath = normalizeExplorerInputPath(req.body.path || '/');
 
     let fullPath;
     try {
@@ -340,7 +372,7 @@ function init() {
       if (!existsSync(fullPath)) {
         return res.status(404).json({ error: 'Path not found' });
       }
-      nextPath = getChildPath(path.dirname(sourcePath || '/').replace(/\\/g, '/'), name);
+      nextPath = getChildPath(path.posix.dirname(normalizeExplorerInputPath(sourcePath || '/')), name);
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message });
     }
@@ -420,11 +452,7 @@ function startServer() {
       ].join('')
     );
     console.info(
-      [
-        colors.yellow('\n🌍  file-explorer-server version: '),
-        colors.cyan(getPackageVersion()),
-        '\n'
-      ].join('')
+      [colors.yellow('\n🌍  file-explorer-server version: '), colors.cyan(getPackageVersion()), '\n'].join('')
     );
     console.info(colors.yellow(`\n File explorer server available on:\n`));
     console.info('    http://localhost:' + colors.green(process.env.PORT));

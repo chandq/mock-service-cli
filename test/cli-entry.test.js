@@ -110,6 +110,10 @@ async function assertFileExplorerCli(t, entryFile) {
     let data = await waitForExplorer(baseUrl, child, output);
     t.ok(data.files.some(file => file.name === marker), `${entryFile} can start file explorer`);
 
+    const html = await fetch(baseUrl).then(response => response.text());
+    t.ok(html.includes('id="editModeToggle"'), `${entryFile} exposes edit mode toggle`);
+    t.ok(html.includes('edit-only'), `${entryFile} marks edit-only controls`);
+
     await requestJson(`${baseUrl}/__api/path`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

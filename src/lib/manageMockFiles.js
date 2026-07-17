@@ -23,6 +23,11 @@ const log = logger(process.env.SILENT);
 const processArgv = process.env.ARGV ? JSON.parse(process.env.ARGV) : {};
 
 const methodRegExp = new RegExp(`(${SupportMethods.join('|')}) +(.*)`, 'i');
+
+const normalizeApiPath = apiUrl => {
+  const normalizedPath = path.posix.normalize(String(apiUrl || '').trim()).replace(/\/+$/, '');
+  return normalizedPath || '/';
+};
 /**
  * @description: 记录日志文件函数
  * @param {boolean} isWriteLogFile 是否写入日志文件
@@ -68,9 +73,9 @@ const genMockFiles = async function ({ url: apiUrl, method, data: resJsonData, d
   }
   apiUrl = apiUrl.trim().split('?')[0];
   const LOGGER = logFile(processArgv.t || processArgv.track, mockDir);
-  const normalizeApiUrl = filePath2ApiUrl(path.normalize(apiUrl));
+  const normalizeApiUrl = filePath2ApiUrl(normalizeApiPath(apiUrl));
   const mockListFilePath = path.resolve(process.cwd(), `${mockDir}/mock-list.json`);
-  const mockFilePath = path.resolve(process.cwd(), `${mockDir}/${encodeURIComponent(path.normalize(apiUrl))}.json`);
+  const mockFilePath = path.resolve(process.cwd(), `${mockDir}/${encodeURIComponent(normalizeApiPath(apiUrl))}.json`);
   let newMockListContent = {};
   if (fsa.pathExistsSync(mockListFilePath)) {
     newMockListContent = getFileLatestContent(mockListFilePath);
@@ -136,7 +141,7 @@ const collectMockDataFromJsFile = function (mockDataMap, filePath) {
     if (methodRegExp.exec(item)) {
       const [, method, url] = methodRegExp.exec(item);
       reqMethod = method.toLowerCase();
-      reqUrl = path.normalize(url);
+      reqUrl = normalizeApiPath(url);
     }
     if (typeof fileObject[item] === 'function') {
       mockDataMap[`${reqMethod} ${reqUrl}`] = String(fileObject[item]);
@@ -167,7 +172,7 @@ const deepCollectMockData = function (mockDataMap, specialDir = '../mock') {
     if (el.name.endsWith('.json') && el.name !== 'mock-list.json') {
       const fileObject = getFileLatestContent(filePath);
       Object.keys(fileObject).forEach(method => {
-        mockDataMap[`${method.toLocaleLowerCase()} ${decodeURIComponent(el.name).split('.json')[0]}`] =
+        mockDataMap[`${method.toLocaleLowerCase()} ${normalizeApiPath(decodeURIComponent(el.name).split('.json')[0])}`] =
           fileObject[method];
       });
       continue;
@@ -201,11 +206,12 @@ const getMockStatFromDir = dirPath => {
     Object.keys(mockDataMap).forEach(it => {
       if (methodRegExp.exec(it)) {
         const [, method, url] = methodRegExp.exec(it);
-        if (url.trim() && method.trim()) {
-          if (reverseMockList.hasOwnProperty(url)) {
-            reverseMockList[url].push(method);
+        const normalizedUrl = normalizeApiPath(url);
+        if (normalizedUrl.trim() && method.trim()) {
+          if (reverseMockList.hasOwnProperty(normalizedUrl)) {
+            reverseMockList[normalizedUrl].push(method);
           } else {
-            reverseMockList[url] = [method];
+            reverseMockList[normalizedUrl] = [method];
           }
         }
       }
@@ -241,7 +247,7 @@ const hasMockApi = function (mockDataMap, apiUrl, method) {
     getLogger(path.resolve(process.cwd())).error(`入参无效，${mockDataMap} 必须是 mock数据的Object对象`);
     return;
   }
-  return mockDataMap.hasOwnProperty(`${method.toLocaleLowerCase()} ${path.normalize(apiUrl)}`);
+  return mockDataMap.hasOwnProperty(`${method.toLocaleLowerCase()} ${normalizeApiPath(apiUrl)}`);
 };
 
 module.exports = {
