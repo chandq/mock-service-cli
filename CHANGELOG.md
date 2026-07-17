@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://github.com/chandq/mock-service-cli/compare/v3.7.0...v4.0.0) (2026-07-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* add build before publish, reduce prod deps to improve performance
+
+### Features
+
+* add build before publish, reduce prod deps to improve performance ([68e4be0](https://github.com/chandq/mock-service-cli/commit/68e4be078c302117b3a8428aae68c6e3970cd068))
+
 ## [3.7.0](https://github.com/chandq/mock-service-cli/compare/v3.6.5...v3.7.0) (2026-07-17)
 
 
