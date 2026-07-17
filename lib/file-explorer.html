@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -379,6 +379,9 @@
         font-size: 10px;
         color: #999;
       }
+      .birthtime {
+        padding-right: 4px;
+      }
 
       .list-view .file-meta {
         display: flex;
@@ -751,6 +754,14 @@
           >
             👁️
           </button>
+          <button
+            class="toggle-hidden-btn"
+            id="toggleBirthtimeBtn"
+            onclick="toggleBirthtimeFiles()"
+            title="显示/隐藏创建时间"
+          >
+            ⌛️
+          </button>
           <div class="stats-info" id="statsInfo"></div>
           <div class="search-box">
             <input type="text" id="searchInput" placeholder="搜索文件名..." oninput="handleSearch()" />
@@ -803,6 +814,7 @@
       let sortBy = 'name';
       let sortAscending = true;
       let showHiddenFiles = true;
+      let showBirthtime = false;
       let currentPreviewContent = '';
       let currentZoom = 1;
       let currentRotation = 0;
@@ -1058,10 +1070,16 @@
       function updateStatsInfo(files) {
         const statsInfo = document.getElementById('statsInfo');
         if (!statsInfo) return;
-
-        const dirCount = files.filter(f => f.isDirectory).length;
+        let fileTotalSize = 0;
+        const dirCount = files.filter(f => {
+          if (!f.isDirectory) {
+            fileTotalSize += f.size;
+          }
+          return f.isDirectory;
+        }).length;
         const fileCount = files.length - dirCount;
-        statsInfo.textContent = `${dirCount} 个文件夹, ${fileCount} 个文件`;
+        const totalSize = formatSize(fileTotalSize);
+        statsInfo.textContent = `${dirCount} 个文件夹, ${fileCount} 个文件 (${totalSize})`;
       }
 
       function processAndRenderFiles() {
@@ -1115,6 +1133,18 @@
         // console.log('Rendering', files.length, 'files');
         updateStatsInfo(files);
         renderFiles(files);
+      }
+      function toggleBirthtimeFiles() {
+        showBirthtime = !showBirthtime;
+        const btn = document.getElementById('toggleBirthtimeBtn');
+        if (!showBirthtime) {
+          btn.classList.remove('active');
+          btn.title = '显示创建时间';
+        } else {
+          btn.classList.add('active');
+          btn.title = '隐藏创建时间';
+        }
+        processAndRenderFiles();
       }
 
       function toggleHiddenFiles() {
@@ -1212,11 +1242,14 @@
 
       function renderFiles(files) {
         const fileGrid = document.getElementById('fileGrid');
+        const toggleBirthtimeBtn = document.getElementById('toggleBirthtimeBtn');
 
         // 确保视图类名正确
         if (currentView === 'list') {
           fileGrid.classList.add('list-view');
+          toggleBirthtimeBtn.style.display = 'inline-block';
         } else {
+          toggleBirthtimeBtn.style.display = 'none';
           fileGrid.classList.remove('list-view');
         }
 
@@ -1231,6 +1264,7 @@
           const icon = getFileIcon(file);
           const size = formatSize(file.size);
           const mtime = formatDate(file.mtime);
+          const birthtime = formatDate(file.birthtime);
           const hiddenClass = file.isHidden ? 'hidden-file' : '';
 
           const fileItem = document.createElement('div');
@@ -1246,6 +1280,7 @@
                 <div class="file-meta">
                   ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
                   <span>${mtime}</span>
+                  <span class="birthtime" style="display: ${showBirthtime ? 'inline-block' : 'none'};">${birthtime}</span>
                 </div>
               </div>
               <div class="action-buttons">
@@ -1390,6 +1425,7 @@
             return {
               size: file.size,
               mtime: file.mtime,
+              birthtime: file.birthtime,
               name: file.name
             };
           }
