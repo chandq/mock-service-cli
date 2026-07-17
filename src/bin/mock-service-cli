@@ -80,6 +80,20 @@ const injectEnvVariable = (envName, envArgs) => {
   }
 };
 
+function resolveServerEntry(fileName) {
+  const builtEntry = resolve(__dirname, `./${fileName}.js`);
+  if (existsSync(builtEntry)) {
+    return builtEntry;
+  }
+
+  const sourceEntry = resolve(__dirname, `../lib/${fileName}.js`);
+  if (existsSync(sourceEntry)) {
+    return sourceEntry;
+  }
+
+  return builtEntry;
+}
+
 if (isStartSocketServer) {
   process.env.SOCKET_SERVER = true;
 }
@@ -174,7 +188,7 @@ function watchMockFiles(watchDir) {
    * ext 检测的文件
    */
   nodemon({
-    script: resolve(__dirname, './mockServer.js'),
+    script: resolveServerEntry('mockServer'),
     watch: [watchDir],
     ext: 'cjs,js,json'
   });
@@ -197,21 +211,21 @@ function watchMockFiles(watchDir) {
 
 // Node子进程启动MockServer
 function startMockServer() {
-  spawn(node, [resolve(__dirname, './mockServer.js')], {
+  spawn(node, [resolveServerEntry('mockServer')], {
     stdio: 'inherit'
   });
 }
 
 // Node子进程启动StaticServer
 function startStaticServer() {
-  spawn(node, [resolve(__dirname, './staticServer.js')], {
+  spawn(node, [resolveServerEntry('staticServer')], {
     stdio: 'inherit'
   });
 }
 
 // Node子进程启动FileExplorerServer
 function startFileExplorerServer() {
-  spawn(node, [resolve(__dirname, './fileExplorerServer.js')], {
+  spawn(node, [resolveServerEntry('fileExplorerServer')], {
     stdio: 'inherit'
   });
 }

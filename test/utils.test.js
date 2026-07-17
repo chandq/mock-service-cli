@@ -204,7 +204,14 @@ test('getFileLatestContent function - with args', t => {
 
   fs.unlinkSync(testModule);
 
-  const errorContent = getFileLatestContent('/non/existent/path.js');
+  const originalConsoleError = console.error;
+  let errorContent;
+  try {
+    console.error = () => {};
+    errorContent = getFileLatestContent('/non/existent/path.js');
+  } finally {
+    console.error = originalConsoleError;
+  }
   t.equal(errorContent, 'getFileLatestContent_ERROR', 'returns error on invalid path');
 
   t.end();

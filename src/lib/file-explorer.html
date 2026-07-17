@@ -156,6 +156,30 @@
         background: #e0e0e0;
       }
 
+      .toolbar-action-btn {
+        padding: 6px 10px;
+        background: #f0f0f0;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .toolbar-action-btn:hover:not(:disabled) {
+        background: #e0e0e0;
+      }
+
+      .toolbar-action-btn.danger:hover:not(:disabled) {
+        background: #dc3545;
+        color: white;
+      }
+
+      .toolbar-action-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
       .back-btn {
         padding: 6px 12px;
         background: #f0f0f0;
@@ -318,6 +342,11 @@
         background: #f8f9fa;
       }
 
+      .file-item.selected {
+        background: #eef2ff;
+        outline: 1px solid #667eea;
+      }
+
       .list-view .file-item {
         flex-direction: row;
         padding: 6px 12px;
@@ -346,6 +375,17 @@
       .file-icon svg {
         width: 100%;
         height: 100%;
+      }
+
+      .file-select {
+        align-self: flex-start;
+        margin-bottom: 6px;
+        cursor: pointer;
+      }
+
+      .list-view .file-select {
+        align-self: center;
+        margin: 0 8px 0 0;
       }
 
       .file-info {
@@ -424,6 +464,11 @@
       .action-btn.download:hover {
         background: #28a745;
         color: white;
+      }
+
+      .action-btn.rename:hover {
+        background: #ffc107;
+        color: #333;
       }
 
       .action-btn.delete:hover {
@@ -751,6 +796,17 @@
             返回上级
           </button>
           <button class="refresh-btn" onclick="loadDirectory(currentPath)" title="刷新">🔄</button>
+          <button class="toolbar-action-btn" onclick="createEntry('directory')" title="新建文件夹">新建文件夹</button>
+          <button class="toolbar-action-btn" onclick="createEntry('file')" title="新建文件">新建文件</button>
+          <button
+            class="toolbar-action-btn danger"
+            id="deleteSelectedBtn"
+            onclick="deleteSelectedPaths()"
+            title="删除选中项"
+            disabled
+          >
+            删除选中
+          </button>
           <button
             class="toggle-hidden-btn"
             id="toggleHiddenBtn"
@@ -809,6 +865,7 @@
       </div>
       <div class="context-menu-item" id="ctxDownload" onclick="handleContextMenuAction('download')">⬇️ 下载</div>
       <div class="context-menu-divider"></div>
+      <div class="context-menu-item" id="ctxRename" onclick="handleContextMenuAction('rename')">✏️ 重命名</div>
       <div class="context-menu-item" id="ctxDelete" onclick="handleContextMenuAction('delete')">🗑️ 删除</div>
     </div>
 
@@ -828,6 +885,7 @@
       let currentContextMenuFile = null;
       let currentImageIndex = -1;
       let imageFiles = [];
+      let selectedPaths = new Set();
 
       let eventHandlers = [];
       let searchDebounceTimer = null;
@@ -873,8 +931,14 @@
             case 'download':
               downloadFile(path, filename);
               break;
+            case 'rename':
+              renamePath(path, filename);
+              break;
             case 'delete':
               deletePath(path, filename);
+              break;
+            case 'toggleSelect':
+              toggleSelectedPath(path, actionBtn.checked, actionBtn.closest('.file-item'));
               break;
           }
           return;
@@ -1017,6 +1081,9 @@
               downloadFile(path, path.split('/').pop());
             }
             break;
+          case 'rename':
+            renamePath(path, path.split('/').pop());
+            break;
           case 'delete':
             deletePath(path, path.split('/').pop());
             break;
@@ -1035,6 +1102,8 @@
         // 重置所有状态
         allFiles = [];
         currentFiles = [];
+        selectedPaths.clear();
+        updateSelectionToolbar();
 
         // 显示加载状态
         fileGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
@@ -1222,6 +1291,77 @@
         }
       }
 
+      async function requestJson(url, options) {
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok || data.error) {
+          throw new Error(data.error || '请求失败');
+        }
+        return data;
+      }
+
+      async function createEntry(type) {
+        const label = type === 'directory' ? '文件夹' : '文件';
+        const name = window.prompt(`请输入${label}名称`);
+        if (name === null) return;
+
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+          alert(`${label}名称不能为空`);
+          return;
+        }
+
+        try {
+          await requestJson('/__api/path', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              parentPath: currentPath,
+              name: trimmedName,
+              type
+            })
+          });
+
+          showToast(`新建${label}成功`);
+          await loadDirectory(currentPath);
+        } catch (error) {
+          console.error(`新建${label}失败:`, error);
+          alert(`新建${label}失败: ` + error.message);
+        }
+      }
+
+      async function renamePath(filePath, fileName) {
+        const nextName = window.prompt('请输入新名称', fileName || filePath.split('/').pop());
+        if (nextName === null) return;
+
+        const trimmedName = nextName.trim();
+        if (!trimmedName) {
+          alert('名称不能为空');
+          return;
+        }
+
+        try {
+          await requestJson('/__api/path', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              path: filePath,
+              name: trimmedName
+            })
+          });
+
+          showToast('重命名成功');
+          await loadDirectory(currentPath);
+        } catch (error) {
+          console.error('重命名失败:', error);
+          alert('重命名失败: ' + error.message);
+        }
+      }
+
       function downloadFile(filePath, fileName) {
         const url = `/__api/file?path=${encodeURIComponent(filePath)}`;
         const a = document.createElement('a');
@@ -1259,6 +1399,56 @@
           console.error('删除失败:', error);
           alert('删除失败: ' + error.message);
         }
+      }
+
+      async function deleteSelectedPaths() {
+        const paths = Array.from(selectedPaths);
+        if (paths.length === 0) return;
+
+        const confirmed = window.confirm(`确定要删除选中的 ${paths.length} 项吗？此操作不可恢复。`);
+        if (!confirmed) return;
+
+        try {
+          await requestJson('/__api/paths', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ paths })
+          });
+
+          selectedPaths.clear();
+          updateSelectionToolbar();
+          showToast('批量删除成功');
+          await loadDirectory(currentPath);
+        } catch (error) {
+          console.error('批量删除失败:', error);
+          alert('批量删除失败: ' + error.message);
+          await loadDirectory(currentPath);
+        }
+      }
+
+      function toggleSelectedPath(filePath, checked, fileItem) {
+        if (checked) {
+          selectedPaths.add(filePath);
+        } else {
+          selectedPaths.delete(filePath);
+        }
+
+        if (fileItem) {
+          fileItem.classList.toggle('selected', checked);
+        }
+
+        updateSelectionToolbar();
+      }
+
+      function updateSelectionToolbar() {
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        if (!deleteSelectedBtn) return;
+
+        const count = selectedPaths.size;
+        deleteSelectedBtn.disabled = count === 0;
+        deleteSelectedBtn.textContent = count ? `删除选中(${count})` : '删除选中';
       }
 
       function renderBreadcrumb(currentPath, parentPath) {
@@ -1308,14 +1498,25 @@
           const mtime = formatDate(file.mtime);
           const birthtime = formatDate(file.birthtime);
           const hiddenClass = file.isHidden ? 'hidden-file' : '';
+          const selectedClass = selectedPaths.has(file.path) ? 'selected' : '';
+          const selectedAttr = selectedPaths.has(file.path) ? 'checked' : '';
 
           const fileItem = document.createElement('div');
-          fileItem.className = `file-item ${hiddenClass}`;
+          fileItem.className = `file-item ${hiddenClass} ${selectedClass}`;
           fileItem.dataset.path = file.path;
           fileItem.dataset.isDirectory = file.isDirectory;
 
           if (currentView === 'list') {
             fileItem.innerHTML = `
+              <input
+                class="file-select"
+                type="checkbox"
+                data-action="toggleSelect"
+                data-path="${file.path}"
+                data-filename="${escapeHtml(file.name)}"
+                title="选择"
+                ${selectedAttr}
+              />
               <div class="file-icon">${icon}</div>
               <div class="file-info">
                 <div class="file-name">${escapeHtml(file.name)}</div>
@@ -1337,6 +1538,9 @@
                       }" data-filename="${escapeHtml(file.name)}" title="下载">⬇️</button>`
                     : ''
                 }
+                <button class="action-btn rename" data-action="rename" data-path="${file.path}" data-filename="${escapeHtml(
+                  file.name
+                )}" title="重命名">✏️</button>
                 <button class="action-btn delete" data-action="delete" data-path="${file.path}" data-filename="${escapeHtml(
                   file.name
                 )}" title="删除">🗑️</button>
@@ -1344,6 +1548,15 @@
             `;
           } else {
             fileItem.innerHTML = `
+              <input
+                class="file-select"
+                type="checkbox"
+                data-action="toggleSelect"
+                data-path="${file.path}"
+                data-filename="${escapeHtml(file.name)}"
+                title="选择"
+                ${selectedAttr}
+              />
               <div class="file-icon">${icon}</div>
               <div class="file-info">
                 <div class="file-name">${escapeHtml(file.name)}</div>

@@ -21,7 +21,7 @@ const commonOptions = {
   bundle: true,
   platform: 'node',
   format: 'cjs',
-  target: 'node16',
+  target: 'node18',
   external: ['fsevents', 'nodemon'],
   logLevel: 'info',
   minifyWhitespace: true,

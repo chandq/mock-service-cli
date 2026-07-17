@@ -1,5 +1,6 @@
 const express = require('express'),
-  { readdirSync, existsSync, readFileSync, statSync, createReadStream, rmSync } = require('fs'),
+  { readdirSync, existsSync, readFileSync, statSync, createReadStream, rmSync, mkdirSync, writeFileSync, renameSync } =
+    require('fs'),
   os = require('os'),
   path = require('path'),
   colors = require('colors/safe'),
@@ -41,6 +42,69 @@ function resolveExplorerPath(inputPath) {
   }
 
   return fullPath;
+}
+
+function validateEntryName(name) {
+  if (typeof name !== 'string') {
+    return 'Name must be a string';
+  }
+
+  const normalizedName = name.trim();
+  if (!normalizedName || normalizedName === '.' || normalizedName === '..') {
+    return 'Invalid name';
+  }
+
+  if (/[/\\\0<>:"|?*]/.test(normalizedName)) {
+    return 'Name contains invalid characters';
+  }
+
+  return null;
+}
+
+function getChildPath(parentPath, name) {
+  const nameError = validateEntryName(name);
+  if (nameError) {
+    const error = new Error(nameError);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const parentFullPath = resolveExplorerPath(parentPath || '/');
+  if (!existsSync(parentFullPath) || !statSync(parentFullPath).isDirectory()) {
+    const error = new Error('Parent directory not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const childPath = path.resolve(parentFullPath, name.trim());
+  const resolvedRoot = path.resolve(explorerRoot);
+  const rootPath = path.parse(resolvedRoot).root;
+
+  if (resolvedRoot !== rootPath && !isPathInsideRoot(childPath, resolvedRoot)) {
+    const error = new Error('Access denied');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return childPath;
+}
+
+function deleteExplorerPath(targetPath) {
+  const fullPath = resolveExplorerPath(targetPath);
+
+  if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
+    const error = new Error('Cannot delete explorer root');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!existsSync(fullPath)) {
+    const error = new Error('Path not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  rmSync(fullPath, { recursive: true, force: false });
 }
 
 if (!process.env.PORT) {
@@ -227,31 +291,107 @@ function init() {
     });
   });
 
-  // 删除目录/文件 API
-  app.delete('/__api/path', (req, res) => {
-    const targetPath = (req.body && req.body.path) || '/';
+  // 新建目录/文件 API
+  app.post('/__api/path', (req, res) => {
+    const parentPath = (req.body && req.body.parentPath) || '/';
+    const name = req.body && req.body.name;
+    const type = (req.body && req.body.type) || 'file';
+
+    if (type !== 'file' && type !== 'directory') {
+      return res.status(400).json({ error: 'Invalid type' });
+    }
 
     let fullPath;
     try {
-      fullPath = resolveExplorerPath(targetPath);
+      fullPath = getChildPath(parentPath, name);
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message });
     }
 
-    if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
-      return res.status(400).json({ error: 'Cannot delete explorer root' });
-    }
-
-    if (!existsSync(fullPath)) {
-      return res.status(404).json({ error: 'Path not found' });
+    if (existsSync(fullPath)) {
+      return res.status(409).json({ error: 'Path already exists' });
     }
 
     try {
-      rmSync(fullPath, { recursive: true, force: false });
+      if (type === 'directory') {
+        mkdirSync(fullPath);
+      } else {
+        writeFileSync(fullPath, '');
+      }
+      res.json({ success: true, path: fullPath });
+    } catch (error) {
+      console.error(colors.red(`Failed to create path: ${error.message}`));
+      res.status(500).json({ error: 'Failed to create path' });
+    }
+  });
+
+  // 重命名目录/文件 API
+  app.patch('/__api/path', (req, res) => {
+    const sourcePath = req.body && req.body.path;
+    const name = req.body && req.body.name;
+
+    let fullPath;
+    let nextPath;
+    try {
+      fullPath = resolveExplorerPath(sourcePath);
+      if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
+        return res.status(400).json({ error: 'Cannot rename explorer root' });
+      }
+      if (!existsSync(fullPath)) {
+        return res.status(404).json({ error: 'Path not found' });
+      }
+      nextPath = getChildPath(path.dirname(sourcePath || '/').replace(/\\/g, '/'), name);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
+    }
+
+    if (existsSync(nextPath)) {
+      return res.status(409).json({ error: 'Path already exists' });
+    }
+
+    try {
+      renameSync(fullPath, nextPath);
+      res.json({ success: true, path: sourcePath, nextPath: nextPath });
+    } catch (error) {
+      console.error(colors.red(`Failed to rename path: ${error.message}`));
+      res.status(500).json({ error: 'Failed to rename path' });
+    }
+  });
+
+  // 删除目录/文件 API
+  app.delete('/__api/path', (req, res) => {
+    const targetPath = (req.body && req.body.path) || '/';
+
+    try {
+      deleteExplorerPath(targetPath);
       res.json({ success: true, path: targetPath });
     } catch (error) {
       console.error(colors.red(`Failed to delete path: ${error.message}`));
-      res.status(500).json({ error: 'Failed to delete path' });
+      res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to delete path' });
+    }
+  });
+
+  // 批量删除目录/文件 API
+  app.delete('/__api/paths', (req, res) => {
+    const paths = (req.body && req.body.paths) || [];
+
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ error: 'Paths must be a non-empty array' });
+    }
+
+    const deleted = [];
+    try {
+      paths.forEach(targetPath => {
+        deleteExplorerPath(targetPath);
+        deleted.push(targetPath);
+      });
+      res.json({ success: true, deleted });
+    } catch (error) {
+      console.error(colors.red(`Failed to delete paths: ${error.message}`));
+      res.status(error.statusCode || 500).json({
+        error: error.statusCode ? error.message : 'Failed to delete paths',
+        deleted
+      });
     }
   });
 
@@ -261,7 +401,7 @@ function init() {
 function crossDomain() {
   return (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', '*');
     if (req.method === 'OPTIONS') res.status(200);
     next();
