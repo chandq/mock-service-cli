@@ -426,6 +426,11 @@
         color: white;
       }
 
+      .action-btn.delete:hover {
+        background: #dc3545;
+        color: white;
+      }
+
       .modal {
         display: none;
         position: fixed;
@@ -803,6 +808,8 @@
         🖥️ 在文件管理器中打开
       </div>
       <div class="context-menu-item" id="ctxDownload" onclick="handleContextMenuAction('download')">⬇️ 下载</div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" id="ctxDelete" onclick="handleContextMenuAction('delete')">🗑️ 删除</div>
     </div>
 
     <script>
@@ -865,6 +872,9 @@
               break;
             case 'download':
               downloadFile(path, filename);
+              break;
+            case 'delete':
+              deletePath(path, filename);
               break;
           }
           return;
@@ -1006,6 +1016,9 @@
             if (!isDirectory) {
               downloadFile(path, path.split('/').pop());
             }
+            break;
+          case 'delete':
+            deletePath(path, path.split('/').pop());
             break;
         }
 
@@ -1219,6 +1232,35 @@
         document.body.removeChild(a);
       }
 
+      async function deletePath(filePath, fileName) {
+        const label = fileName || filePath.split('/').pop() || filePath;
+        const confirmed = window.confirm(`确定要删除 "${label}" 吗？此操作不可恢复。`);
+
+        if (!confirmed) return;
+
+        try {
+          const response = await fetch('/__api/path', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: filePath })
+          });
+
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || '删除失败');
+          }
+
+          closeModal();
+          showToast('删除成功');
+          await loadDirectory(currentPath);
+        } catch (error) {
+          console.error('删除失败:', error);
+          alert('删除失败: ' + error.message);
+        }
+      }
+
       function renderBreadcrumb(currentPath, parentPath) {
         const breadcrumb = document.getElementById('breadcrumb');
         const parts = currentPath.split('/').filter(Boolean);
@@ -1295,6 +1337,9 @@
                       }" data-filename="${escapeHtml(file.name)}" title="下载">⬇️</button>`
                     : ''
                 }
+                <button class="action-btn delete" data-action="delete" data-path="${file.path}" data-filename="${escapeHtml(
+                  file.name
+                )}" title="删除">🗑️</button>
               </div>
             `;
           } else {

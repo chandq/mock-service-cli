@@ -1,5 +1,5 @@
 const express = require('express'),
-  { readdirSync, existsSync, readFileSync, statSync, createReadStream } = require('fs'),
+  { readdirSync, existsSync, readFileSync, statSync, createReadStream, rmSync } = require('fs'),
   os = require('os'),
   path = require('path'),
   colors = require('colors/safe'),
@@ -15,6 +15,33 @@ const argv = JSON.parse(process.env.ARGV);
 
 const explorerRoot = process.env.EXPLORER_DIRECTORY || process.cwd();
 const port = argv.p || argv.port;
+
+function isPathInsideRoot(fullPath, resolvedRoot) {
+  const relativePath = path.relative(resolvedRoot, fullPath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+
+function resolveExplorerPath(inputPath) {
+  const targetPath = decodeURIComponent(inputPath || '/');
+  let fullPath;
+  const resolvedRoot = path.resolve(explorerRoot);
+  const rootPath = path.parse(resolvedRoot).root;
+
+  if (resolvedRoot === rootPath) {
+    fullPath = path.resolve(targetPath);
+  } else {
+    const relativePath = targetPath.startsWith('/') ? targetPath.substring(1) : targetPath;
+    fullPath = path.resolve(resolvedRoot, relativePath);
+  }
+
+  if (resolvedRoot !== rootPath && !isPathInsideRoot(fullPath, resolvedRoot)) {
+    const error = new Error('Access denied');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return fullPath;
+}
 
 if (!process.env.PORT) {
   portfinder.basePort = port || 8090;
@@ -49,23 +76,10 @@ function init() {
     dirPath = decodeURIComponent(dirPath);
 
     let fullPath;
-    const resolvedRoot = path.resolve(explorerRoot);
-
-    if (explorerRoot === '/') {
-      // 根目录，可以直接使用绝对路径
-      fullPath = dirPath;
-    } else {
-      // 非根目录，应该将 dirPath 视为相对于 explorerRoot 的路径
-      // 如果 dirPath 以 / 开头，去掉前面的 /
-      const relativePath = dirPath.startsWith('/') ? dirPath.substring(1) : dirPath;
-      fullPath = path.resolve(explorerRoot, relativePath);
-    }
-
-    // 防止路径遍历攻击 - 确保路径不会越界
-    if (explorerRoot !== '/') {
-      if (!fullPath.startsWith(resolvedRoot)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    try {
+      fullPath = resolveExplorerPath(dirPath);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
     }
 
     if (!existsSync(fullPath)) {
@@ -133,23 +147,10 @@ function init() {
     filePath = decodeURIComponent(filePath);
 
     let fullPath;
-    const resolvedRoot = path.resolve(explorerRoot);
-
-    if (explorerRoot === '/') {
-      // 根目录，可以直接使用绝对路径
-      fullPath = filePath;
-    } else {
-      // 非根目录，应该将 filePath 视为相对于 explorerRoot 的路径
-      // 如果 filePath 以 / 开头，去掉前面的 /
-      const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-      fullPath = path.resolve(explorerRoot, relativePath);
-    }
-
-    // 防止路径遍历攻击 - 确保路径不会越界
-    if (explorerRoot !== '/') {
-      if (!fullPath.startsWith(resolvedRoot)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    try {
+      fullPath = resolveExplorerPath(filePath);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
     }
 
     if (!existsSync(fullPath)) {
@@ -192,23 +193,10 @@ function init() {
     filePath = decodeURIComponent(filePath);
 
     let fullPath;
-    const resolvedRoot = path.resolve(explorerRoot);
-
-    if (explorerRoot === '/') {
-      // 根目录，可以直接使用绝对路径
-      fullPath = filePath;
-    } else {
-      // 非根目录，应该将 filePath 视为相对于 explorerRoot 的路径
-      // 如果 filePath 以 / 开头，去掉前面的 /
-      const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-      fullPath = path.resolve(explorerRoot, relativePath);
-    }
-
-    // 防止路径遍历攻击 - 确保路径不会越界
-    if (explorerRoot !== '/') {
-      if (!fullPath.startsWith(resolvedRoot)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
+    try {
+      fullPath = resolveExplorerPath(filePath);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
     }
 
     if (!existsSync(fullPath)) {
@@ -237,6 +225,34 @@ function init() {
       }
       res.json({ success: true, path: fullPath });
     });
+  });
+
+  // 删除目录/文件 API
+  app.delete('/__api/path', (req, res) => {
+    const targetPath = (req.body && req.body.path) || '/';
+
+    let fullPath;
+    try {
+      fullPath = resolveExplorerPath(targetPath);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
+    }
+
+    if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
+      return res.status(400).json({ error: 'Cannot delete explorer root' });
+    }
+
+    if (!existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Path not found' });
+    }
+
+    try {
+      rmSync(fullPath, { recursive: true, force: false });
+      res.json({ success: true, path: targetPath });
+    } catch (error) {
+      console.error(colors.red(`Failed to delete path: ${error.message}`));
+      res.status(500).json({ error: 'Failed to delete path' });
+    }
   });
 
   startServer();
