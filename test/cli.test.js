@@ -5,7 +5,7 @@ const request = require('request');
 const path = require('path');
 const spawn = require('child_process').spawn;
 const portfinder = require('portfinder');
-const { dateFormat, logger } = require('../lib/utils');
+const { dateFormat, logger } = require('../src/lib/utils');
 
 const node = process.execPath;
 
@@ -127,7 +127,7 @@ test('run genMockFiles function, log file - with args', async t => {
   const server = startServer(options);
   tearDown(server, t);
   process.env.ARGV = JSON.stringify({ l: true });
-  await require('../lib/manageMockFiles.js').genMockFiles({
+  await require('../src/lib/manageMockFiles.js').genMockFiles({
     url: '/api/yyds/logfile',
     method: 'post',
     data: { type: 'post' },

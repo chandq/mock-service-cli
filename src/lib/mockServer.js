@@ -18,6 +18,7 @@ const {
   filePath2ApiUrl,
   isEmptyObj
 } = require('./utils');
+const { getPackageVersion } = require('./packageInfo');
 const { genMockFiles, getMockStatFromDir, getMockStatFromFile } = require('./manageMockFiles');
 const registeredApis = [];
 const methodRegExp = new RegExp(`((${SupportMethods.join('|')}) +)?([^?]*)`, 'i');
@@ -401,7 +402,7 @@ function startServer() {
       );
       if (!process.env.RESTARTED) {
         console.info(
-          [colors.yellow('\n🌍  mock-server version: '), colors.cyan(require('../package.json').version), '\n'].join('')
+          [colors.yellow('\n🌍  mock-server version: '), colors.cyan(getPackageVersion()), '\n'].join('')
         );
         console.info(colors.yellow(`\n Mock server available on:\n`));
         console.info('    http://localhost:' + colors.green(process.env.PORT));

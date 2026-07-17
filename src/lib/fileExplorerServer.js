@@ -8,6 +8,7 @@ const express = require('express'),
   { exec } = require('child_process');
 const ifaces = os.networkInterfaces();
 const { dateFormat, logger } = require('./utils');
+const { getPackageVersion } = require('./packageInfo');
 
 const app = express();
 const log = logger(process.env.SILENT);
@@ -266,7 +267,7 @@ function startServer() {
     console.info(
       [
         colors.yellow('\n🌍  file-explorer-server version: '),
-        colors.cyan(require('../package.json').version),
+        colors.cyan(getPackageVersion()),
         '\n'
       ].join('')
     );

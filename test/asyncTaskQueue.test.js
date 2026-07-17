@@ -1,5 +1,5 @@
 const test = require('tap').test;
-const AsyncTaskQueue = require('../lib/asyncTaskQueue');
+const AsyncTaskQueue = require('../src/lib/asyncTaskQueue');
 
 test('AsyncTaskQueue constructor - basic initialization', t => {
   t.plan(5);

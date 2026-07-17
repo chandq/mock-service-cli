@@ -2,14 +2,18 @@
   "name": "mock-service-cli",
   "version": "3.7.0",
   "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page, File explorer",
-  "main": "./lib/mockServer.js",
+  "main": "./dist/mockServer.js",
   "bin": {
     "mock-service-cli": "bin/mock-service-cli"
   },
   "scripts": {
+    "build": "node ./scripts/build.js",
+    "prepack": "npm run build",
+    "prestart": "npm run build",
     "start": "node ./bin/mock-service-cli",
+    "pretest": "npm run build",
     "test:unit": "tap --reporter=spec test/*.test.js",
-    "test": "tap --cov --coverage-report=lcov --reporter=spec test/*.test.js ",
+    "test": "tap --cov --coverage-report=lcov --reporter=spec test/*.test.js",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",
     "fix": "eslint --ext .js,.vue,.css --fix",
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
@@ -21,12 +25,11 @@
     "release:major": "standard-version --release-as major && git push --follow-tags origin master"
   },
   "files": [
-    "lib",
     "bin",
-    "doc"
+    "dist"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=16"
   },
   "author": "chendq <deqiaochen@gmail.com>",
   "keywords": [
@@ -50,27 +53,28 @@
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "colors": "^1.4.0",
-    "express": "^4.17.1",
-    "fs-extra": "^10.0.0",
-    "http-proxy-middleware": "^2.0.6",
-    "lodash": "^4.17.21",
-    "minimist": "^1.2.6",
-    "nodemon": "^2.0.19",
-    "portfinder": "^1.0.28",
-    "socket.io": "^4.4.0"
+    "nodemon": "^2.0.19"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
     "babel-eslint": "^10.1.0",
+    "body-parser": "^1.20.2",
+    "colors": "^1.4.0",
+    "esbuild": "^0.21.5",
     "eslint": "^7.0.0",
     "eslint-config-populist": "^4.2.0",
     "eslint-plugin-mocha": "^9.0.0",
+    "express": "^4.17.1",
+    "fs-extra": "^10.0.0",
     "husky": "^4.3.8",
+    "http-proxy-middleware": "^2.0.6",
     "lint-staged": "^10.2.2",
+    "lodash": "^4.17.21",
+    "minimist": "^1.2.6",
     "mockjs": "^0.1.10",
+    "portfinder": "^1.0.28",
+    "socket.io": "^4.4.0",
     "standard-version": "^8.0.0",
     "tap": "^15.0.10"
   },
@@ -98,7 +102,7 @@
   },
   "directories": {
     "doc": "docs",
-    "lib": "lib",
+    "lib": "src/lib",
     "test": "test"
   }
 }

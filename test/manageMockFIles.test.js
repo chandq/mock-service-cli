@@ -7,7 +7,7 @@
  */
 const test = require('tap').test;
 const path = require('path');
-const { genMockFiles, getMockStatFromDir, getMockStatFromFile, hasMockApi } = require('../lib/manageMockFiles');
+const { genMockFiles, getMockStatFromDir, getMockStatFromFile, hasMockApi } = require('../src/lib/manageMockFiles');
 
 test('run genMockFiles function - with args', async t => {
   t.plan(1);

@@ -1,0 +1,269 @@
+#!/usr/bin/env node
+
+const colors = require('colors/safe'),
+  portfinder = require('portfinder'),
+  { resolve } = require('path'),
+  nodemon = require('nodemon');
+const { existsSync } = require('fs-extra');
+const argv = require('minimist')(process.argv.slice(2));
+const { logger } = require('../lib/utils');
+const { getPackageVersion } = require('../lib/packageInfo');
+const spawn = require('child_process').spawn;
+const node = process.execPath;
+
+process.title = 'mock-service-cli';
+
+if (argv.h || argv.help) {
+  console.log(
+    [
+      'usage: mock-service-cli [options]',
+      '',
+      'PS: Mock File仅支持commonjs规范的js、cjs文件，不支持ES Module',
+      'options:',
+      '  -p --port            Mock server port to use. If 0, look for open port. [8090]',
+      '  -d                   Specify mock directory, default [./mock] directory,',
+      '                       Also watch js files changes and support hot reload',
+      '  -f --file            Specify the input data source, support javascript ',
+      '                       The priority is over the directory watches',
+      '  -s --silent          Suppress log messages from output',
+      '  -S --socket-server   Whether start socket server or not, default false.',
+      '  -a --api-stat        Whether print api url and file path or not, default false.',
+      '  -t --track           Whether record operation info by write file, default false.',
+      '  -o --cors-origin     Allow origin by cors, list separated by commas, must not be * when withCredential is true',
+      '                       .If specified, cors-headers will be "Authorization,Content-Type,Accept,Origin,User-Agent,DNT',
+      '                       ,Cache-Control,X-Mx-ReqToken,X-Data-Type,X-Requested-With,X-Data-Type,X-Auth-Token,Token", default *.',
+      '  -H --cors-headers    When start Mock Server, optionally provide CORS headers list separated by commas. default *',
+      '  -A --append-headers  When start Mock/Web/Static Server, optionally add response headers list separated by commas.',
+      '                       For example: X-Frame-options=DENY,content-security-policy=frame-ancestors',
+      '',
+      '  -O --proxy-options   Optionally provide proxy options list separated by commas.',
+      '  -r --rewrite         rewrite http or https request url prefix of proxy, default false.',
+      '',
+      '  -D --web-dir         Enable web server, specify web directory, default [./dist] directory',
+      '  -P --web-port        Web server port to use. If 0, look for open port. [9090]',
+      '  -b --web-baseurl     Specify website public path when enabled web server.',
+      '',
+      '  -R --static-server   Specify static resource file directory when enabled static server.',
+      '',
+      '  -h --help            Print this list and exit.',
+      '  -v --version         Print the version and exit.',
+      '  -w --open            Open API overview page automatically, default false.',
+      '  -e --explorer        Enable file explorer server, specify directory to browse, default [./].'
+    ].join('\n')
+  );
+  process.exit();
+}
+
+// 保留命令行参数
+process.env.ARGV = JSON.stringify(argv);
+
+var port = argv.p || argv.port,
+  watchDir = argv.d,
+  specifiedFile = argv.f || argv.file,
+  version = argv.v || argv.version,
+  isStartSocketServer = argv.S || false,
+  rewrite = argv.r || argv.rewrite || false,
+  isOpenApiOverview = argv.w || argv.open || false,
+  explorerDir = argv.e || argv.explorer,
+  log = null;
+
+if (!argv.s && !argv.silent) {
+  log = logger(false);
+} else if (colors) {
+  process.env.SILENT = true;
+  log = logger(true);
+}
+// 注入环境变量
+const injectEnvVariable = (envName, envArgs) => {
+  if (envArgs) {
+    process.env[envName] = envArgs;
+  }
+};
+
+if (isStartSocketServer) {
+  process.env.SOCKET_SERVER = true;
+}
+
+if (isOpenApiOverview) {
+  process.env.OPEN_API_OVERVIEW = true;
+}
+
+if (version) {
+  log.info('v' + getPackageVersion());
+  process.exit();
+}
+injectEnvVariable('PREFIX_REWRITE', rewrite);
+injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
+injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
+
+injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
+injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
+injectEnvVariable('EXPLORER_DIRECTORY', explorerDir);
+// injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
+// 解析Web代理配置项（来源js|config文件或命令行参数字符串）
+const proxyArg = argv.O || argv['proxy-options'];
+if (proxyArg) {
+  const proxyTable = {};
+  if (proxyArg.endsWith('.js') || proxyArg.endsWith('.json')) {
+    const proxyOptFile = resolve(process.cwd(), proxyArg);
+    if (!existsSync(proxyOptFile)) {
+      console.error(`proxy-options: 文件 ${proxyOptFile} 不存在`);
+      process.exit();
+    }
+    const proxyObj = require(proxyOptFile);
+    Object.keys(proxyObj).forEach(function (h) {
+      proxyTable[h] = proxyObj[h];
+    }, this);
+  } else {
+    try {
+      proxyArg.split(/\s*,\s*/).forEach(function (h) {
+        const [origin, target] = h.split('|');
+        proxyTable[origin] = target;
+      }, this);
+    } catch (error) {
+      console.warn(colors.yellow('\nParse web proxy options Failed:', error));
+      throw error;
+    }
+  }
+  process.env.PROXY_OPTIONS = JSON.stringify(proxyTable);
+}
+// whether to start Web server or not
+if (argv.D || argv['web-dir']) {
+  // 解析SPA应用参数：SPA Web目录
+  process.env.WEB_ROOT = resolve(process.cwd(), argv.D || argv['web-dir']);
+  if (!existsSync(process.env.WEB_ROOT)) {
+    console.error(`web-dir: 目录 ${process.env.WEB_ROOT} 不存在`);
+    process.exit();
+  }
+  // Web Server port
+  portfinder.basePort = argv.P || argv['web-port'] || 9090;
+  portfinder.getPort(function (err, webPort) {
+    if (err) {
+      throw err;
+    }
+    process.env.WEB_PORT = webPort;
+    // Mock Server port
+    portfinder.basePort = port || 8090;
+    portfinder.getPort(function (err, port) {
+      if (err) {
+        throw err;
+      }
+      process.env.PORT = port;
+      initServe();
+    });
+  });
+} else {
+  // Mock Server port
+  portfinder.basePort = port || 8090;
+  portfinder.getPort(function (err, port) {
+    if (err) {
+      throw err;
+    }
+    process.env.PORT = port;
+    initServe();
+  });
+}
+
+/**
+ * Watch change of mock files, restart serve
+ * @param watchDir
+ */
+function watchMockFiles(watchDir) {
+  /**
+   * script 重启的脚本
+   * ext 检测的文件
+   */
+  nodemon({
+    script: resolve(__dirname, './mockServer.js'),
+    watch: [watchDir],
+    ext: 'cjs,js,json'
+  });
+
+  nodemon
+    .on('start', function () {
+      // log.info('nodemon: mockServer has started');
+    })
+    .on('quit', function () {
+      // log.info('nodemon: mockServer has quit');
+      process.exit();
+    })
+    .on('restart', function (files) {
+      process.env.RESTARTED = true;
+      log.info(
+        [colors.green('\nnodemon: mockServer restarted due to: '), files, colors.green(' have changed'), '\n'].join('')
+      );
+    });
+}
+
+// Node子进程启动MockServer
+function startMockServer() {
+  spawn(node, [resolve(__dirname, './mockServer.js')], {
+    stdio: 'inherit'
+  });
+}
+
+// Node子进程启动StaticServer
+function startStaticServer() {
+  spawn(node, [resolve(__dirname, './staticServer.js')], {
+    stdio: 'inherit'
+  });
+}
+
+// Node子进程启动FileExplorerServer
+function startFileExplorerServer() {
+  spawn(node, [resolve(__dirname, './fileExplorerServer.js')], {
+    stdio: 'inherit'
+  });
+}
+/**
+ * 初始化服务
+ */
+function initServe() {
+  if (explorerDir) {
+    // 文件浏览器：指定目录
+    process.env.EXPLORER_DIRECTORY = resolve(process.cwd(), explorerDir);
+    if (!existsSync(process.env.EXPLORER_DIRECTORY)) {
+      console.error(`explorer: 目录 ${process.env.EXPLORER_DIRECTORY} 不存在`);
+      process.exit();
+    }
+    startFileExplorerServer();
+  } else if (specifiedFile) {
+    // Mock服务器：指定文件
+    process.env.SPECIFIED_FILE = resolve(process.cwd(), specifiedFile);
+    if (isStartSocketServer) {
+      startMockServer();
+    } else {
+      watchMockFiles(process.env.SPECIFIED_FILE);
+    }
+  } else if (watchDir) {
+    // Mock服务器：指定目录
+    process.env.SPECIFIED_DIR = resolve(process.cwd(), watchDir);
+    // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+    if (isStartSocketServer) {
+      startMockServer();
+    } else {
+      watchMockFiles(process.env.SPECIFIED_DIR);
+    }
+  } else if (process.env.STATIC_DIRECTORY) {
+    // 静态服务器
+    process.env.STATIC_DIRECTORY = resolve(process.cwd(), process.env.STATIC_DIRECTORY);
+    startStaticServer();
+  } else {
+    // Mock服务：使用默认目录
+    watchDir = process.env.SPECIFIED_DIR = resolve(process.cwd(), './mock');
+    // log.info('SPECIFIED_DIR::', process.env.SPECIFIED_DIR);
+    if (isStartSocketServer) {
+      startMockServer();
+    } else {
+      // whether include web serve or not
+      const includesWebServe = process.env.STATIC_DIRECTORY || process.env.WEB_ROOT;
+
+      if (includesWebServe && !existsSync(resolve(process.cwd(), watchDir))) {
+        // 若包含web服务，则允许不启动mock服务
+        startMockServer();
+      } else {
+        watchMockFiles(watchDir);
+      }
+    }
+  }
+}

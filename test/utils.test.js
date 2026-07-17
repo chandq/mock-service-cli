@@ -16,7 +16,7 @@ const {
   readStream,
   debounce,
   throttle
-} = require('../lib/utils');
+} = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
   t.plan(2);

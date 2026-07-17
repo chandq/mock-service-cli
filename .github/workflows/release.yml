@@ -8,7 +8,10 @@ on:
     branches: [master]
     paths:
       - 'src/**' # 当 src 目录下的文件变化时触发
-      - 'lib/**' # 当 lib 目录下的文件变化时触发
+      - 'bin/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
 
 jobs:
   unit-test:
@@ -17,7 +20,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        node-version: [12.x, 14.x, 16.x, 18.x, 20.x, 22.x, 24.x]
+        node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
         os: [ubuntu-latest, windows-latest]
 
     steps:
@@ -32,11 +35,13 @@ jobs:
 
       - name: Install deps
         run: npm ci
-      - name: Test
-        run: npm test --if-present
-
       - name: Build
         run: npm run build --if-present
+      - name: Test
+        run: npm test --if-present
+      - name: Pack dry run
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        run: npm pack --dry-run
 
   release:
     name: Release
@@ -85,6 +90,8 @@ jobs:
             Please refer to [CHANGELOG.md](https://github.com/chandq/mock-service-cli/blob/master/CHANGELOG.md) for details.
       - name: Build
         run: npm run build --if-present
+      - name: Pack dry run
+        run: npm pack --dry-run
 
       - name: Publish to npm
         run: npm publish --provenance --access public --registry https://registry.npmjs.org
