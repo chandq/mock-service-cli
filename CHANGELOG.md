@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.7.0](https://github.com/chandq/mock-service-cli/compare/v3.6.5...v3.7.0) (2026-07-17)
+
+
+### Features
+
+* show total file size, support  toggle show file birthtime ([19ed5cf](https://github.com/chandq/mock-service-cli/commit/19ed5cfabd2ba91ca852c84963b8d4753ca89b0d))
+
 ### [3.6.5](https://github.com/chandq/mock-service-cli/compare/v3.6.4...v3.6.5) (2026-06-20)
 
 ### [3.6.4](https://github.com/chandq/mock-service-cli/compare/v3.6.3...v3.6.4) (2026-04-18)
