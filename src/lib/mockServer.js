@@ -1,5 +1,4 @@
 const express = require('express'), // 引入express
-  bodyParser = require('body-parser'),
   { readdirSync, existsSync } = require('fs'),
   os = require('os'),
   path = require('path'),
@@ -72,7 +71,7 @@ function init() {
   }
 
   app.use(crossDomain()); // 允许跨域
-  app.use(bodyParser.json()); // 解析body
+  app.use(express.json()); // 解析body
 
   // API 概览页面路由
   app.get('/__api-overview', (req, res) => {
@@ -317,7 +316,7 @@ function startServer() {
     const defaultStaticEntry = `${process.env.WEB_ROOT}/index.html`;
     if (existsSync(defaultStaticEntry)) {
       // Used as static HTTP server for SPA
-      webApp.get('*', (req, res) => {
+      webApp.use((req, res) => {
         res.sendFile(defaultStaticEntry);
       });
     } else {

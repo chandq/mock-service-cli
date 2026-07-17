@@ -1,5 +1,4 @@
 const express = require('express'),
-  bodyParser = require('body-parser'),
   { readdirSync, existsSync, readFileSync, statSync, createReadStream } = require('fs'),
   os = require('os'),
   path = require('path'),
@@ -32,7 +31,7 @@ if (!process.env.PORT) {
 
 function init() {
   app.use(crossDomain());
-  app.use(bodyParser.json());
+  app.use(express.json());
 
   // 文件浏览页面
   app.get('/', (req, res) => {
