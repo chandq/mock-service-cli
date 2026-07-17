@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.2.0](https://github.com/chandq/mock-service-cli/compare/v4.1.0...v4.2.0) (2026-07-17)
+
+
+### Features
+
+* add deletion function ([73d4e06](https://github.com/chandq/mock-service-cli/commit/73d4e067f0461f0faf879766e36af089ae3006dc))
+* add functions for create new folder, create new file, batch delete ([89b0b50](https://github.com/chandq/mock-service-cli/commit/89b0b5028da01b3520bc0ec79820703372d72864))
+* add switch button to toggle enable edit mode, improve support cross platform ([fc42d00](https://github.com/chandq/mock-service-cli/commit/fc42d00104f05594649cd8c201aeb1ac739dcf3f))
+
 ## [4.1.0](https://github.com/chandq/mock-service-cli/compare/v4.0.0...v4.1.0) (2026-07-17)
 
 
