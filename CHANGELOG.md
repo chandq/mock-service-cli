@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.1.0](https://github.com/chandq/mock-service-cli/compare/v4.0.0...v4.1.0) (2026-07-17)
+
+
+### Features
+
+* upgrade express、esbuild and so on to reduce package size, support node least version 18 ([6bdcfc9](https://github.com/chandq/mock-service-cli/commit/6bdcfc97c27b5fadf48f74bcb4987e8bcd7a30e6))
+
 ## [4.0.0](https://github.com/chandq/mock-service-cli/compare/v3.7.0...v4.0.0) (2026-07-17)
 
 
