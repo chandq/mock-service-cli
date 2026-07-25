@@ -11,6 +11,13 @@
         box-sizing: border-box;
       }
 
+      .icon-sprite {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+      }
+
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -335,6 +342,7 @@
       }
 
       .file-grid {
+        --list-row-height: 37px;
         position: relative;
         overflow: auto;
         flex: 1;
@@ -351,17 +359,19 @@
         top: 0;
         left: 0;
         right: 0;
+        overflow-anchor: none;
       }
 
       .virtual-content.grid-view {
-        display: grid;
-        gap: 8px;
-        grid-auto-rows: 124px;
-        padding: 8px;
+        display: block;
       }
 
       .virtual-content.list-view {
         display: block;
+      }
+
+      .virtual-content .file-item {
+        position: absolute;
       }
 
       .file-item {
@@ -371,7 +381,7 @@
         padding: 10px 8px;
         border-radius: 6px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: background-color 0.2s;
       }
 
       .grid-view .file-item {
@@ -393,7 +403,7 @@
         border-bottom: 1px solid #f0f0f0;
         border-radius: 0;
         min-height: auto;
-        height: 37px;
+        height: var(--list-row-height);
       }
 
       .file-icon {
@@ -460,6 +470,7 @@
         margin-bottom: 0;
         flex: 1;
         font-size: 12px;
+        min-width: 0;
       }
 
       .file-meta {
@@ -468,12 +479,22 @@
       }
       .birthtime {
         padding-right: 4px;
+        display: none;
+      }
+
+      .birthtime.visible {
+        display: inline-block;
       }
 
       .list-view .file-meta {
         display: flex;
         gap: 10px;
         font-size: 10px;
+      }
+
+      .date-compact,
+      .more-actions-btn {
+        display: none;
       }
 
       .hidden-file {
@@ -486,7 +507,24 @@
       }
 
       .list-view .action-buttons {
-        display: flex;
+        display: none;
+      }
+
+      .list-view .more-actions-btn {
+        display: inline-flex;
+        flex: 0 0 28px;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-left: 6px;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #666;
+        font-size: 20px;
+        line-height: 1;
       }
 
       .action-btn {
@@ -521,6 +559,89 @@
       .action-btn.delete:hover {
         background: #dc3545;
         color: white;
+      }
+
+      @media (max-width: 767px) {
+        .file-grid.list-view {
+          --list-row-height: 48px;
+        }
+
+        .file-grid.list-view.show-birthtime {
+          --list-row-height: 65px;
+        }
+
+        .list-view .file-item {
+          align-items: flex-start;
+          padding: 7px 10px;
+        }
+
+        .list-view .file-icon {
+          flex: 0 0 20px;
+          margin-top: 2px;
+          margin-right: 7px;
+        }
+
+        .list-view .file-select {
+          flex: 0 0 auto;
+          margin: 3px 7px 0 0;
+        }
+
+        .list-view .file-info {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 3px;
+          min-width: 0;
+        }
+
+        .list-view .file-name {
+          width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .list-view .file-meta {
+          display: flex;
+          width: 100%;
+          gap: 3px;
+          flex-wrap: wrap;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+
+        .list-view .file-meta > span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .date-full {
+          display: none;
+        }
+
+        .date-compact {
+          display: inline;
+          vertical-align: middle;
+        }
+
+        .list-view .birthtime.visible {
+          flex-basis: 100%;
+          display: block;
+          padding-right: 0;
+        }
+
+        .list-view .action-buttons {
+          display: none !important;
+        }
+
+        .list-view .more-actions-btn {
+          margin: 10px 0 0 6px;
+        }
+
+        .file-grid.list-view.show-birthtime .more-actions-btn {
+          margin-top: 17px;
+        }
       }
 
       .modal {
@@ -828,6 +949,15 @@
     </style>
   </head>
   <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </symbol>
+      <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+      </symbol>
+    </svg>
     <div class="container">
       <div class="header">
         <h1>📁 文件浏览器</h1>
@@ -1047,6 +1177,12 @@
             case 'toggleSelect':
               toggleSelectedPath(path, actionBtn.checked, actionBtn.closest('.file-item'));
               break;
+            case 'more': {
+              const fileItem = actionBtn.closest('.file-item');
+              const rect = actionBtn.getBoundingClientRect();
+              showContextMenu(rect.right, rect.bottom, fileItem.dataset.path, fileItem.dataset.isDirectory === 'true');
+              break;
+            }
           }
           return;
         }
@@ -1139,7 +1275,7 @@
         addEventListenerWithCleanup(document, 'keydown', handleDocumentKeydown);
 
         fileGridResizeObserver = new ResizeObserver(() => {
-          if (virtualState && currentView === 'grid') {
+          if (virtualState) {
             renderFiles(currentFiles, false);
           }
         });
@@ -1600,10 +1736,12 @@
 
         if (currentView === 'list') {
           fileGrid.classList.add('list-view');
+          fileGrid.classList.toggle('show-birthtime', showBirthtime);
           toggleBirthtimeBtn.style.display = 'inline-block';
         } else {
           toggleBirthtimeBtn.style.display = 'none';
           fileGrid.classList.remove('list-view');
+          fileGrid.classList.remove('show-birthtime');
         }
 
         if (!files || files.length === 0) {
@@ -1615,19 +1753,33 @@
         const isListView = currentView === 'list';
         const columnCount = isListView
           ? 1
-          : Math.max(1, Math.floor((Math.max(fileGrid.clientWidth, GRID_MIN_ITEM_WIDTH + 16) - 8) / (GRID_MIN_ITEM_WIDTH + 8)));
-        const rowHeight = isListView ? LIST_ROW_HEIGHT : GRID_ROW_HEIGHT;
+          : Math.max(
+              1,
+              Math.floor((Math.max(fileGrid.clientWidth, GRID_MIN_ITEM_WIDTH + 16) - 8) / (GRID_MIN_ITEM_WIDTH + 8))
+            );
+        const rowHeight = isListView ? getListRowHeight(fileGrid) : GRID_ROW_HEIGHT;
         const totalRows = Math.ceil(files.length / columnCount);
+        const gridItemWidth = isListView ? null : (fileGrid.clientWidth - 16 - (columnCount - 1) * 8) / columnCount;
         const spacer = document.createElement('div');
         spacer.className = 'virtual-spacer';
         spacer.style.height = `${totalRows * rowHeight + (isListView ? 0 : 8)}px`;
         const content = document.createElement('div');
         content.className = `virtual-content ${isListView ? 'list-view' : 'grid-view'}`;
-        if (!isListView) {
-          content.style.gridTemplateColumns = `repeat(${columnCount}, minmax(${GRID_MIN_ITEM_WIDTH}px, 1fr))`;
-        }
 
-        virtualState = { files, columnCount, rowHeight, isListView, spacer, content, startRow: -1, endRow: -1 };
+        virtualState = {
+          files,
+          columnCount,
+          rowHeight,
+          gridItemWidth,
+          isListView,
+          spacer,
+          content,
+          itemPool: [],
+          freeItems: [],
+          renderedItems: new Map(),
+          startRow: -1,
+          endRow: -1
+        };
         fileGrid.replaceChildren(spacer, content);
         if (resetScroll) fileGrid.scrollTop = 0;
         renderVirtualWindow();
@@ -1641,65 +1793,193 @@
         });
       }
 
+      function getListRowHeight(fileGrid) {
+        const rowHeight = Number.parseFloat(getComputedStyle(fileGrid).getPropertyValue('--list-row-height'));
+        return Number.isFinite(rowHeight) ? rowHeight : LIST_ROW_HEIGHT;
+      }
+
       function renderVirtualWindow() {
         if (!virtualState) return;
         const fileGrid = document.getElementById('fileGrid');
-        const { files, columnCount, rowHeight, isListView, content } = virtualState;
+        const {
+          files,
+          columnCount,
+          rowHeight,
+          gridItemWidth,
+          isListView,
+          content,
+          itemPool,
+          freeItems,
+          renderedItems
+        } = virtualState;
         const firstVisibleRow = Math.floor(fileGrid.scrollTop / rowHeight);
         const visibleRows = Math.ceil(fileGrid.clientHeight / rowHeight);
         const startRow = Math.max(0, firstVisibleRow - VIRTUAL_BUFFER_ROWS);
-        const endRow = Math.min(Math.ceil(files.length / columnCount), firstVisibleRow + visibleRows + VIRTUAL_BUFFER_ROWS);
+        const endRow = Math.min(
+          Math.ceil(files.length / columnCount),
+          firstVisibleRow + visibleRows + VIRTUAL_BUFFER_ROWS
+        );
         const startIndex = startRow * columnCount;
         const endIndex = Math.min(files.length, endRow * columnCount);
 
         if (virtualState.startRow === startRow && virtualState.endRow === endRow) return;
         virtualState.startRow = startRow;
         virtualState.endRow = endRow;
-        const fragment = document.createDocumentFragment();
+        renderedItems.forEach((fileItem, fileIndex) => {
+          if (fileIndex < startIndex || fileIndex >= endIndex) {
+            renderedItems.delete(fileIndex);
+            fileItem.hidden = true;
+            freeItems.push(fileItem);
+          }
+        });
 
-        for (let index = startIndex; index < endIndex; index++) {
-          fragment.appendChild(createFileItem(files[index], isListView));
+        for (let fileIndex = startIndex; fileIndex < endIndex; fileIndex++) {
+          if (renderedItems.has(fileIndex)) continue;
+
+          let fileItem = freeItems.pop();
+          if (!fileItem) {
+            fileItem = createFileItemElement(isListView);
+            itemPool.push(fileItem);
+            content.appendChild(fileItem);
+          }
+          updateFileItem(fileItem, files[fileIndex]);
+          positionVirtualItem(fileItem, fileIndex, columnCount, rowHeight, gridItemWidth, isListView);
+          fileItem.hidden = false;
+          renderedItems.set(fileIndex, fileItem);
         }
-
-        content.style.transform = `translateY(${startRow * rowHeight}px)`;
-        content.replaceChildren(fragment);
       }
 
-      function createFileItem(file, isListView) {
-        const icon = getFileIcon(file);
-        const size = formatSize(file.size);
-        const mtime = formatDate(file.mtime);
-        const birthtime = formatDate(file.birthtime);
-        const hiddenClass = file.isHidden ? 'hidden-file' : '';
-        const selectedClass = selectedPaths.has(file.path) ? 'selected' : '';
-        const selectedAttr = selectedPaths.has(file.path) ? 'checked' : '';
-        const selectLabel = file.isDirectory ? '选择文件夹' : '选择文件';
-        const pathAttr = escapeAttribute(file.path);
-        const nameAttr = escapeAttribute(file.name);
+      function positionVirtualItem(fileItem, fileIndex, columnCount, rowHeight, gridItemWidth, isListView) {
+        fileItem.style.transform = '';
+        if (isListView) {
+          fileItem.style.left = '0';
+          fileItem.style.right = '0';
+          fileItem.style.top = `${fileIndex * rowHeight}px`;
+          fileItem.style.width = '';
+          return;
+        }
+
+        const row = Math.floor(fileIndex / columnCount);
+        const column = fileIndex % columnCount;
+        fileItem.style.left = `${8 + column * (gridItemWidth + 8)}px`;
+        fileItem.style.right = 'auto';
+        fileItem.style.top = `${8 + row * rowHeight}px`;
+        fileItem.style.width = `${gridItemWidth}px`;
+      }
+
+      function createFileItemElement(isListView) {
         const fileItem = document.createElement('div');
-        fileItem.className = `file-item ${hiddenClass} ${selectedClass}`;
-        fileItem.dataset.path = file.path;
-        fileItem.dataset.isDirectory = file.isDirectory;
+        fileItem.className = 'file-item';
+        const select = document.createElement('input');
+        select.className = 'file-select edit-only edit-inline-block';
+        select.type = 'checkbox';
+        select.dataset.action = 'toggleSelect';
+        fileItem.appendChild(select);
+
+        const icon = createFileIconElement();
+        fileItem.appendChild(icon.wrapper);
+
+        const info = document.createElement('div');
+        info.className = 'file-info';
+        const name = document.createElement('div');
+        name.className = 'file-name';
+        info.appendChild(name);
+        const meta = document.createElement('div');
+        meta.className = 'file-meta';
+        const type = document.createElement('span');
+        meta.appendChild(type);
+        info.appendChild(meta);
+        fileItem.appendChild(info);
+
+        const refs = { select, icon, name, type };
 
         if (isListView) {
-          fileItem.innerHTML = `
-            <input class="file-select edit-only edit-inline-block" type="checkbox" data-action="toggleSelect" data-path="${pathAttr}" title="${selectLabel}" ${selectedAttr} />
-            <div class="file-icon">${icon}</div>
-            <div class="file-info"><div class="file-name">${escapeHtml(file.name)}</div><div class="file-meta">${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}<span>${mtime}</span><span class="birthtime" style="display: ${showBirthtime ? 'inline-block' : 'none'};">${birthtime}</span></div></div>
-            <div class="action-buttons">
-              <button class="copy-btn" data-action="copyPath" data-path="${pathAttr}" title="复制路径">📋</button>
-              <button class="action-btn open" data-action="openInExplorer" data-path="${pathAttr}" title="在文件管理器中打开">📂</button>
-              ${!file.isDirectory ? `<button class="action-btn download" data-action="download" data-path="${pathAttr}" data-filename="${nameAttr}" title="下载">⬇️</button>` : ''}
-              <button class="action-btn rename edit-only edit-inline" data-action="rename" data-path="${pathAttr}" data-filename="${nameAttr}" title="重命名">✏️</button>
-              <button class="action-btn delete edit-only edit-inline" data-action="delete" data-path="${pathAttr}" data-filename="${nameAttr}" title="删除">🗑️</button>
-            </div>`;
-        } else {
-          fileItem.innerHTML = `
-            <input class="file-select edit-only edit-inline-block" type="checkbox" data-action="toggleSelect" data-path="${pathAttr}" title="${selectLabel}" ${selectedAttr} />
-            <div class="file-icon">${icon}</div>
-            <div class="file-info"><div class="file-name">${escapeHtml(file.name)}</div><div class="file-meta">${file.isDirectory ? '目录' : size}</div></div>`;
+          const mtime = createDateMeta();
+          const birthtime = createDateMeta('birthtime');
+          meta.append(mtime.container, birthtime.container);
+          const more = createActionButton('more-actions-btn', 'more', '更多操作', '⋮');
+          more.setAttribute('aria-label', '更多操作');
+          fileItem.appendChild(more);
+          Object.assign(refs, { mtime, birthtime });
         }
+
+        fileItem._refs = refs;
         return fileItem;
+      }
+
+      function createFileIconElement() {
+        const namespace = 'http://www.w3.org/2000/svg';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'file-icon';
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        const use = document.createElementNS(namespace, 'use');
+        svg.appendChild(use);
+        wrapper.appendChild(svg);
+        return { wrapper, svg, use };
+      }
+
+      function createDateMeta(className = '') {
+        const container = document.createElement('span');
+        if (className) container.className = className;
+        const full = document.createElement('span');
+        full.className = 'date-full';
+        const compact = document.createElement('span');
+        compact.className = 'date-compact';
+        container.append(full, compact);
+        return { container, full, compact };
+      }
+
+      function createActionButton(className, action, title, label) {
+        const button = document.createElement('button');
+        button.className = className;
+        button.dataset.action = action;
+        button.title = title;
+        button.textContent = label;
+        return button;
+      }
+
+      function updateFileItem(fileItem, file) {
+        const refs = fileItem._refs;
+        const view = getFileView(file);
+        const isSelected = selectedPaths.has(file.path);
+        fileItem.className = `file-item${file.isHidden ? ' hidden-file' : ''}${isSelected ? ' selected' : ''}`;
+        fileItem.dataset.path = file.path;
+        fileItem.dataset.isDirectory = file.isDirectory;
+        refs.select.dataset.path = file.path;
+        refs.select.checked = isSelected;
+        refs.select.title = file.isDirectory ? '选择文件夹' : '选择文件';
+        updateFileIcon(refs.icon, view.iconInfo);
+        refs.name.textContent = file.name;
+        refs.type.textContent = view.typeLabel;
+
+        if (!refs.mtime) return;
+
+        refs.mtime.full.textContent = view.mtime;
+        refs.mtime.compact.textContent = view.compactMtime;
+        refs.birthtime.full.textContent = view.birthtime;
+        refs.birthtime.compact.textContent = view.compactBirthtime;
+        refs.birthtime.container.classList.toggle('visible', showBirthtime);
+      }
+
+      function getFileView(file) {
+        if (!file._view) {
+          file._view = {
+            typeLabel: file.isDirectory ? '目录' : formatSize(file.size),
+            mtime: formatDate(file.mtime),
+            compactMtime: formatDate(file.mtime, false),
+            birthtime: formatDate(file.birthtime),
+            compactBirthtime: `创建 ${formatDate(file.birthtime, false)}`,
+            iconInfo: getFileIconInfo(file)
+          };
+        }
+        return file._view;
+      }
+
+      function updateFileIcon(icon, iconInfo) {
+        icon.use.setAttribute('href', iconInfo.symbol);
+        icon.svg.style.color = iconInfo.color;
       }
 
       function handleItemClick(path, isDirectory) {
@@ -2178,14 +2458,16 @@
         renderFiles(currentFiles);
       }
 
-      function getFileIcon(file) {
+      const fileIconInfoCache = new Map();
+
+      function getFileIconInfo(file) {
         if (file.isDirectory) {
-          return `<svg viewBox="0 0 24 24" fill="none" stroke="#667eea" stroke-width="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>`;
+          return { symbol: '#icon-folder', color: '#667eea' };
         }
 
         const ext = file.name.split('.').pop().toLowerCase();
+        const cached = fileIconInfoCache.get(ext);
+        if (cached) return cached;
         const iconColors = {
           js: '#f7df1e',
           json: '#292929',
@@ -2263,12 +2545,9 @@
           webm: '#2196f3'
         };
 
-        const color = iconColors[ext] || '#95a5a6';
-
-        return `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>`;
+        const iconInfo = { symbol: '#icon-file', color: iconColors[ext] || '#95a5a6' };
+        fileIconInfoCache.set(ext, iconInfo);
+        return iconInfo;
       }
 
       function formatSize(bytes) {
@@ -2279,9 +2558,15 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
       }
 
-      function formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleString('zh-CN');
+      function formatDate(value, includeSeconds = true) {
+        const date = new Date(value);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const base = `${year}/${month}/${day} ${hours}:${minutes}`;
+        return includeSeconds ? `${base}:${String(date.getSeconds()).padStart(2, '0')}` : base;
       }
 
       function escapeHtml(text) {
@@ -2291,13 +2576,17 @@
       }
 
       function escapeAttribute(value) {
-        return String(value).replace(/[&<>"']/g, char => ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;'
-        })[char]);
+        return String(value).replace(
+          /[&<>"']/g,
+          char =>
+            ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;'
+            })[char]
+        );
       }
     </script>
   </body>

@@ -120,6 +120,13 @@ async function assertFileExplorerCli(t, entryFile) {
     t.notOk(html.includes('id="editModeToggle"'), `${entryFile} does not expose an edit mode toggle`);
     t.ok(html.includes('edit-only'), `${entryFile} marks edit-only controls`);
     t.ok(html.includes('virtual-content'), `${entryFile} includes virtualized file rendering`);
+    t.ok(html.includes('id="icon-folder"'), `${entryFile} defines a reusable folder icon`);
+    t.ok(html.includes("use.setAttribute('href', iconInfo.symbol)"), `${entryFile} reuses the file icon with <use>`);
+    t.ok(html.includes('more-actions-btn'), `${entryFile} uses a compact action menu in list view`);
+    t.ok(html.includes('positionVirtualItem'), `${entryFile} positions reusable virtual items by their file index`);
+    t.notOk(html.includes('will-change: transform'), `${entryFile} avoids an oversized composited virtual layer`);
+    t.ok(html.includes('renderedItems: new Map()'), `${entryFile} only updates files entering the virtual window`);
+    t.ok(html.includes('freeItems: []'), `${entryFile} reuses items released at virtual window boundaries`);
 
     const config = await requestJson(`${baseUrl}/__api/config`);
     t.equal(config.editMode, true, `${entryFile} enables edits with --edit`);
