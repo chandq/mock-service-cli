@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.3.0](https://github.com/chandq/mock-service-cli/compare/v4.2.0...v4.3.0) (2026-07-25)
+
+
+### Features
+
+* optimize file explorer performance and security ([09b274f](https://github.com/chandq/mock-service-cli/commit/09b274f4b24f726104000d68a9166d0ba1f714f2))
+
 ## [4.2.0](https://github.com/chandq/mock-service-cli/compare/v4.1.0...v4.2.0) (2026-07-17)
 
 
