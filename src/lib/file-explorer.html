@@ -512,19 +512,45 @@
 
       .list-view .more-actions-btn {
         display: inline-flex;
-        flex: 0 0 28px;
+        flex: 0 0 32px;
         align-items: center;
         justify-content: center;
-        width: 28px;
+        align-self: center;
+        width: 32px;
         height: 28px;
-        margin-left: 6px;
+        margin-left: 8px;
         padding: 0;
-        border: 0;
-        border-radius: 4px;
-        background: transparent;
-        color: #666;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: #f1f3f5;
+        color: #555;
         font-size: 20px;
         line-height: 1;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 120ms ease,
+          border-color 120ms ease,
+          color 120ms ease,
+          transform 120ms ease;
+      }
+
+      .list-view .more-actions-btn:hover {
+        border-color: #d9dce1;
+        background: #e5e7eb;
+        color: #222;
+        transform: scale(1.06);
+      }
+
+      .list-view .more-actions-btn:active {
+        background: #d9dce1;
+        transform: scale(0.92);
+      }
+
+      .list-view .more-actions-btn:focus-visible {
+        outline: 2px solid #667eea;
+        outline-offset: 1px;
       }
 
       .action-btn {
@@ -636,6 +662,7 @@
         }
 
         .list-view .more-actions-btn {
+          align-self: flex-start;
           margin: 10px 0 0 6px;
         }
 
