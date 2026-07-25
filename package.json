@@ -81,7 +81,10 @@
     "tap": "^15.0.10"
   },
   "tap": {
-    "check-coverage": false
+    "check-coverage": false,
+    "nyc-arg": [
+      "--include=src/**/*.js"
+    ]
   },
   "husky": {
     "hooks": {
