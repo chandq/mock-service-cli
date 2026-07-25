@@ -1,5 +1,5 @@
 const test = require('tap').test;
-const { existsSync, mkdtempSync, rmSync, writeFileSync } = require('fs');
+const { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -16,7 +16,7 @@ function getFreePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.on('error', reject);
-    server.listen(0, () => {
+    server.listen(0, '127.0.0.1', () => {
       const { port } = server.address();
       server.close(() => resolve(port));
     });
@@ -84,26 +84,32 @@ function getCliEnv() {
   return env;
 }
 
-async function assertFileExplorerCli(t, entryFile) {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-entry-'));
-  const marker = 'source-debug.txt';
-  writeFileSync(path.join(tempDir, marker), 'ok');
-
-  const port = await getFreePort();
+function startExplorer(entryFile, tempDir, port, editMode) {
   const output = { value: '' };
-  const child = spawn(node, [entryFile, '-e', tempDir, '-p', String(port), '-s'], {
+  const args = [entryFile, '-e', tempDir, '-p', String(port), '-s'];
+  if (editMode) args.push('--edit');
+  const child = spawn(node, args, {
     cwd: root,
     detached: process.platform !== 'win32',
     env: getCliEnv(),
     stdio: ['ignore', 'pipe', 'pipe']
   });
-
   child.stdout.on('data', chunk => {
     output.value += chunk.toString();
   });
   child.stderr.on('data', chunk => {
     output.value += chunk.toString();
   });
+  return { child, output };
+}
+
+async function assertFileExplorerCli(t, entryFile) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-entry-'));
+  const marker = 'source-debug.txt';
+  writeFileSync(path.join(tempDir, marker), 'ok');
+
+  const port = await getFreePort();
+  const { child, output } = startExplorer(entryFile, tempDir, port, true);
 
   try {
     const baseUrl = `http://127.0.0.1:${port}`;
@@ -111,8 +117,23 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(data.files.some(file => file.name === marker), `${entryFile} can start file explorer`);
 
     const html = await fetch(baseUrl).then(response => response.text());
-    t.ok(html.includes('id="editModeToggle"'), `${entryFile} exposes edit mode toggle`);
+    t.notOk(html.includes('id="editModeToggle"'), `${entryFile} does not expose an edit mode toggle`);
     t.ok(html.includes('edit-only'), `${entryFile} marks edit-only controls`);
+    t.ok(html.includes('virtual-content'), `${entryFile} includes virtualized file rendering`);
+
+    const config = await requestJson(`${baseUrl}/__api/config`);
+    t.equal(config.editMode, true, `${entryFile} enables edits with --edit`);
+
+    if (process.platform !== 'win32') {
+      const externalDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-external-'));
+      try {
+        symlinkSync(externalDir, path.join(tempDir, 'outside-link'));
+        const blockedResponse = await fetch(`${baseUrl}/__api/list?path=%2Foutside-link`);
+        t.equal(blockedResponse.status, 403, `${entryFile} blocks symlinks outside the explorer root`);
+      } finally {
+        rmSync(externalDir, { recursive: true, force: true });
+      }
+    }
 
     await requestJson(`${baseUrl}/__api/path`, {
       method: 'POST',
@@ -151,8 +172,33 @@ async function assertFileExplorerCli(t, entryFile) {
   }
 }
 
+async function assertReadOnlyFileExplorerCli(t, entryFile) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-readonly-'));
+  const port = await getFreePort();
+  const { child, output } = startExplorer(entryFile, tempDir, port, false);
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    await waitForExplorer(baseUrl, child, output);
+    const config = await requestJson(`${baseUrl}/__api/config`);
+    t.equal(config.editMode, false, `${entryFile} is read-only by default`);
+
+    const response = await fetch(`${baseUrl}/__api/path`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentPath: '/', name: 'blocked.txt', type: 'file' })
+    });
+    t.equal(response.status, 403, `${entryFile} rejects writes without --edit`);
+    t.notOk(existsSync(path.join(tempDir, 'blocked.txt')), `${entryFile} does not write in read-only mode`);
+  } finally {
+    stopCliProcess(child);
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 if (!isCoverageMode()) {
   test('source cli can start file explorer server directly', async t => {
+    await assertReadOnlyFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
   });
 
@@ -165,6 +211,7 @@ if (!isCoverageMode()) {
       return;
     }
 
+    await assertReadOnlyFileExplorerCli(t, entryFile);
     await assertFileExplorerCli(t, entryFile);
   });
 }

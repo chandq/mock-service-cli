@@ -15,7 +15,9 @@ const {
   writeStream,
   readStream,
   debounce,
-  throttle
+  throttle,
+  getServerHost,
+  getServerUrls
 } = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
@@ -223,6 +225,23 @@ test('SupportMethods and DefaultHeaders constants', t => {
   t.ok(Array.isArray(SupportMethods), 'SupportMethods is array');
   t.ok(typeof DefaultHeaders === 'string', 'DefaultHeaders is string');
 
+  t.end();
+});
+
+test('server host helpers use loopback by default and expose interfaces on demand', t => {
+  const previousHost = process.env.SERVER_HOST;
+  delete process.env.SERVER_HOST;
+  t.equal(getServerHost(), '127.0.0.1', 'uses IPv4 loopback by default');
+
+  process.env.SERVER_HOST = '0.0.0.0';
+  t.equal(getServerHost(), '0.0.0.0', 'uses all IPv4 interfaces when requested');
+  t.ok(getServerUrls(8090).includes('http://127.0.0.1:8090'), 'includes local IPv4 URL');
+
+  if (previousHost === undefined) {
+    delete process.env.SERVER_HOST;
+  } else {
+    process.env.SERVER_HOST = previousHost;
+  }
   t.end();
 });
 

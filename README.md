@@ -74,6 +74,8 @@ npx mock-service-cli [options] [path]
 | `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                                  | -      |
 | `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                                 | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
+| `--edit`                   | 启用文件浏览器的新建、重命名和删除操作                            | false  |
+| `--host`                   | 将全部 Web 服务暴露到所有 IPv4 网卡                               | false  |
 
 ## 📖 使用示例
 
@@ -131,7 +133,17 @@ mock-service-cli -e /path/to/directory
 
 # 指定端口
 mock-service-cli -e ./ -p 9090
+
+# 启用文件编辑操作
+mock-service-cli -e ./ --edit
+
+# 暴露到局域网（编辑操作仍需额外传入 --edit）
+mock-service-cli -e ./ --host
 ```
+
+默认情况下，Mock、SPA、Static 和 File Explorer 服务只监听 `127.0.0.1`。
+`--host` 会使这些服务监听所有 IPv4 网卡，请仅在可信网络中使用。文件浏览器默认只读；
+必须在启动时传入 `--edit` 才能创建、重命名或删除文件。
 
 ## 📝 编写 Mock 文件
 

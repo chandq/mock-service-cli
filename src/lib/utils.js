@@ -8,6 +8,7 @@
 const fs = require('fs');
 const colors = require('colors/safe');
 const path = require('path');
+const os = require('os');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -253,6 +254,29 @@ const throttle = (func, wait, immediate) => {
   };
   return f;
 };
+
+function getServerHost() {
+  return process.env.SERVER_HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
+}
+
+function getServerUrls(port, pathname = '') {
+  const normalizedPath = pathname && pathname !== '/' ? pathname : '';
+  const urls = [`http://localhost:${port}${normalizedPath}`, `http://127.0.0.1:${port}${normalizedPath}`];
+
+  if (getServerHost() !== '0.0.0.0') {
+    return urls;
+  }
+
+  const addresses = new Set(urls);
+  Object.values(os.networkInterfaces()).forEach(networkInterface => {
+    (networkInterface || []).forEach(details => {
+      if (details.family === 'IPv4' && !details.internal) {
+        addresses.add(`http://${details.address}:${port}${normalizedPath}`);
+      }
+    });
+  });
+  return Array.from(addresses);
+}
 // /**
 //  * @description: 带模糊搜索的分块读取大JSON文件
 //  * @param {string} filePath
@@ -293,5 +317,7 @@ module.exports = {
   writeStream,
   readStream,
   debounce,
-  throttle
+  throttle,
+  getServerHost,
+  getServerUrls
 };

@@ -1,12 +1,10 @@
 const express = require('express'), // 引入express
   { readdirSync, existsSync } = require('fs'),
-  os = require('os'),
   path = require('path'),
   colors = require('colors/safe'),
   portfinder = require('portfinder'),
   { exec } = require('child_process');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const ifaces = os.networkInterfaces();
 const { Server } = require('socket.io');
 const {
   dateFormat,
@@ -15,7 +13,9 @@ const {
   DefaultHeaders,
   getFileLatestContent,
   filePath2ApiUrl,
-  isEmptyObj
+  isEmptyObj,
+  getServerHost,
+  getServerUrls
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { genMockFiles, getMockStatFromDir, getMockStatFromFile } = require('./manageMockFiles');
@@ -389,7 +389,7 @@ function startServer() {
   }
 
   if (existsSync(mockFileOrDir)) {
-    http.listen(Number.parseInt(process.env.PORT, 10), () => {
+    http.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
       console.info(colors.red('\n Mock File仅支持commonjs规范的js、cjs文件，不支持ES Module'));
 
       console.info(
@@ -404,7 +404,9 @@ function startServer() {
           [colors.yellow('\n🌍  mock-server version: '), colors.cyan(getPackageVersion()), '\n'].join('')
         );
         console.info(colors.yellow(`\n Mock server available on:\n`));
-        console.info('    http://localhost:' + colors.green(process.env.PORT));
+        getServerUrls(process.env.PORT).forEach(url => {
+          console.info('    ' + url.replace(String(process.env.PORT), colors.green(process.env.PORT)));
+        });
         console.info(
           '    ' +
             colors.blue('API Overview: ') +
@@ -412,13 +414,6 @@ function startServer() {
             colors.green(process.env.PORT) +
             colors.green('/__api-overview')
         );
-        Object.keys(ifaces).forEach(function (dev) {
-          ifaces[dev].forEach(function (details) {
-            if (details.family === 'IPv4') {
-              console.info('    http://' + details.address + ':' + colors.green(process.env.PORT));
-            }
-          });
-        });
       }
 
       // 自动打开浏览器
@@ -450,15 +445,10 @@ function startServer() {
   }
 
   if (webApp && !process.env.RESTARTED) {
-    webApp.listen(Number.parseInt(process.env.WEB_PORT, 10), () => {
+    webApp.listen(Number.parseInt(process.env.WEB_PORT, 10), getServerHost(), () => {
       console.info(colors.yellow(`\n Web server available on:\n`));
-      console.info('    http://localhost:' + colors.green(process.env.WEB_PORT) + webPublicPath);
-      Object.keys(ifaces).forEach(function (dev) {
-        ifaces[dev].forEach(function (details) {
-          if (details.family === 'IPv4') {
-            console.info('    http://' + details.address + ':' + colors.green(process.env.WEB_PORT) + webPublicPath);
-          }
-        });
+      getServerUrls(process.env.WEB_PORT, webPublicPath).forEach(url => {
+        console.info('    ' + url.replace(String(process.env.WEB_PORT), colors.green(process.env.WEB_PORT)));
       });
       if (!isEmptyObj(proxyTable)) {
         console.info(colors.yellow(`\n Enable proxy at web server on:`));

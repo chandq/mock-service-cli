@@ -83,6 +83,7 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        min-height: 0;
       }
 
       .toolbar {
@@ -178,56 +179,6 @@
       .toolbar-action-btn:disabled {
         opacity: 0.45;
         cursor: not-allowed;
-      }
-
-      .edit-mode-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        color: #666;
-        user-select: none;
-        white-space: nowrap;
-      }
-
-      .edit-mode-toggle input {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      .edit-mode-switch {
-        width: 38px;
-        height: 20px;
-        background: #d1d5db;
-        border-radius: 999px;
-        position: relative;
-        transition: background 0.2s;
-        flex-shrink: 0;
-        cursor: pointer;
-      }
-
-      .edit-mode-switch::after {
-        content: '';
-        position: absolute;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        top: 2px;
-        left: 2px;
-        background: #fff;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        transition: transform 0.2s;
-      }
-
-      .edit-mode-toggle input:checked + .edit-mode-switch {
-        background: #667eea;
-      }
-
-      .edit-mode-toggle input:checked + .edit-mode-switch::after {
-        transform: translateX(18px);
       }
 
       body:not(.editing) .edit-only {
@@ -384,18 +335,33 @@
       }
 
       .file-grid {
-        padding: 8px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 8px;
+        position: relative;
         overflow: auto;
+        flex: 1;
+        min-height: 0;
       }
 
-      .file-grid.list-view {
-        grid-template-columns: 1fr;
-        gap: 0;
-        padding: 4px 0;
-        flex: unset;
+      .virtual-spacer {
+        width: 1px;
+        pointer-events: none;
+      }
+
+      .virtual-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+      }
+
+      .virtual-content.grid-view {
+        display: grid;
+        gap: 8px;
+        grid-auto-rows: 124px;
+        padding: 8px;
+      }
+
+      .virtual-content.list-view {
+        display: block;
       }
 
       .file-item {
@@ -406,6 +372,10 @@
         border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s;
+      }
+
+      .grid-view .file-item {
+        height: 124px;
       }
 
       .file-item:hover {
@@ -477,6 +447,13 @@
         font-weight: 500;
         margin-bottom: 2px;
         line-height: 1.3;
+      }
+
+      .grid-view .file-name {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
       }
 
       .list-view .file-name {
@@ -866,11 +843,6 @@
             返回上级
           </button>
           <button class="refresh-btn" onclick="loadDirectory(currentPath)" title="刷新">🔄</button>
-          <label class="edit-mode-toggle" title="启用编辑模式">
-            <input id="editModeToggle" type="checkbox" onchange="toggleEditMode(this.checked)" />
-            <span class="edit-mode-switch"></span>
-            <span class="edit-mode-label">编辑</span>
-          </label>
           <button
             class="toolbar-action-btn edit-only edit-inline"
             onclick="createEntry('directory')"
@@ -967,6 +939,7 @@
       let showHiddenFiles = true;
       let showBirthtime = false;
       let currentPreviewContent = '';
+      let currentPreviewObjectUrl = null;
       let currentZoom = 1;
       let currentRotation = 0;
       let currentContextMenuFile = null;
@@ -974,6 +947,16 @@
       let imageFiles = [];
       let selectedPaths = new Set();
       let editMode = false;
+      let directoryRequestController = null;
+      let directoryRequestId = 0;
+      let virtualRenderFrame = null;
+      let virtualState = null;
+      let fileGridResizeObserver = null;
+
+      const LIST_ROW_HEIGHT = 37;
+      const GRID_ROW_HEIGHT = 132;
+      const GRID_MIN_ITEM_WIDTH = 100;
+      const VIRTUAL_BUFFER_ROWS = 6;
 
       let eventHandlers = [];
       let searchDebounceTimer = null;
@@ -999,20 +982,22 @@
           element.removeEventListener(event, handler, options);
         });
         eventHandlers = [];
-      }
-
-      function initializeEditMode() {
-        editMode = false;
+        if (virtualRenderFrame) {
+          cancelAnimationFrame(virtualRenderFrame);
+          virtualRenderFrame = null;
+        }
+        if (directoryRequestController) {
+          directoryRequestController.abort();
+          directoryRequestController = null;
+        }
+        if (fileGridResizeObserver) {
+          fileGridResizeObserver.disconnect();
+          fileGridResizeObserver = null;
+        }
       }
 
       function syncEditModeUI() {
-        const body = document.body;
-        const toggle = document.getElementById('editModeToggle');
-
-        body.classList.toggle('editing', editMode);
-        if (toggle) {
-          toggle.checked = editMode;
-        }
+        document.body.classList.toggle('editing', editMode);
 
         if (!editMode) {
           selectedPaths.clear();
@@ -1023,10 +1008,16 @@
         updateSelectionToolbar();
       }
 
-      function toggleEditMode(enabled) {
-        editMode = Boolean(enabled);
+      async function loadExplorerConfig() {
+        try {
+          const response = await fetch('/__api/config');
+          const config = await response.json();
+          editMode = Boolean(config.editMode);
+        } catch (error) {
+          console.warn('Failed to load file explorer configuration:', error);
+          editMode = false;
+        }
         syncEditModeUI();
-        processAndRenderFiles();
       }
 
       function handleFileGridClick(e) {
@@ -1086,6 +1077,11 @@
         hideContextMenu();
       }
 
+      function handleFileGridScroll() {
+        hideContextMenu();
+        scheduleVirtualRender();
+      }
+
       function handleModalClick(e) {
         if (e.target === e.currentTarget) {
           closeModal();
@@ -1129,21 +1125,28 @@
         }
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        initializeEditMode();
-        syncEditModeUI();
-        loadDirectory('/');
-
+      document.addEventListener('DOMContentLoaded', async () => {
         const fileGrid = document.getElementById('fileGrid');
         const previewModal = document.getElementById('previewModal');
 
         addEventListenerWithCleanup(fileGrid, 'click', handleFileGridClick);
         addEventListenerWithCleanup(fileGrid, 'contextmenu', handleFileGridContextmenu);
+        addEventListenerWithCleanup(fileGrid, 'scroll', handleFileGridScroll, { passive: true });
         addEventListenerWithCleanup(document, 'click', handleDocumentClick);
         addEventListenerWithCleanup(document, 'scroll', handleDocumentScroll);
         addEventListenerWithCleanup(previewModal, 'click', handleModalClick);
         addEventListenerWithCleanup(previewModal, 'wheel', handleModalWheel, { passive: false });
         addEventListenerWithCleanup(document, 'keydown', handleDocumentKeydown);
+
+        fileGridResizeObserver = new ResizeObserver(() => {
+          if (virtualState && currentView === 'grid') {
+            renderFiles(currentFiles, false);
+          }
+        });
+        fileGridResizeObserver.observe(fileGrid);
+
+        await loadExplorerConfig();
+        loadDirectory('/');
       });
 
       window.addEventListener('beforeunload', cleanupEventListeners);
@@ -1211,56 +1214,48 @@
       }
 
       async function loadDirectory(path) {
-        // console.log('Loading directory:', path);
         const fileGrid = document.getElementById('fileGrid');
-
-        // 保存旧路径，以便失败时可以回退
         const oldCurrentPath = currentPath;
+        const requestId = ++directoryRequestId;
 
-        // 重置所有状态
+        if (directoryRequestController) {
+          directoryRequestController.abort();
+        }
+        directoryRequestController = new AbortController();
+
         allFiles = [];
         currentFiles = [];
         selectedPaths.clear();
         updateSelectionToolbar();
 
-        // 显示加载状态
         fileGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
 
         try {
-          const response = await fetch(`/__api/list?path=${encodeURIComponent(path)}`);
-          // console.log('Response status:', response.status);
-
+          const response = await fetch(`/__api/list?path=${encodeURIComponent(path)}`, {
+            signal: directoryRequestController.signal
+          });
           const data = await response.json();
-          // console.log('API response data:', data);
 
-          if (data.error) {
+          if (!response.ok || data.error) {
             throw new Error(data.error);
           }
+          if (requestId !== directoryRequestId) return;
 
           currentPath = data.currentPath;
           allFiles = data.files || [];
 
-          // console.log('allFiles set to:', allFiles);
-
-          renderBreadcrumb(data.currentPath, data.parentPath);
-
-          // 确保在调用 processAndRenderFiles 之前 allFiles 已经设置好
-          setTimeout(() => {
-            processAndRenderFiles();
-          }, 10);
-
-          updateBackButton(data.parentPath);
-
-          // 清空搜索框
           if (document.getElementById('searchInput')) {
             document.getElementById('searchInput').value = '';
           }
           searchQuery = '';
+
+          renderBreadcrumb(data.currentPath, data.parentPath);
+          processAndRenderFiles();
+          updateBackButton(data.parentPath);
         } catch (error) {
+          if (error.name === 'AbortError' || requestId !== directoryRequestId) return;
           console.error('Error loading directory:', error);
-          // 回退到旧路径
           currentPath = oldCurrentPath;
-          // 计算旧路径的父路径
           const parentPath = currentPath === '/' ? null : currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
           updateBackButton(parentPath);
           fileGrid.innerHTML = `<div class="empty-state"><p>错误: ${error.message}</p></div>`;
@@ -1569,32 +1564,40 @@
         deleteSelectedBtn.textContent = count ? `删除选中(${count})` : '删除选中';
       }
 
-      function renderBreadcrumb(currentPath, parentPath) {
+      function renderBreadcrumb(currentPath) {
         const breadcrumb = document.getElementById('breadcrumb');
         const parts = currentPath.split('/').filter(Boolean);
-
-        let html = '<div class="breadcrumb-item" onclick="loadDirectory(\'/\')">根目录</div>';
-
+        const fragment = document.createDocumentFragment();
+        const root = document.createElement('div');
+        root.className = 'breadcrumb-item';
+        root.textContent = '根目录';
+        root.addEventListener('click', () => loadDirectory('/'));
+        fragment.appendChild(root);
         let current = '';
         parts.forEach((part, index) => {
           current += '/' + part;
           const isLast = index === parts.length - 1;
-          html += '<span class="breadcrumb-separator">/</span>';
+          const separator = document.createElement('span');
+          separator.className = 'breadcrumb-separator';
+          separator.textContent = '/';
+          fragment.appendChild(separator);
+          const item = document.createElement('div');
+          item.className = `breadcrumb-item${isLast ? ' current' : ''}`;
+          item.textContent = part;
           if (isLast) {
-            html += `<div class="breadcrumb-item current">${escapeHtml(part)}</div>`;
           } else {
-            html += `<div class="breadcrumb-item" onclick="loadDirectory('${current}')">${escapeHtml(part)}</div>`;
+            const targetPath = current;
+            item.addEventListener('click', () => loadDirectory(targetPath));
           }
+          fragment.appendChild(item);
         });
-
-        breadcrumb.innerHTML = html;
+        breadcrumb.replaceChildren(fragment);
       }
 
-      function renderFiles(files) {
+      function renderFiles(files, resetScroll = true) {
         const fileGrid = document.getElementById('fileGrid');
         const toggleBirthtimeBtn = document.getElementById('toggleBirthtimeBtn');
 
-        // 确保视图类名正确
         if (currentView === 'list') {
           fileGrid.classList.add('list-view');
           toggleBirthtimeBtn.style.display = 'inline-block';
@@ -1604,94 +1607,99 @@
         }
 
         if (!files || files.length === 0) {
+          virtualState = null;
           fileGrid.innerHTML = '<div class="empty-state"><p>该目录为空</p></div>';
           return;
         }
 
+        const isListView = currentView === 'list';
+        const columnCount = isListView
+          ? 1
+          : Math.max(1, Math.floor((Math.max(fileGrid.clientWidth, GRID_MIN_ITEM_WIDTH + 16) - 8) / (GRID_MIN_ITEM_WIDTH + 8)));
+        const rowHeight = isListView ? LIST_ROW_HEIGHT : GRID_ROW_HEIGHT;
+        const totalRows = Math.ceil(files.length / columnCount);
+        const spacer = document.createElement('div');
+        spacer.className = 'virtual-spacer';
+        spacer.style.height = `${totalRows * rowHeight + (isListView ? 0 : 8)}px`;
+        const content = document.createElement('div');
+        content.className = `virtual-content ${isListView ? 'list-view' : 'grid-view'}`;
+        if (!isListView) {
+          content.style.gridTemplateColumns = `repeat(${columnCount}, minmax(${GRID_MIN_ITEM_WIDTH}px, 1fr))`;
+        }
+
+        virtualState = { files, columnCount, rowHeight, isListView, spacer, content, startRow: -1, endRow: -1 };
+        fileGrid.replaceChildren(spacer, content);
+        if (resetScroll) fileGrid.scrollTop = 0;
+        renderVirtualWindow();
+      }
+
+      function scheduleVirtualRender() {
+        if (virtualRenderFrame || !virtualState) return;
+        virtualRenderFrame = requestAnimationFrame(() => {
+          virtualRenderFrame = null;
+          renderVirtualWindow();
+        });
+      }
+
+      function renderVirtualWindow() {
+        if (!virtualState) return;
+        const fileGrid = document.getElementById('fileGrid');
+        const { files, columnCount, rowHeight, isListView, content } = virtualState;
+        const firstVisibleRow = Math.floor(fileGrid.scrollTop / rowHeight);
+        const visibleRows = Math.ceil(fileGrid.clientHeight / rowHeight);
+        const startRow = Math.max(0, firstVisibleRow - VIRTUAL_BUFFER_ROWS);
+        const endRow = Math.min(Math.ceil(files.length / columnCount), firstVisibleRow + visibleRows + VIRTUAL_BUFFER_ROWS);
+        const startIndex = startRow * columnCount;
+        const endIndex = Math.min(files.length, endRow * columnCount);
+
+        if (virtualState.startRow === startRow && virtualState.endRow === endRow) return;
+        virtualState.startRow = startRow;
+        virtualState.endRow = endRow;
         const fragment = document.createDocumentFragment();
 
-        files.forEach(file => {
-          const icon = getFileIcon(file);
-          const size = formatSize(file.size);
-          const mtime = formatDate(file.mtime);
-          const birthtime = formatDate(file.birthtime);
-          const hiddenClass = file.isHidden ? 'hidden-file' : '';
-          const selectedClass = selectedPaths.has(file.path) ? 'selected' : '';
-          const selectedAttr = selectedPaths.has(file.path) ? 'checked' : '';
-          const selectLabel = file.isDirectory ? '选择文件夹' : '选择文件';
+        for (let index = startIndex; index < endIndex; index++) {
+          fragment.appendChild(createFileItem(files[index], isListView));
+        }
 
-          const fileItem = document.createElement('div');
-          fileItem.className = `file-item ${hiddenClass} ${selectedClass}`;
-          fileItem.dataset.path = file.path;
-          fileItem.dataset.isDirectory = file.isDirectory;
+        content.style.transform = `translateY(${startRow * rowHeight}px)`;
+        content.replaceChildren(fragment);
+      }
 
-          if (currentView === 'list') {
-            fileItem.innerHTML = `
-              <input
-                class="file-select edit-only edit-inline-block"
-                type="checkbox"
-                data-action="toggleSelect"
-                data-path="${file.path}"
-                data-filename="${escapeHtml(file.name)}"
-                title="${selectLabel}"
-                ${selectedAttr}
-              />
-              <div class="file-icon">${icon}</div>
-              <div class="file-info">
-                <div class="file-name">${escapeHtml(file.name)}</div>
-                <div class="file-meta">
-                  ${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}
-                  <span>${mtime}</span>
-                  <span class="birthtime" style="display: ${showBirthtime ? 'inline-block' : 'none'};">${birthtime}</span>
-                </div>
-              </div>
-              <div class="action-buttons">
-                <button class="copy-btn" data-action="copyPath" data-path="${file.path}" title="复制路径">📋</button>
-                <button class="action-btn open" data-action="openInExplorer" data-path="${
-                  file.path
-                }" title="在文件管理器中打开">📂</button>
-                ${
-                  !file.isDirectory
-                    ? `<button class="action-btn download" data-action="download" data-path="${
-                        file.path
-                      }" data-filename="${escapeHtml(file.name)}" title="下载">⬇️</button>`
-                    : ''
-                }
-                <button class="action-btn rename edit-only edit-inline" data-action="rename" data-path="${file.path}" data-filename="${escapeHtml(
-                  file.name
-                )}" title="重命名">✏️</button>
-                <button class="action-btn delete edit-only edit-inline" data-action="delete" data-path="${file.path}" data-filename="${escapeHtml(
-                  file.name
-                )}" title="删除">🗑️</button>
-              </div>
-            `;
-          } else {
-            fileItem.innerHTML = `
-              <input
-                class="file-select edit-only edit-inline-block"
-                type="checkbox"
-                data-action="toggleSelect"
-                data-path="${file.path}"
-                data-filename="${escapeHtml(file.name)}"
-                title="${selectLabel}"
-                ${selectedAttr}
-              />
-              <div class="file-icon">${icon}</div>
-              <div class="file-info">
-                <div class="file-name">${escapeHtml(file.name)}</div>
-                <div class="file-meta">
-                  ${file.isDirectory ? '目录' : size}
-                </div>
-              </div>
-            `;
-          }
+      function createFileItem(file, isListView) {
+        const icon = getFileIcon(file);
+        const size = formatSize(file.size);
+        const mtime = formatDate(file.mtime);
+        const birthtime = formatDate(file.birthtime);
+        const hiddenClass = file.isHidden ? 'hidden-file' : '';
+        const selectedClass = selectedPaths.has(file.path) ? 'selected' : '';
+        const selectedAttr = selectedPaths.has(file.path) ? 'checked' : '';
+        const selectLabel = file.isDirectory ? '选择文件夹' : '选择文件';
+        const pathAttr = escapeAttribute(file.path);
+        const nameAttr = escapeAttribute(file.name);
+        const fileItem = document.createElement('div');
+        fileItem.className = `file-item ${hiddenClass} ${selectedClass}`;
+        fileItem.dataset.path = file.path;
+        fileItem.dataset.isDirectory = file.isDirectory;
 
-          fragment.appendChild(fileItem);
-        });
-
-        // 清空并一次性更新 DOM
-        fileGrid.innerHTML = '';
-        fileGrid.appendChild(fragment);
+        if (isListView) {
+          fileItem.innerHTML = `
+            <input class="file-select edit-only edit-inline-block" type="checkbox" data-action="toggleSelect" data-path="${pathAttr}" title="${selectLabel}" ${selectedAttr} />
+            <div class="file-icon">${icon}</div>
+            <div class="file-info"><div class="file-name">${escapeHtml(file.name)}</div><div class="file-meta">${file.isDirectory ? '<span>目录</span>' : `<span>${size}</span>`}<span>${mtime}</span><span class="birthtime" style="display: ${showBirthtime ? 'inline-block' : 'none'};">${birthtime}</span></div></div>
+            <div class="action-buttons">
+              <button class="copy-btn" data-action="copyPath" data-path="${pathAttr}" title="复制路径">📋</button>
+              <button class="action-btn open" data-action="openInExplorer" data-path="${pathAttr}" title="在文件管理器中打开">📂</button>
+              ${!file.isDirectory ? `<button class="action-btn download" data-action="download" data-path="${pathAttr}" data-filename="${nameAttr}" title="下载">⬇️</button>` : ''}
+              <button class="action-btn rename edit-only edit-inline" data-action="rename" data-path="${pathAttr}" data-filename="${nameAttr}" title="重命名">✏️</button>
+              <button class="action-btn delete edit-only edit-inline" data-action="delete" data-path="${pathAttr}" data-filename="${nameAttr}" title="删除">🗑️</button>
+            </div>`;
+        } else {
+          fileItem.innerHTML = `
+            <input class="file-select edit-only edit-inline-block" type="checkbox" data-action="toggleSelect" data-path="${pathAttr}" title="${selectLabel}" ${selectedAttr} />
+            <div class="file-icon">${icon}</div>
+            <div class="file-info"><div class="file-name">${escapeHtml(file.name)}</div><div class="file-meta">${file.isDirectory ? '目录' : size}</div></div>`;
+        }
+        return fileItem;
       }
 
       function handleItemClick(path, isDirectory) {
@@ -1942,7 +1950,7 @@
       }
 
       function renderBinaryPreview(blob, filename) {
-        const url = URL.createObjectURL(blob);
+        currentPreviewObjectUrl = URL.createObjectURL(blob);
         return `
           <div class="preview-container">
             <div class="binary-info">
@@ -1952,7 +1960,7 @@
             </div>
             <div class="empty-state">
               <p>该文件类型暂不支持预览</p>
-              <p><a href="${url}" download="${filename}">点击下载</a></p>
+              <p><a href="${currentPreviewObjectUrl}" download="${escapeAttribute(filename)}">点击下载</a></p>
             </div>
           </div>
         `;
@@ -1964,6 +1972,7 @@
         const body = document.getElementById('previewBody');
 
         title.textContent = path.split('/').pop();
+        releasePreviewObjectUrl();
         body.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
         modal.classList.add('active');
 
@@ -2129,6 +2138,14 @@
 
       function closeModal() {
         document.getElementById('previewModal').classList.remove('active');
+        releasePreviewObjectUrl();
+      }
+
+      function releasePreviewObjectUrl() {
+        if (currentPreviewObjectUrl) {
+          URL.revokeObjectURL(currentPreviewObjectUrl);
+          currentPreviewObjectUrl = null;
+        }
       }
 
       function goBack() {
@@ -2271,6 +2288,16 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+      }
+
+      function escapeAttribute(value) {
+        return String(value).replace(/[&<>"']/g, char => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[char]);
       }
     </script>
   </body>

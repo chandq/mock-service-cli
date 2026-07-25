@@ -44,6 +44,8 @@ if (argv.h || argv.help) {
       '  -b --web-baseurl     Specify website public path when enabled web server.',
       '',
       '  -R --static-server   Specify static resource file directory when enabled static server.',
+      '  --host               Bind all web services to all IPv4 interfaces. Default localhost only.',
+      '  --edit               Enable file create, rename, and delete operations in file explorer.',
       '',
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
@@ -52,6 +54,16 @@ if (argv.h || argv.help) {
     ].join('\n')
   );
   process.exit();
+}
+
+if (argv.host !== undefined && typeof argv.host !== 'boolean') {
+  console.error('--host is a boolean flag and does not accept a custom address');
+  process.exit(1);
+}
+
+if (argv.edit !== undefined && typeof argv.edit !== 'boolean') {
+  console.error('--edit is a boolean flag');
+  process.exit(1);
 }
 
 // 保留命令行参数
@@ -113,6 +125,8 @@ injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
 injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
 injectEnvVariable('EXPLORER_DIRECTORY', explorerDir);
+process.env.SERVER_HOST = argv.host === true ? '0.0.0.0' : '127.0.0.1';
+process.env.EXPLORER_EDIT = argv.edit === true ? 'true' : 'false';
 // injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
 // 解析Web代理配置项（来源js|config文件或命令行参数字符串）
 const proxyArg = argv.O || argv['proxy-options'];

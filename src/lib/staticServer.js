@@ -6,11 +6,9 @@
  * @Author      : chendq
  */
 const express = require('express'), // 引入express
-  os = require('os'),
   colors = require('colors/safe'),
   portfinder = require('portfinder');
-const { dateFormat, logger } = require('./utils');
-const ifaces = os.networkInterfaces();
+const { dateFormat, logger, getServerHost, getServerUrls } = require('./utils');
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
 
@@ -61,7 +59,7 @@ function startServer() {
 
   app.use(express.static(process.env.STATIC_DIRECTORY)); // 将dist目录下所有文件作为静态文件来管理
 
-  app.listen(Number.parseInt(process.env.PORT, 10), () => {
+  app.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
     console.info(
       [
         colors.yellow(`\nStarting up Static Server, serving `),
@@ -71,13 +69,8 @@ function startServer() {
     );
 
     console.info(colors.yellow(`\n Static Server available on:\n`));
-    console.info('    http://localhost:' + colors.green(process.env.PORT));
-    Object.keys(ifaces).forEach(function (dev) {
-      ifaces[dev].forEach(function (details) {
-        if (details.family === 'IPv4') {
-          console.info('    http://' + details.address + ':' + colors.green(process.env.PORT));
-        }
-      });
+    getServerUrls(process.env.PORT).forEach(url => {
+      console.info('    ' + url.replace(String(process.env.PORT), colors.green(process.env.PORT)));
     });
   });
 }

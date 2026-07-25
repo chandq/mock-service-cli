@@ -1,22 +1,22 @@
 const express = require('express'),
-  { readdirSync, existsSync, readFileSync, statSync, rmSync, mkdirSync, writeFileSync, renameSync } = require('fs'),
-  os = require('os'),
+  { existsSync, readFileSync, statSync, rmSync, mkdirSync, writeFileSync, renameSync, realpathSync, promises: fsPromises } = require('fs'),
   path = require('path'),
   colors = require('colors/safe'),
   portfinder = require('portfinder'),
-  { exec } = require('child_process');
-const ifaces = os.networkInterfaces();
-const { dateFormat, logger } = require('./utils');
+  { exec, execFile } = require('child_process');
+const { dateFormat, logger, getServerHost, getServerUrls } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 
 const app = express();
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
 
-const explorerRoot = process.env.EXPLORER_DIRECTORY || process.cwd();
+const explorerRoot = path.resolve(process.env.EXPLORER_DIRECTORY || process.cwd());
+const explorerRootRealPath = realpathSync(explorerRoot);
 const port = argv.p || argv.port;
+const isEditMode = process.env.EXPLORER_EDIT === 'true';
 
-function isPathInsideRoot(fullPath, resolvedRoot) {
+function isPathInsideRoot(fullPath, resolvedRoot = explorerRootRealPath) {
   const relativePath = path.relative(resolvedRoot, fullPath);
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
 }
@@ -32,17 +32,27 @@ function normalizeExplorerInputPath(inputPath) {
 
 function resolveExplorerPath(inputPath) {
   const targetPath = normalizeExplorerInputPath(inputPath);
-  const resolvedRoot = path.resolve(explorerRoot);
   const relativePath = targetPath.replace(/^\/+/, '');
-  const fullPath = path.resolve(resolvedRoot, relativePath);
+  const fullPath = path.resolve(explorerRoot, relativePath);
 
-  if (!isPathInsideRoot(fullPath, resolvedRoot)) {
+  if (!isPathInsideRoot(fullPath, explorerRoot)) {
     const error = new Error('Access denied');
     error.statusCode = 403;
     throw error;
   }
 
-  return fullPath;
+  if (!existsSync(fullPath)) {
+    return fullPath;
+  }
+
+  const realPath = realpathSync(fullPath);
+  if (!isPathInsideRoot(realPath)) {
+    const error = new Error('Access denied');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return realPath;
 }
 
 function validateEntryName(name) {
@@ -113,9 +123,7 @@ function getChildPath(parentPath, name) {
   }
 
   const childPath = path.resolve(parentFullPath, name.trim());
-  const resolvedRoot = path.resolve(explorerRoot);
-
-  if (!isPathInsideRoot(childPath, resolvedRoot)) {
+  if (!isPathInsideRoot(childPath)) {
     const error = new Error('Access denied');
     error.statusCode = 403;
     throw error;
@@ -124,10 +132,17 @@ function getChildPath(parentPath, name) {
   return childPath;
 }
 
+function requireEditMode(req, res, next) {
+  if (!isEditMode) {
+    return res.status(403).json({ error: 'File explorer is read-only. Restart with --edit to modify files.' });
+  }
+  next();
+}
+
 function deleteExplorerPath(targetPath) {
   const fullPath = resolveExplorerPath(targetPath);
 
-  if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
+  if (path.resolve(fullPath) === explorerRootRealPath) {
     const error = new Error('Cannot delete explorer root');
     error.statusCode = 400;
     throw error;
@@ -156,7 +171,6 @@ if (!process.env.PORT) {
 }
 
 function init() {
-  app.use(crossDomain());
   app.use(express.json());
 
   // 文件浏览页面
@@ -169,8 +183,12 @@ function init() {
     }
   });
 
+  app.get('/__api/config', (req, res) => {
+    res.json({ editMode: isEditMode });
+  });
+
   // 获取目录内容 API
-  app.get('/__api/list', (req, res) => {
+  app.get('/__api/list', async (req, res) => {
     const dirPath = normalizeExplorerInputPath(req.query.path || '/');
 
     let fullPath;
@@ -184,32 +202,29 @@ function init() {
       return res.status(404).json({ error: 'Path not found' });
     }
 
-    const stats = statSync(fullPath);
-    if (!stats.isDirectory()) {
-      return res.status(400).json({ error: 'Not a directory' });
-    }
-
     try {
-      const files = readdirSync(fullPath, { withFileTypes: true });
-      const result = [];
-
-      files.forEach(file => {
+      const stats = await fsPromises.lstat(fullPath);
+      if (!stats.isDirectory()) {
+        return res.status(400).json({ error: 'Not a directory' });
+      }
+      const files = await fsPromises.readdir(fullPath, { withFileTypes: true });
+      const result = await Promise.all(files.map(async file => {
         const filePath = path.join(fullPath, file.name);
         let fileStats;
         let hasError = false;
 
         try {
-          fileStats = statSync(filePath);
+          fileStats = await fsPromises.lstat(filePath);
         } catch (statError) {
           hasError = true;
         }
 
         const relativePath = path.posix.join(dirPath, file.name);
 
-        // 使用 statSync 的结果，因为 readdirSync 在根目录对某些特殊目录识别不准确
+        // lstat avoids following symlinks outside the explorer root.
         const isDirectory = hasError ? file.isDirectory() : fileStats.isDirectory();
 
-        result.push({
+        return {
           name: file.name,
           path: relativePath.replace(/\\/g, '/'),
           isDirectory: isDirectory,
@@ -218,8 +233,8 @@ function init() {
           birthtime: hasError ? new Date() : fileStats.birthtime,
           isHidden: file.name.startsWith('.'),
           error: hasError ? 'Cannot access file' : null
-        });
-      });
+        };
+      }));
 
       // 排序：目录在前，文件在后，然后按名称排序
       result.sort((a, b) => {
@@ -299,22 +314,26 @@ function init() {
       return res.status(404).json({ error: 'Path not found' });
     }
 
-    let openCommand;
+    let command;
+    let args;
     switch (process.platform) {
       case 'darwin':
-        openCommand = `open "${fullPath}"`;
+        command = 'open';
+        args = [fullPath];
         break;
       case 'win32':
-        openCommand = `explorer "${fullPath}"`;
+        command = 'explorer.exe';
+        args = [fullPath];
         break;
       case 'linux':
-        openCommand = `xdg-open "${fullPath}"`;
+        command = 'xdg-open';
+        args = [fullPath];
         break;
       default:
         return res.status(400).json({ error: 'Unsupported platform' });
     }
 
-    exec(openCommand, error => {
+    execFile(command, args, error => {
       if (error) {
         console.error(colors.red(`Failed to open in explorer: ${error.message}`));
         return res.status(500).json({ error: 'Failed to open in explorer' });
@@ -324,7 +343,7 @@ function init() {
   });
 
   // 新建目录/文件 API
-  app.post('/__api/path', (req, res) => {
+  app.post('/__api/path', requireEditMode, (req, res) => {
     const parentPath = (req.body && req.body.parentPath) || '/';
     const name = req.body && req.body.name;
     const type = (req.body && req.body.type) || 'file';
@@ -358,7 +377,7 @@ function init() {
   });
 
   // 重命名目录/文件 API
-  app.patch('/__api/path', (req, res) => {
+  app.patch('/__api/path', requireEditMode, (req, res) => {
     const sourcePath = req.body && req.body.path;
     const name = req.body && req.body.name;
 
@@ -366,7 +385,7 @@ function init() {
     let nextPath;
     try {
       fullPath = resolveExplorerPath(sourcePath);
-      if (path.resolve(fullPath) === path.resolve(explorerRoot)) {
+      if (path.resolve(fullPath) === explorerRootRealPath) {
         return res.status(400).json({ error: 'Cannot rename explorer root' });
       }
       if (!existsSync(fullPath)) {
@@ -391,7 +410,7 @@ function init() {
   });
 
   // 删除目录/文件 API
-  app.delete('/__api/path', (req, res) => {
+  app.delete('/__api/path', requireEditMode, (req, res) => {
     const targetPath = (req.body && req.body.path) || '/';
 
     try {
@@ -404,7 +423,7 @@ function init() {
   });
 
   // 批量删除目录/文件 API
-  app.delete('/__api/paths', (req, res) => {
+  app.delete('/__api/paths', requireEditMode, (req, res) => {
     const paths = (req.body && req.body.paths) || [];
 
     if (!Array.isArray(paths) || paths.length === 0) {
@@ -430,20 +449,10 @@ function init() {
   startServer();
 }
 
-function crossDomain() {
-  return (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', '*');
-    if (req.method === 'OPTIONS') res.status(200);
-    next();
-  };
-}
-
 function startServer() {
   const http = require('http').createServer(app);
 
-  http.listen(Number.parseInt(process.env.PORT, 10), () => {
+  http.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
     console.info(
       [
         colors.yellow(`\nStarting up file-explorer-server, serving `),
@@ -455,13 +464,8 @@ function startServer() {
       [colors.yellow('\n🌍  file-explorer-server version: '), colors.cyan(getPackageVersion()), '\n'].join('')
     );
     console.info(colors.yellow(`\n File explorer server available on:\n`));
-    console.info('    http://localhost:' + colors.green(process.env.PORT));
-    Object.keys(ifaces).forEach(function (dev) {
-      ifaces[dev].forEach(function (details) {
-        if (details.family === 'IPv4') {
-          console.info('    http://' + details.address + ':' + colors.green(process.env.PORT));
-        }
-      });
+    getServerUrls(process.env.PORT).forEach(url => {
+      console.info('    ' + url.replace(String(process.env.PORT), colors.green(process.env.PORT)));
     });
 
     // 自动打开浏览器
