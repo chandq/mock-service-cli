@@ -1,5 +1,5 @@
 const test = require('tap').test;
-const { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } = require('fs');
+const { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -106,7 +106,9 @@ function startExplorer(entryFile, tempDir, port, editMode) {
 async function assertFileExplorerCli(t, entryFile) {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-entry-'));
   const marker = 'source-debug.txt';
+  const binaryMarker = 'source-binary.bin';
   writeFileSync(path.join(tempDir, marker), 'ok');
+  writeFileSync(path.join(tempDir, binaryMarker), Buffer.from([0, 255, 1, 0, 128, 64, 10]));
 
   const port = await getFreePort();
   const { child, output } = startExplorer(entryFile, tempDir, port, true);
@@ -127,6 +129,16 @@ async function assertFileExplorerCli(t, entryFile) {
     t.notOk(html.includes('will-change: transform'), `${entryFile} avoids an oversized composited virtual layer`);
     t.ok(html.includes('renderedItems: new Map()'), `${entryFile} only updates files entering the virtual window`);
     t.ok(html.includes('freeItems: []'), `${entryFile} reuses items released at virtual window boundaries`);
+    t.ok(html.includes('download=1'), `${entryFile} uses the raw download endpoint`);
+
+    const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
+    t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);
+    t.match(downloadResponse.headers.get('content-disposition'), /attachment/, `${entryFile} marks explicit downloads as attachments`);
+    t.same(
+      Buffer.from(await downloadResponse.arrayBuffer()),
+      readFileSync(path.join(tempDir, binaryMarker)),
+      `${entryFile} streams binary downloads without text conversion`
+    );
 
     const config = await requestJson(`${baseUrl}/__api/config`);
     t.equal(config.editMode, true, `${entryFile} enables edits with --edit`);

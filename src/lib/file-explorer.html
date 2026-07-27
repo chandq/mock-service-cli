@@ -1638,14 +1638,18 @@
         }
       }
 
+      function getDownloadUrl(filePath) {
+        return `/__api/file?path=${encodeURIComponent(filePath)}&download=1`;
+      }
+
       function downloadFile(filePath, fileName) {
-        const url = `/__api/file?path=${encodeURIComponent(filePath)}`;
         const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
+        a.href = getDownloadUrl(filePath);
+        a.download = fileName || '';
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
       }
 
       async function deletePath(filePath, fileName) {
@@ -2333,7 +2337,7 @@
               </div>
             `;
           } else if (BINARY_EXTS.includes(ext)) {
-            const downloadUrl = `/__api/file?path=${encodeURIComponent(path)}`;
+            const downloadUrl = getDownloadUrl(path);
             const fileSize = fileInfo ? formatSize(fileInfo.size) : '未知大小';
 
             body.innerHTML = `
@@ -2351,7 +2355,7 @@
             `;
           } else {
             if (isLargeFile) {
-              const downloadUrl = `/__api/file?path=${encodeURIComponent(path)}`;
+              const downloadUrl = getDownloadUrl(path);
               body.innerHTML = `
                 <div class="preview-container">
                   <div class="binary-info">

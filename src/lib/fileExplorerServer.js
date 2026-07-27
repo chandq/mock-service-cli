@@ -274,6 +274,11 @@ function init() {
       return res.status(400).json({ error: 'Is a directory' });
     }
 
+    // Preview responses may be JSON, but downloads must always stream the original bytes.
+    if (req.query.download === '1') {
+      return res.download(fullPath, path.basename(filePath));
+    }
+
     const ext = path.extname(filePath).toLowerCase();
     const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico'];
     const textExts = ['.txt', '.json', '.js', '.css', '.html', '.xml', '.md', '.csv', '.yaml', '.yml', '.log'];
