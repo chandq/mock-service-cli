@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.3.2](https://github.com/chandq/mock-service-cli/compare/v4.3.1...v4.3.2) (2026-07-27)
+
+
+### Bug Fixes
+
+* damage issue of download less than 1 MB file ([d967122](https://github.com/chandq/mock-service-cli/commit/d9671228c0145ce485df0c080640bf065cdd52dc))
+* default not display hidden files ([48a3193](https://github.com/chandq/mock-service-cli/commit/48a319358f1f3c133e4f4baf3dea335edf90a4be))
+
 ### [4.3.1](https://github.com/chandq/mock-service-cli/compare/v4.3.0...v4.3.1) (2026-07-25)
 
 
