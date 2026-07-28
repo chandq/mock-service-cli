@@ -1,5 +1,6 @@
 const test = require('tap').test;
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const {
   getLogger,
@@ -17,7 +18,9 @@ const {
   debounce,
   throttle,
   getServerHost,
-  getServerUrls
+  getServerUrls,
+  parseHostAllowlist,
+  isAddressAllowed
 } = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
@@ -241,6 +244,24 @@ test('server host helpers use loopback by default and expose interfaces on deman
     delete process.env.SERVER_HOST;
   } else {
     process.env.SERVER_HOST = previousHost;
+  }
+  t.end();
+});
+
+test('host allowlist parses gitignore-style lines and supports IP/CIDR matching', t => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-allowlist-'));
+  const allowlistPath = path.join(tempDir, 'allowed-ips.txt');
+  fs.writeFileSync(allowlistPath, '# office network\n192.168.10.4\n10.20.0.0/16\n2001:db8::/32\n');
+
+  try {
+    const rules = parseHostAllowlist(allowlistPath);
+    t.equal(rules.length, 3, 'reads non-comment allowlist entries');
+    t.ok(isAddressAllowed('127.0.0.1', rules), 'always allows IPv4 loopback');
+    t.ok(isAddressAllowed('10.20.50.8', rules), 'allows IPv4 CIDR match');
+    t.ok(isAddressAllowed('2001:db8::42', rules), 'allows IPv6 CIDR match');
+    t.notOk(isAddressAllowed('10.21.50.8', rules), 'rejects addresses outside the allowlist');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
   t.end();
 });

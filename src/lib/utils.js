@@ -9,6 +9,7 @@ const fs = require('fs');
 const colors = require('colors/safe');
 const path = require('path');
 const os = require('os');
+const net = require('net');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -259,11 +260,96 @@ function getServerHost() {
   return process.env.SERVER_HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
 }
 
+function normalizeRemoteAddress(address) {
+  const value = String(address || '').trim().replace(/^\[|\]$/g, '');
+  return value.toLowerCase().startsWith('::ffff:') ? value.slice(7) : value;
+}
+
+function ipToBigInt(address) {
+  const version = net.isIP(address);
+  if (version === 4) {
+    return address.split('.').reduce((value, part) => (value << 8n) + BigInt(Number(part)), 0n);
+  }
+  if (version !== 6) return null;
+
+  const [head = '', tail = ''] = address.toLowerCase().split('::');
+  const headParts = head ? head.split(':') : [];
+  const tailParts = tail ? tail.split(':') : [];
+  const parts = [...headParts, ...Array(Math.max(0, 8 - headParts.length - tailParts.length)).fill('0'), ...tailParts];
+  return parts.reduce((value, part) => (value << 16n) + BigInt(parseInt(part || '0', 16)), 0n);
+}
+
+function parseAllowlistRule(value) {
+  const [address, prefixValue] = value.split('/');
+  const normalizedAddress = normalizeRemoteAddress(address);
+  const version = net.isIP(normalizedAddress);
+  const maxPrefix = version === 4 ? 32 : 128;
+  const prefix = prefixValue === undefined ? maxPrefix : Number(prefixValue);
+  if (!version || !Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) return null;
+  return { address: normalizedAddress, version, prefix, value: ipToBigInt(normalizedAddress) };
+}
+
+function parseHostAllowlist(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const rules = [];
+  content.split(/\r?\n/).forEach((rawLine, index) => {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) return;
+    const rule = parseAllowlistRule(line);
+    if (!rule) {
+      throw new Error(`Invalid IP allowlist rule at line ${index + 1}: ${rawLine}`);
+    }
+    rules.push(rule);
+  });
+  if (rules.length === 0) throw new Error('IP allowlist must contain at least one valid IP or CIDR rule');
+  return rules;
+}
+
+function isLoopbackAddress(address) {
+  const normalized = normalizeRemoteAddress(address);
+  return normalized === '127.0.0.1' || normalized === '::1';
+}
+
+function isAddressAllowed(address, rules = []) {
+  const normalized = normalizeRemoteAddress(address);
+  if (isLoopbackAddress(normalized)) return true;
+  const version = net.isIP(normalized);
+  const value = ipToBigInt(normalized);
+  if (!version || value === null) return false;
+  return rules.some(rule => {
+    if (rule.version !== version) return false;
+    const remainingBits = BigInt((rule.version === 4 ? 32 : 128) - rule.prefix);
+    return (value >> remainingBits) === (rule.value >> remainingBits);
+  });
+}
+
+function getHostAllowlist() {
+  if (!process.env.HOST_ALLOWLIST) return [];
+  try {
+    return JSON.parse(process.env.HOST_ALLOWLIST)
+      .map(rule => (typeof rule === 'string' ? parseAllowlistRule(rule) : rule))
+      .filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+}
+
+function hostAllowlistMiddleware() {
+  const rules = getHostAllowlist();
+  if (rules.length === 0) return (req, res, next) => next();
+  return (req, res, next) => {
+    if (!isAddressAllowed(req.socket && req.socket.remoteAddress, rules)) {
+      return res.status(403).send('Access denied by host allowlist');
+    }
+    next();
+  };
+}
+
 function getServerUrls(port, pathname = '') {
   const normalizedPath = pathname && pathname !== '/' ? pathname : '';
   const urls = [`http://localhost:${port}${normalizedPath}`, `http://127.0.0.1:${port}${normalizedPath}`];
 
-  if (getServerHost() !== '0.0.0.0') {
+  if (getServerHost() !== '0.0.0.0' || getHostAllowlist().length > 0) {
     return urls;
   }
 
@@ -319,5 +405,10 @@ module.exports = {
   debounce,
   throttle,
   getServerHost,
-  getServerUrls
+  getServerUrls,
+  normalizeRemoteAddress,
+  parseHostAllowlist,
+  isAddressAllowed,
+  getHostAllowlist,
+  hostAllowlistMiddleware
 };

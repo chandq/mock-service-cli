@@ -73,8 +73,9 @@ npx mock-service-cli [options] [path]
 | `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                                  | -      |
 | `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                                 | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
-| `--edit`                   | 启用文件浏览器的新建、重命名和删除操作                            | false  |
-| `--host`                   | 将全部 Web 服务暴露到所有 IPv4 网卡                               | false  |
+| `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
+| `--auth <password>`        | 为文件浏览器启用密码认证（仅可搭配 `--explorer`）                 | -      |
+| `--host [allowlist-file]`  | 暴露全部 IPv4 网卡；传入文件时仅允许白名单 IP 访问                | false  |
 
 ## 📖 使用示例
 
@@ -136,13 +137,26 @@ mock-service-cli -e ./ -p 9090
 # 启用文件编辑操作
 mock-service-cli -e ./ --edit
 
+# 启用文件浏览器密码认证
+mock-service-cli -e ./ --auth 'local-password'
+
 # 暴露到局域网（编辑操作仍需额外传入 --edit）
 mock-service-cli -e ./ --host
+
+# 仅向白名单 IP 暴露服务
+mock-service-cli -e ./ --host ./allowed-ips.txt
 ```
 
 默认情况下，Mock、SPA、Static 和 File Explorer 服务只监听 `127.0.0.1`。
-`--host` 会使这些服务监听所有 IPv4 网卡，请仅在可信网络中使用。文件浏览器默认只读；
-必须在启动时传入 `--edit` 才能创建、重命名或删除文件。
+`--host` 会使这些服务监听所有 IPv4 网卡，请仅在可信网络中使用。传入白名单文件时，服务仍监听全部 IPv4 网卡，
+但仅允许 `localhost`、`127.0.0.1`、`::1` 及文件中的 IP/CIDR 访问；空行和行首 `#` 注释会忽略，非法或空白名单会阻止启动。
+该规则同时作用于 Mock、SPA、Static、File Explorer 和 Socket 服务。
+
+文件浏览器默认只读；必须在启动时传入 `--edit` 才能创建、重命名、删除或上传。上传文件支持多选，上传文件夹会保留目录层级；
+同名路径不会覆盖，其他无冲突文件仍会继续上传。单文件最大 20MB，单次请求最大 20 个文件和 100MB。
+
+`--auth` 会在文件浏览器中显示登录页，并在每次页面加载和每个 API 请求时验证密码。密码仅保存在当前浏览器标签页的
+`sessionStorage` 中，但命令行参数仍可能暴露在 shell 历史和进程列表里，因此只适用于可信本机或局域网环境。
 
 ## 📝 编写 Mock 文件
 

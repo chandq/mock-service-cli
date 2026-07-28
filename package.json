@@ -56,7 +56,9 @@
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
-    "nodemon": "^3.1.14"
+    "multer": "^2.2.0",
+    "nodemon": "^3.1.14",
+    "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",

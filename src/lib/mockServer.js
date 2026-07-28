@@ -15,7 +15,10 @@ const {
   filePath2ApiUrl,
   isEmptyObj,
   getServerHost,
-  getServerUrls
+  getServerUrls,
+  hostAllowlistMiddleware,
+  getHostAllowlist,
+  isAddressAllowed
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { genMockFiles, getMockStatFromDir, getMockStatFromFile } = require('./manageMockFiles');
@@ -70,6 +73,7 @@ function init() {
     }, this);
   }
 
+  app.use(hostAllowlistMiddleware());
   app.use(crossDomain()); // 允许跨域
   app.use(express.json()); // 解析body
 
@@ -265,6 +269,7 @@ function startServer() {
   // Enable Web Server
   if (process.env.WEB_ROOT) {
     webApp = express();
+    webApp.use(hostAllowlistMiddleware());
     // Enable web proxy
     if (process.env.PROXY_OPTIONS) {
       try {
@@ -341,7 +346,13 @@ function startServer() {
     const AsyncTaskQueue = require('./asyncTaskQueue');
     const saveDataAsyncTask = new AsyncTaskQueue();
 
-    socketServer = new Server(http, { path: '/ws/mock-service' });
+    socketServer = new Server(http, {
+      path: '/ws/mock-service',
+      allowRequest: (req, callback) => {
+        const rules = getHostAllowlist();
+        callback(null, rules.length === 0 || isAddressAllowed(req.socket && req.socket.remoteAddress, rules));
+      }
+    });
     log.info(colors.bgBlue(`Socket server has started. path: /ws/mock-service, `));
     socketServer.of('/mock-data').on('connection', function (socket) {
       const { headers, address } = socket.handshake;

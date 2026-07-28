@@ -8,7 +8,7 @@
 const express = require('express'), // 引入express
   colors = require('colors/safe'),
   portfinder = require('portfinder');
-const { dateFormat, logger, getServerHost, getServerUrls } = require('./utils');
+const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware } = require('./utils');
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
 
@@ -48,6 +48,7 @@ function appendResHeaders() {
  */
 function startServer() {
   const app = express();
+  app.use(hostAllowlistMiddleware());
 
   if (typeof argv.A === 'string') {
     argv.A.split(/\s*,\s*/).forEach(function (h) {

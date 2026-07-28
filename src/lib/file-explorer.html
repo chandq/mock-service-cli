@@ -1010,6 +1010,14 @@
           <button class="toolbar-action-btn edit-only edit-inline" onclick="createEntry('file')" title="新建文件">
             新建文件
           </button>
+          <button class="toolbar-action-btn edit-only edit-inline" onclick="document.getElementById('uploadFilesInput').click()" title="上传文件">
+            上传文件
+          </button>
+          <button class="toolbar-action-btn edit-only edit-inline" onclick="document.getElementById('uploadFolderInput').click()" title="上传文件夹">
+            上传文件夹
+          </button>
+          <input id="uploadFilesInput" type="file" multiple hidden onchange="uploadSelectedFiles(this.files)" />
+          <input id="uploadFolderInput" type="file" webkitdirectory directory hidden onchange="uploadSelectedFiles(this.files)" />
           <button
             class="toolbar-action-btn danger edit-only edit-inline"
             id="deleteSelectedBtn"
@@ -1109,6 +1117,11 @@
       let virtualRenderFrame = null;
       let virtualState = null;
       let fileGridResizeObserver = null;
+      let healthCheckTimer = null;
+      let serviceWasUnavailable = false;
+
+      const EXPLORER_AUTH_STORAGE_KEY = 'mock-service-cli.file-explorer.password';
+      const EXPLORER_PATH_STORAGE_KEY = 'mock-service-cli.file-explorer.path';
 
       const LIST_ROW_HEIGHT = 37;
       const GRID_ROW_HEIGHT = 132;
@@ -1151,6 +1164,53 @@
           fileGridResizeObserver.disconnect();
           fileGridResizeObserver = null;
         }
+        if (healthCheckTimer) {
+          clearInterval(healthCheckTimer);
+          healthCheckTimer = null;
+        }
+      }
+
+      function redirectToLogin() {
+        sessionStorage.removeItem(EXPLORER_AUTH_STORAGE_KEY);
+        window.location.replace('/__login');
+      }
+
+      async function explorerFetch(url, options = {}) {
+        const headers = new Headers(options.headers || {});
+        const password = sessionStorage.getItem(EXPLORER_AUTH_STORAGE_KEY);
+        if (password) headers.set('X-File-Explorer-Password', password);
+        const response = await fetch(url, { ...options, headers });
+        if (response.status === 401) redirectToLogin();
+        return response;
+      }
+
+      async function verifyExplorerAuth() {
+        const password = sessionStorage.getItem(EXPLORER_AUTH_STORAGE_KEY);
+        try {
+          const response = await explorerFetch('/__api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+          });
+          if (!response.ok) return false;
+          return Boolean((await response.json()).success);
+        } catch (error) {
+          console.error('Failed to verify file explorer authentication:', error);
+          return false;
+        }
+      }
+
+      function startHealthCheck() {
+        healthCheckTimer = setInterval(async () => {
+          try {
+            const response = await explorerFetch('/__api/health');
+            if (!response.ok) throw new Error(`Unexpected status ${response.status}`);
+            if (serviceWasUnavailable) window.location.reload();
+            serviceWasUnavailable = false;
+          } catch (error) {
+            serviceWasUnavailable = true;
+          }
+        }, 2000);
       }
 
       function syncEditModeUI() {
@@ -1167,8 +1227,9 @@
 
       async function loadExplorerConfig() {
         try {
-          const response = await fetch('/__api/config');
+          const response = await explorerFetch('/__api/config');
           const config = await response.json();
+          if (!response.ok || config.error) throw new Error(config.error || 'Failed to load configuration');
           editMode = Boolean(config.editMode);
         } catch (error) {
           console.warn('Failed to load file explorer configuration:', error);
@@ -1308,8 +1369,10 @@
         });
         fileGridResizeObserver.observe(fileGrid);
 
+        if (!(await verifyExplorerAuth())) return;
         await loadExplorerConfig();
-        loadDirectory('/');
+        startHealthCheck();
+        loadDirectory(sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY) || '/');
       });
 
       window.addEventListener('beforeunload', cleanupEventListeners);
@@ -1394,7 +1457,7 @@
         fileGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
 
         try {
-          const response = await fetch(`/__api/list?path=${encodeURIComponent(path)}`, {
+          const response = await explorerFetch(`/__api/list?path=${encodeURIComponent(path)}`, {
             signal: directoryRequestController.signal
           });
           const data = await response.json();
@@ -1405,6 +1468,7 @@
           if (requestId !== directoryRequestId) return;
 
           currentPath = data.currentPath;
+          sessionStorage.setItem(EXPLORER_PATH_STORAGE_KEY, currentPath);
           allFiles = data.files || [];
 
           if (document.getElementById('searchInput')) {
@@ -1548,7 +1612,7 @@
 
       async function openInExplorer(path) {
         try {
-          const response = await fetch('/__api/open-in-explorer', {
+          const response = await explorerFetch('/__api/open-in-explorer', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -1568,12 +1632,40 @@
       }
 
       async function requestJson(url, options) {
-        const response = await fetch(url, options);
+        const response = await explorerFetch(url, options);
         const data = await response.json();
         if (!response.ok || data.error) {
           throw new Error(data.error || '请求失败');
         }
         return data;
+      }
+
+      async function uploadSelectedFiles(files) {
+        const input = document.activeElement;
+        if (!files || files.length === 0) return;
+        const formData = new FormData();
+        formData.append('parentPath', currentPath);
+        Array.from(files).forEach(file => {
+          formData.append('files', file, file.webkitRelativePath || file.name);
+        });
+
+        try {
+          const response = await explorerFetch('/__api/upload', { method: 'POST', body: formData });
+          const result = await response.json();
+          if (!response.ok && response.status !== 207) throw new Error(result.error || '上传失败');
+          const messages = [];
+          if (result.uploaded.length) messages.push(`已上传 ${result.uploaded.length} 项`);
+          if (result.failed.length) messages.push(`${result.failed.length} 项未上传: ${result.failed.map(item => item.name).join(', ')}`);
+          showToast(messages.join('；'));
+          await loadDirectory(currentPath);
+        } catch (error) {
+          console.error('上传失败:', error);
+          alert(`上传失败: ${error.message}`);
+        } finally {
+          document.getElementById('uploadFilesInput').value = '';
+          document.getElementById('uploadFolderInput').value = '';
+          if (input && input.blur) input.blur();
+        }
       }
 
       async function createEntry(type) {
@@ -1638,18 +1730,23 @@
         }
       }
 
-      function getDownloadUrl(filePath) {
-        return `/__api/file?path=${encodeURIComponent(filePath)}&download=1`;
-      }
-
-      function downloadFile(filePath, fileName) {
-        const a = document.createElement('a');
-        a.href = getDownloadUrl(filePath);
-        a.download = fileName || '';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+      async function downloadFile(filePath, fileName) {
+        try {
+          const response = await explorerFetch(`/__api/file?path=${encodeURIComponent(filePath)}&download=1`);
+          if (!response.ok) throw new Error('下载失败');
+          const objectUrl = URL.createObjectURL(await response.blob());
+          const a = document.createElement('a');
+          a.href = objectUrl;
+          a.download = fileName || '';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(objectUrl);
+        } catch (error) {
+          console.error('下载失败:', error);
+          alert(`下载失败: ${error.message}`);
+        }
       }
 
       async function deletePath(filePath, fileName) {
@@ -1659,7 +1756,7 @@
         if (!confirmed) return;
 
         try {
-          const response = await fetch('/__api/path', {
+          const response = await explorerFetch('/__api/path', {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json'
@@ -2328,7 +2425,6 @@
                   <button class="zoom-btn" onclick="resetImage()">🔄 重置</button>
                 </div>
                 <img
-                  src="/__api/file?path=${encodeURIComponent(path)}"
                   class="image-preview"
                   id="previewImage"
                   alt="Preview"
@@ -2336,8 +2432,11 @@
                 >
               </div>
             `;
+            const imageResponse = await explorerFetch(`/__api/file?path=${encodeURIComponent(path)}`);
+            if (!imageResponse.ok) throw new Error('图片加载失败');
+            currentPreviewObjectUrl = URL.createObjectURL(await imageResponse.blob());
+            document.getElementById('previewImage').src = currentPreviewObjectUrl;
           } else if (BINARY_EXTS.includes(ext)) {
-            const downloadUrl = getDownloadUrl(path);
             const fileSize = fileInfo ? formatSize(fileInfo.size) : '未知大小';
 
             body.innerHTML = `
@@ -2349,13 +2448,13 @@
                 </div>
                 <div class="empty-state">
                   <p>此文件类型无法预览内容</p>
-                  <p><a href="${downloadUrl}" download="${path.split('/').pop()}">点击下载</a></p>
+                  <p><button class="toolbar-action-btn" id="previewDownloadBtn">点击下载</button></p>
                 </div>
               </div>
             `;
+            document.getElementById('previewDownloadBtn').addEventListener('click', () => downloadFile(path, path.split('/').pop()));
           } else {
             if (isLargeFile) {
-              const downloadUrl = getDownloadUrl(path);
               body.innerHTML = `
                 <div class="preview-container">
                   <div class="binary-info">
@@ -2365,12 +2464,13 @@
                   </div>
                   <div class="empty-state">
                     <p>该文件超过 ${formatSize(LARGE_FILE_THRESHOLD)}，不建议在线预览</p>
-                    <p><a href="${downloadUrl}" download="${path.split('/').pop()}">点击下载</a></p>
+                    <p><button class="toolbar-action-btn" id="previewDownloadBtn">点击下载</button></p>
                   </div>
                 </div>
               `;
+              document.getElementById('previewDownloadBtn').addEventListener('click', () => downloadFile(path, path.split('/').pop()));
             } else {
-              const response = await fetch(`/__api/file?path=${encodeURIComponent(path)}`);
+              const response = await explorerFetch(`/__api/file?path=${encodeURIComponent(path)}`);
               const contentType = response.headers.get('content-type');
 
               if (contentType && contentType.includes('application/json')) {

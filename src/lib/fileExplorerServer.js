@@ -1,10 +1,28 @@
 const express = require('express'),
-  { existsSync, readFileSync, statSync, rmSync, mkdirSync, writeFileSync, renameSync, realpathSync, promises: fsPromises } = require('fs'),
+  {
+    existsSync,
+    readFileSync,
+    statSync,
+    lstatSync,
+    rmSync,
+    mkdirSync,
+    writeFileSync,
+    renameSync,
+    realpathSync,
+    copyFileSync,
+    unlinkSync,
+    constants: fsConstants,
+    promises: fsPromises
+  } = require('fs'),
   path = require('path'),
+  os = require('os'),
+  crypto = require('crypto'),
+  multer = require('multer'),
+  { UAParser } = require('ua-parser-js'),
   colors = require('colors/safe'),
   portfinder = require('portfinder'),
   { exec, execFile } = require('child_process');
-const { dateFormat, logger, getServerHost, getServerUrls } = require('./utils');
+const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware, normalizeRemoteAddress } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 
 const app = express();
@@ -15,6 +33,16 @@ const explorerRoot = path.resolve(process.env.EXPLORER_DIRECTORY || process.cwd(
 const explorerRootRealPath = realpathSync(explorerRoot);
 const port = argv.p || argv.port;
 const isEditMode = process.env.EXPLORER_EDIT === 'true';
+const explorerPassword = process.env.EXPLORER_AUTH || '';
+const isAuthEnabled = Boolean(explorerPassword);
+const visitorKeys = new Set();
+const MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_UPLOAD_TOTAL_SIZE = 100 * 1024 * 1024;
+const upload = multer({
+  dest: path.join(os.tmpdir(), 'mock-service-cli-upload'),
+  preservePath: true,
+  limits: { fileSize: MAX_UPLOAD_FILE_SIZE, files: 20, fields: 10 }
+});
 
 function isPathInsideRoot(fullPath, resolvedRoot = explorerRootRealPath) {
   const relativePath = path.relative(resolvedRoot, fullPath);
@@ -139,6 +167,90 @@ function requireEditMode(req, res, next) {
   next();
 }
 
+function isValidExplorerPassword(value) {
+  if (!isAuthEnabled) return true;
+  const provided = Buffer.from(String(value || ''));
+  const expected = Buffer.from(explorerPassword);
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+}
+
+function getExplorerPassword(req) {
+  return req.get('x-file-explorer-password') || (req.body && req.body.password);
+}
+
+function requireExplorerAuth(req, res, next) {
+  if (!isValidExplorerPassword(getExplorerPassword(req))) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+}
+
+function logExplorerVisit(req) {
+  const userAgent = req.get('user-agent') || '';
+  const ip = normalizeRemoteAddress(req.socket && req.socket.remoteAddress);
+  const visitorKey = `${ip}\n${userAgent}`;
+  if (visitorKeys.has(visitorKey)) return;
+  visitorKeys.add(visitorKey);
+  const parsed = new UAParser(userAgent).getResult();
+  const browser = [parsed.browser.name, parsed.browser.version].filter(Boolean).join(' ') || 'Unknown';
+  const operatingSystem = [parsed.os.name, parsed.os.version].filter(Boolean).join(' ') || 'Unknown';
+  log.info(`File explorer visitor: ip=${ip}, os=${operatingSystem}, browser=${browser}, userAgent=${userAgent}`);
+}
+
+function getUploadTargetPath(parentPath, originalName) {
+  const normalizedName = String(originalName || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  const parts = normalizedName.split('/').filter(Boolean);
+  if (parts.length === 0 || normalizedName !== parts.join('/')) {
+    const error = new Error('Invalid upload path');
+    error.statusCode = 400;
+    throw error;
+  }
+  parts.forEach(part => {
+    const nameError = validateEntryName(part);
+    if (nameError) {
+      const error = new Error(nameError);
+      error.statusCode = 400;
+      throw error;
+    }
+  });
+
+  const parentFullPath = resolveExplorerPath(parentPath || '/');
+  if (!existsSync(parentFullPath) || !statSync(parentFullPath).isDirectory()) {
+    const error = new Error('Parent directory not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  const targetPath = path.resolve(parentFullPath, ...parts);
+  if (!isPathInsideRoot(targetPath)) {
+    const error = new Error('Access denied');
+    error.statusCode = 403;
+    throw error;
+  }
+  return { targetPath, parentFullPath, parts };
+}
+
+function ensureUploadParent(parentFullPath, parts) {
+  let current = parentFullPath;
+  parts.slice(0, -1).forEach(part => {
+    current = path.join(current, part);
+    if (existsSync(current)) {
+      const stats = lstatSync(current);
+      if (!stats.isDirectory() || stats.isSymbolicLink() || !isPathInsideRoot(realpathSync(current))) {
+        const error = new Error('Upload path is not a safe directory');
+        error.statusCode = 403;
+        throw error;
+      }
+    } else {
+      mkdirSync(current);
+    }
+  });
+}
+
+function moveUploadedFile(sourcePath, targetPath) {
+  copyFileSync(sourcePath, targetPath, fsConstants.COPYFILE_EXCL);
+  unlinkSync(sourcePath);
+}
+
 function deleteExplorerPath(targetPath) {
   const fullPath = resolveExplorerPath(targetPath);
 
@@ -171,6 +283,7 @@ if (!process.env.PORT) {
 }
 
 function init() {
+  app.use(hostAllowlistMiddleware());
   app.use(express.json());
 
   // 文件浏览页面
@@ -183,8 +296,31 @@ function init() {
     }
   });
 
+  app.get('/__login', (req, res) => {
+    const htmlPath = path.resolve(__dirname, './file-explorer-login.html');
+    if (existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      res.status(404).send('File explorer login page not found');
+    }
+  });
+
+  app.post('/__api/auth/verify', (req, res) => {
+    if (!isValidExplorerPassword(getExplorerPassword(req))) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    res.json({ success: true, authEnabled: isAuthEnabled });
+  });
+
+  app.use('/__api', requireExplorerAuth);
+
   app.get('/__api/config', (req, res) => {
-    res.json({ editMode: isEditMode });
+    logExplorerVisit(req);
+    res.json({ editMode: isEditMode, authEnabled: isAuthEnabled });
+  });
+
+  app.get('/__api/health', (req, res) => {
+    res.json({ success: true });
   });
 
   // 获取目录内容 API
@@ -449,6 +585,56 @@ function init() {
         deleted
       });
     }
+  });
+
+  app.post('/__api/upload', requireEditMode, upload.any(), (req, res) => {
+    const parentPath = (req.body && req.body.parentPath) || '/';
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: 'No files uploaded' });
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > MAX_UPLOAD_TOTAL_SIZE) {
+      files.forEach(file => {
+        if (existsSync(file.path)) rmSync(file.path, { force: true });
+      });
+      return res.status(413).json({ error: 'Total upload size exceeds 100MB limit' });
+    }
+
+    const uploaded = [];
+    const failed = [];
+    files.forEach(file => {
+      try {
+        const { targetPath, parentFullPath, parts } = getUploadTargetPath(parentPath, file.originalname);
+        if (existsSync(targetPath)) {
+          failed.push({ name: file.originalname, error: 'Path already exists', statusCode: 409 });
+          return;
+        }
+        ensureUploadParent(parentFullPath, parts);
+        if (existsSync(targetPath)) {
+          failed.push({ name: file.originalname, error: 'Path already exists', statusCode: 409 });
+          return;
+        }
+        moveUploadedFile(file.path, targetPath);
+        uploaded.push({ name: file.originalname, path: path.posix.join(normalizeExplorerInputPath(parentPath), ...parts) });
+      } catch (error) {
+        failed.push({ name: file.originalname, error: error.message, statusCode: error.statusCode || 500 });
+      } finally {
+        if (existsSync(file.path)) rmSync(file.path, { force: true });
+      }
+    });
+
+    res.status(failed.length ? 207 : 200).json({ success: failed.length === 0, uploaded, failed });
+  });
+
+  app.use((error, req, res, next) => {
+    if (error instanceof multer.MulterError) {
+      const statusCode = error.code === 'LIMIT_FILE_SIZE' || error.code === 'LIMIT_FILE_COUNT' ? 413 : 400;
+      return res.status(statusCode).json({ error: error.message });
+    }
+    if (error) {
+      console.error(colors.red(`File explorer request failed: ${error.message}`));
+      return res.status(error.statusCode || 500).json({ error: error.message || 'Request failed' });
+    }
+    next();
   });
 
   startServer();

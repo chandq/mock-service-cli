@@ -6,7 +6,7 @@ const colors = require('colors/safe'),
   nodemon = require('nodemon');
 const { existsSync } = require('fs-extra');
 const argv = require('minimist')(process.argv.slice(2));
-const { logger } = require('../lib/utils');
+const { logger, parseHostAllowlist } = require('../lib/utils');
 const { getPackageVersion } = require('../lib/packageInfo');
 const spawn = require('child_process').spawn;
 const node = process.execPath;
@@ -44,8 +44,9 @@ if (argv.h || argv.help) {
       '  -b --web-baseurl     Specify website public path when enabled web server.',
       '',
       '  -R --static-server   Specify static resource file directory when enabled static server.',
-      '  --host               Bind all web services to all IPv4 interfaces. Default localhost only.',
+      '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
       '  --edit               Enable file create, rename, and delete operations in file explorer.',
+      '  --auth <password>    Require a password for file explorer access.',
       '',
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
@@ -56,8 +57,8 @@ if (argv.h || argv.help) {
   process.exit();
 }
 
-if (argv.host !== undefined && typeof argv.host !== 'boolean') {
-  console.error('--host is a boolean flag and does not accept a custom address');
+if (argv.host !== undefined && typeof argv.host !== 'boolean' && typeof argv.host !== 'string') {
+  console.error('--host must be a boolean flag or an IP allowlist file path');
   process.exit(1);
 }
 
@@ -65,6 +66,34 @@ if (argv.edit !== undefined && typeof argv.edit !== 'boolean') {
   console.error('--edit is a boolean flag');
   process.exit(1);
 }
+
+if (argv.auth !== undefined && (typeof argv.auth !== 'string' || !argv.auth)) {
+  console.error('--auth requires a non-empty password string');
+  process.exit(1);
+}
+
+if (argv.auth && !(argv.e || argv.explorer)) {
+  console.error('--auth can only be used with --explorer');
+  process.exit(1);
+}
+
+let hostAllowlist = [];
+if (typeof argv.host === 'string') {
+  const allowlistPath = resolve(process.cwd(), argv.host);
+  if (!existsSync(allowlistPath)) {
+    console.error(`host allowlist file does not exist: ${allowlistPath}`);
+    process.exit(1);
+  }
+  try {
+    hostAllowlist = parseHostAllowlist(allowlistPath).map(rule => `${rule.address}/${rule.prefix}`);
+  } catch (error) {
+    console.error(`Invalid host allowlist file: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+const explorerAuthPassword = argv.auth;
+delete argv.auth;
 
 // 保留命令行参数
 process.env.ARGV = JSON.stringify(argv);
@@ -125,8 +154,14 @@ injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
 injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
 injectEnvVariable('EXPLORER_DIRECTORY', explorerDir);
-process.env.SERVER_HOST = argv.host === true ? '0.0.0.0' : '127.0.0.1';
+process.env.SERVER_HOST = argv.host === true || hostAllowlist.length > 0 ? '0.0.0.0' : '127.0.0.1';
+if (hostAllowlist.length > 0) {
+  process.env.HOST_ALLOWLIST = JSON.stringify(hostAllowlist);
+}
 process.env.EXPLORER_EDIT = argv.edit === true ? 'true' : 'false';
+if (explorerAuthPassword) {
+  process.env.EXPLORER_AUTH = explorerAuthPassword;
+}
 // injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
 // 解析Web代理配置项（来源js|config文件或命令行参数字符串）
 const proxyArg = argv.O || argv['proxy-options'];

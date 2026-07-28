@@ -23,13 +23,13 @@ function getFreePort() {
   });
 }
 
-async function waitForExplorer(baseUrl, child, output) {
+async function waitForExplorer(baseUrl, child, output, options) {
   const startTime = Date.now();
   let lastError;
 
   while (Date.now() - startTime < 5000) {
     try {
-      const response = await fetch(`${baseUrl}/__api/list?path=%2F`);
+      const response = await fetch(`${baseUrl}/__api/list?path=%2F`, options);
       if (response.ok) {
         return response.json();
       }
@@ -84,10 +84,11 @@ function getCliEnv() {
   return env;
 }
 
-function startExplorer(entryFile, tempDir, port, editMode) {
+function startExplorer(entryFile, tempDir, port, editMode, authPassword) {
   const output = { value: '' };
   const args = [entryFile, '-e', tempDir, '-p', String(port), '-s'];
   if (editMode) args.push('--edit');
+  if (authPassword) args.push(`--auth=${authPassword}`);
   const child = spawn(node, args, {
     cwd: root,
     detached: process.platform !== 'win32',
@@ -101,6 +102,18 @@ function startExplorer(entryFile, tempDir, port, editMode) {
     output.value += chunk.toString();
   });
   return { child, output };
+}
+
+async function uploadFiles(baseUrl, files, password) {
+  const formData = new FormData();
+  formData.append('parentPath', '/');
+  files.forEach(({ name, content }) => formData.append('files', new Blob([content]), name));
+  const response = await fetch(`${baseUrl}/__api/upload`, {
+    method: 'POST',
+    headers: password ? { 'X-File-Explorer-Password': password } : undefined,
+    body: formData
+  });
+  return { response, data: await response.json() };
 }
 
 async function assertFileExplorerCli(t, entryFile) {
@@ -215,10 +228,59 @@ async function assertReadOnlyFileExplorerCli(t, entryFile) {
   }
 }
 
+async function assertAuthenticatedExplorerCli(t, entryFile) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-auth-'));
+  const port = await getFreePort();
+  const password = 'test-password';
+  const { child, output } = startExplorer(entryFile, tempDir, port, true, password);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const authHeaders = { 'X-File-Explorer-Password': password };
+
+  try {
+    await waitForExplorer(baseUrl, child, output, { headers: authHeaders });
+    const loginResponse = await fetch(`${baseUrl}/__login`);
+    t.equal(loginResponse.status, 200, `${entryFile} serves the login page`);
+    t.match(await loginResponse.text(), /访问密码/, `${entryFile} login page asks for a password`);
+
+    const unauthenticatedResponse = await fetch(`${baseUrl}/__api/list?path=%2F`);
+    t.equal(unauthenticatedResponse.status, 401, `${entryFile} protects explorer APIs`);
+    const invalidResponse = await fetch(`${baseUrl}/__api/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'wrong-password' })
+    });
+    t.equal(invalidResponse.status, 401, `${entryFile} rejects an invalid password`);
+
+    const config = await requestJson(`${baseUrl}/__api/config`, { headers: authHeaders });
+    t.equal(config.authEnabled, true, `${entryFile} reports that authentication is enabled`);
+
+    const firstUpload = await uploadFiles(baseUrl, [
+      { name: 'first.txt', content: 'first' },
+      { name: 'folder/second.txt', content: 'second' }
+    ], password);
+    t.equal(firstUpload.response.status, 200, `${entryFile} accepts authenticated multipart uploads`);
+    t.equal(firstUpload.data.uploaded.length, 2, `${entryFile} reports uploaded files`);
+    t.equal(readFileSync(path.join(tempDir, 'folder', 'second.txt'), 'utf8'), 'second', `${entryFile} preserves upload folders`);
+
+    const partialUpload = await uploadFiles(baseUrl, [
+      { name: 'first.txt', content: 'replacement' },
+      { name: 'different.txt', content: 'different' }
+    ], password);
+    t.equal(partialUpload.response.status, 207, `${entryFile} reports upload conflicts without rejecting other files`);
+    t.equal(partialUpload.data.uploaded.length, 1, `${entryFile} uploads non-conflicting files`);
+    t.equal(partialUpload.data.failed.length, 1, `${entryFile} reports conflicting files`);
+    t.equal(readFileSync(path.join(tempDir, 'first.txt'), 'utf8'), 'first', `${entryFile} never overwrites existing files`);
+  } finally {
+    stopCliProcess(child);
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 if (!isCoverageMode()) {
   test('source cli can start file explorer server directly', async t => {
     await assertReadOnlyFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
+    await assertAuthenticatedExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
   });
 
   test('built cli can start file explorer server through dist wrapper', async t => {
@@ -232,5 +294,6 @@ if (!isCoverageMode()) {
 
     await assertReadOnlyFileExplorerCli(t, entryFile);
     await assertFileExplorerCli(t, entryFile);
+    await assertAuthenticatedExplorerCli(t, entryFile);
   });
 }
