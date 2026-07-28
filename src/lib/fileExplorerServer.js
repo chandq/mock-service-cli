@@ -38,10 +38,12 @@ const isAuthEnabled = Boolean(explorerPassword);
 const visitorKeys = new Set();
 const MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_UPLOAD_TOTAL_SIZE = 100 * 1024 * 1024;
+const MAX_UPLOAD_FILE_COUNT = 100;
+const MAX_MULTIPART_OVERHEAD_SIZE = 2 * 1024 * 1024;
 const upload = multer({
   dest: path.join(os.tmpdir(), 'mock-service-cli-upload'),
   preservePath: true,
-  limits: { fileSize: MAX_UPLOAD_FILE_SIZE, files: 20, fields: 10 }
+  limits: { fileSize: MAX_UPLOAD_FILE_SIZE, files: MAX_UPLOAD_FILE_COUNT, fields: 10 }
 });
 
 function isPathInsideRoot(fullPath, resolvedRoot = explorerRootRealPath) {
@@ -249,6 +251,20 @@ function ensureUploadParent(parentFullPath, parts) {
 function moveUploadedFile(sourcePath, targetPath) {
   copyFileSync(sourcePath, targetPath, fsConstants.COPYFILE_EXCL);
   unlinkSync(sourcePath);
+}
+
+function cleanupUploadedTempFiles(files = []) {
+  files.forEach(file => {
+    if (file && file.path && existsSync(file.path)) rmSync(file.path, { force: true });
+  });
+}
+
+function enforceUploadRequestSize(req, res, next) {
+  const contentLength = Number(req.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_TOTAL_SIZE + MAX_MULTIPART_OVERHEAD_SIZE) {
+    return res.status(413).json({ error: 'Total upload size exceeds 100MB limit' });
+  }
+  next();
 }
 
 function deleteExplorerPath(targetPath) {
@@ -587,15 +603,13 @@ function init() {
     }
   });
 
-  app.post('/__api/upload', requireEditMode, upload.any(), (req, res) => {
+  app.post('/__api/upload', requireEditMode, enforceUploadRequestSize, upload.any(), (req, res) => {
     const parentPath = (req.body && req.body.parentPath) || '/';
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ error: 'No files uploaded' });
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_UPLOAD_TOTAL_SIZE) {
-      files.forEach(file => {
-        if (existsSync(file.path)) rmSync(file.path, { force: true });
-      });
+      cleanupUploadedTempFiles(files);
       return res.status(413).json({ error: 'Total upload size exceeds 100MB limit' });
     }
 
@@ -627,6 +641,7 @@ function init() {
 
   app.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {
+      cleanupUploadedTempFiles(req.files);
       const statusCode = error.code === 'LIMIT_FILE_SIZE' || error.code === 'LIMIT_FILE_COUNT' ? 413 : 400;
       return res.status(statusCode).json({ error: error.message });
     }

@@ -145,6 +145,8 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(html.includes('download=1'), `${entryFile} uses the raw download endpoint`);
     t.ok(html.includes("window.addEventListener('pageshow'"), `${entryFile} restores explorer state from bfcache`);
     t.ok(html.includes('event.persisted'), `${entryFile} only restores after a persisted page lifecycle event`);
+    t.ok(html.includes('createUploadBatches'), `${entryFile} batches folder uploads in the browser`);
+    t.ok(html.includes('MAX_UPLOAD_BATCH_FILE_COUNT = 100'), `${entryFile} batches folder uploads by file count`);
 
     const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
     t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);
@@ -272,6 +274,18 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
     t.equal(partialUpload.data.uploaded.length, 1, `${entryFile} uploads non-conflicting files`);
     t.equal(partialUpload.data.failed.length, 1, `${entryFile} reports conflicting files`);
     t.equal(readFileSync(path.join(tempDir, 'first.txt'), 'utf8'), 'first', `${entryFile} never overwrites existing files`);
+
+    const hundredFiles = Array.from({ length: 100 }, (_, index) => ({ name: `bulk/file-${index}.txt`, content: String(index) }));
+    const bulkUpload = await uploadFiles(baseUrl, hundredFiles, password);
+    t.equal(bulkUpload.response.status, 200, `${entryFile} accepts a full 100-file upload batch`);
+    t.equal(bulkUpload.data.uploaded.length, 100, `${entryFile} processes every file in a full upload batch`);
+
+    const overLimitUpload = await uploadFiles(
+      baseUrl,
+      Array.from({ length: 101 }, (_, index) => ({ name: `over-limit/file-${index}.txt`, content: String(index) })),
+      password
+    );
+    t.equal(overLimitUpload.response.status, 413, `${entryFile} rejects requests exceeding the 100-file server limit`);
   } finally {
     stopCliProcess(child);
     rmSync(tempDir, { recursive: true, force: true });

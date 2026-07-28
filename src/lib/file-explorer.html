@@ -1129,6 +1129,9 @@
       const GRID_ROW_HEIGHT = 132;
       const GRID_MIN_ITEM_WIDTH = 100;
       const VIRTUAL_BUFFER_ROWS = 6;
+      const MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
+      const MAX_UPLOAD_BATCH_SIZE = 90 * 1024 * 1024;
+      const MAX_UPLOAD_BATCH_FILE_COUNT = 100;
 
       let eventHandlers = [];
       let searchDebounceTimer = null;
@@ -1668,27 +1671,68 @@
         return data;
       }
 
-      async function uploadSelectedFiles(files) {
-        const input = document.activeElement;
-        if (!files || files.length === 0) return;
+      function createUploadBatches(files) {
+        const batches = [];
+        const failed = [];
+        let batch = [];
+        let batchSize = 0;
+
+        Array.from(files).forEach(file => {
+          if (file.size > MAX_UPLOAD_FILE_SIZE) {
+            failed.push({ name: file.webkitRelativePath || file.name, error: '单文件超过 20MB 限制' });
+            return;
+          }
+          const exceedsBatchLimit = batch.length >= MAX_UPLOAD_BATCH_FILE_COUNT || batchSize + file.size > MAX_UPLOAD_BATCH_SIZE;
+          if (batch.length && exceedsBatchLimit) {
+            batches.push(batch);
+            batch = [];
+            batchSize = 0;
+          }
+          batch.push(file);
+          batchSize += file.size;
+        });
+        if (batch.length) batches.push(batch);
+        return { batches, failed };
+      }
+
+      async function uploadBatch(files) {
         const formData = new FormData();
         formData.append('parentPath', currentPath);
-        Array.from(files).forEach(file => {
+        files.forEach(file => {
           formData.append('files', file, file.webkitRelativePath || file.name);
         });
 
+        const response = await explorerFetch('/__api/upload', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok && response.status !== 207) throw new Error(result.error || '上传失败');
+        return result;
+      }
+
+      async function uploadSelectedFiles(files) {
+        const input = document.activeElement;
+        if (!files || files.length === 0) return;
+        const { batches, failed } = createUploadBatches(files);
+        const uploaded = [];
+
         try {
-          const response = await explorerFetch('/__api/upload', { method: 'POST', body: formData });
-          const result = await response.json();
-          if (!response.ok && response.status !== 207) throw new Error(result.error || '上传失败');
+          for (let index = 0; index < batches.length; index++) {
+            const batch = batches[index];
+            showToast(`正在上传第 ${index + 1}/${batches.length} 批（${batch.length} 项）`);
+            try {
+              const result = await uploadBatch(batch);
+              uploaded.push(...result.uploaded);
+              failed.push(...result.failed);
+            } catch (error) {
+              batch.forEach(file => failed.push({ name: file.webkitRelativePath || file.name, error: error.message }));
+            }
+          }
+
           const messages = [];
-          if (result.uploaded.length) messages.push(`已上传 ${result.uploaded.length} 项`);
-          if (result.failed.length) messages.push(`${result.failed.length} 项未上传: ${result.failed.map(item => item.name).join(', ')}`);
+          if (uploaded.length) messages.push(`已上传 ${uploaded.length} 项`);
+          if (failed.length) messages.push(`${failed.length} 项未上传`);
           showToast(messages.join('；'));
-          await loadDirectory(currentPath);
-        } catch (error) {
-          console.error('上传失败:', error);
-          alert(`上传失败: ${error.message}`);
+          if (failed.length) console.warn('上传失败项:', failed);
+          if (uploaded.length) await loadDirectory(currentPath);
         } finally {
           document.getElementById('uploadFilesInput').value = '';
           document.getElementById('uploadFolderInput').value = '';
