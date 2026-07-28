@@ -54,6 +54,9 @@ async function build() {
   copyFileSync(path.join(srcLibDir, 'api-overview.html'), path.join(distDir, 'api-overview.html'));
   copyFileSync(path.join(srcLibDir, 'file-explorer.html'), path.join(distDir, 'file-explorer.html'));
   copyFileSync(path.join(srcLibDir, 'file-explorer-login.html'), path.join(distDir, 'file-explorer-login.html'));
+  copyFileSync(path.join(srcLibDir, 'favicon-api-overview.svg'), path.join(distDir, 'favicon-api-overview.svg'));
+  copyFileSync(path.join(srcLibDir, 'favicon-file-explorer.svg'), path.join(distDir, 'favicon-file-explorer.svg'));
+  copyFileSync(path.join(srcLibDir, 'favicon-file-explorer-login.svg'), path.join(distDir, 'favicon-file-explorer-login.svg'));
   writeFileSync(path.join(distDir, 'meta.json'), JSON.stringify(result.metafile, null, 2));
   chmodSync(path.join(root, 'bin/mock-service-cli'), 0o755);
 }

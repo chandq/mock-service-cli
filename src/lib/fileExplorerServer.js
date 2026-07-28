@@ -301,6 +301,8 @@ if (!process.env.PORT) {
 function init() {
   app.use(hostAllowlistMiddleware());
   app.use(express.json());
+  app.get('/favicon-file-explorer.svg', (req, res) => res.sendFile(path.resolve(__dirname, './favicon-file-explorer.svg')));
+  app.get('/favicon-file-explorer-login.svg', (req, res) => res.sendFile(path.resolve(__dirname, './favicon-file-explorer-login.svg')));
 
   // 文件浏览页面
   app.get('/', (req, res) => {

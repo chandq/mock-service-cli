@@ -132,6 +132,8 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(data.files.some(file => file.name === marker), `${entryFile} can start file explorer`);
 
     const html = await fetch(baseUrl).then(response => response.text());
+    t.match(html, /favicon-file-explorer.svg/, `${entryFile} declares the file explorer tab icon`);
+    t.equal((await fetch(`${baseUrl}/favicon-file-explorer.svg`)).status, 200, `${entryFile} serves the file explorer tab icon`);
     t.notOk(html.includes('id="editModeToggle"'), `${entryFile} does not expose an edit mode toggle`);
     t.ok(html.includes('edit-only'), `${entryFile} marks edit-only controls`);
     t.ok(html.includes('virtual-content'), `${entryFile} includes virtualized file rendering`);
