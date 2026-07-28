@@ -1119,6 +1119,8 @@
       let fileGridResizeObserver = null;
       let healthCheckTimer = null;
       let serviceWasUnavailable = false;
+      let explorerInitializationPromise = null;
+      let explorerLifecycleVersion = 0;
 
       const EXPLORER_AUTH_STORAGE_KEY = 'mock-service-cli.file-explorer.password';
       const EXPLORER_PATH_STORAGE_KEY = 'mock-service-cli.file-explorer.path';
@@ -1170,6 +1172,12 @@
         }
       }
 
+      function handlePageHide() {
+        explorerLifecycleVersion += 1;
+        explorerInitializationPromise = null;
+        cleanupEventListeners();
+      }
+
       function redirectToLogin() {
         sessionStorage.removeItem(EXPLORER_AUTH_STORAGE_KEY);
         window.location.replace('/__login');
@@ -1201,6 +1209,7 @@
       }
 
       function startHealthCheck() {
+        if (healthCheckTimer) return;
         healthCheckTimer = setInterval(async () => {
           try {
             const response = await explorerFetch('/__api/health');
@@ -1349,34 +1358,53 @@
         }
       }
 
-      document.addEventListener('DOMContentLoaded', async () => {
-        const fileGrid = document.getElementById('fileGrid');
-        const previewModal = document.getElementById('previewModal');
+      async function initializeExplorer(isPageRestore = false) {
+        if (explorerInitializationPromise) return explorerInitializationPromise;
 
-        addEventListenerWithCleanup(fileGrid, 'click', handleFileGridClick);
-        addEventListenerWithCleanup(fileGrid, 'contextmenu', handleFileGridContextmenu);
-        addEventListenerWithCleanup(fileGrid, 'scroll', handleFileGridScroll, { passive: true });
-        addEventListenerWithCleanup(document, 'click', handleDocumentClick);
-        addEventListenerWithCleanup(document, 'scroll', handleDocumentScroll);
-        addEventListenerWithCleanup(previewModal, 'click', handleModalClick);
-        addEventListenerWithCleanup(previewModal, 'wheel', handleModalWheel, { passive: false });
-        addEventListenerWithCleanup(document, 'keydown', handleDocumentKeydown);
+        const lifecycleVersion = explorerLifecycleVersion;
+        const initializationPromise = (async () => {
+          const fileGrid = document.getElementById('fileGrid');
+          const previewModal = document.getElementById('previewModal');
 
-        fileGridResizeObserver = new ResizeObserver(() => {
-          if (virtualState) {
-            renderFiles(currentFiles, false);
+          addEventListenerWithCleanup(fileGrid, 'click', handleFileGridClick);
+          addEventListenerWithCleanup(fileGrid, 'contextmenu', handleFileGridContextmenu);
+          addEventListenerWithCleanup(fileGrid, 'scroll', handleFileGridScroll, { passive: true });
+          addEventListenerWithCleanup(document, 'click', handleDocumentClick);
+          addEventListenerWithCleanup(document, 'scroll', handleDocumentScroll);
+          addEventListenerWithCleanup(previewModal, 'click', handleModalClick);
+          addEventListenerWithCleanup(previewModal, 'wheel', handleModalWheel, { passive: false });
+          addEventListenerWithCleanup(document, 'keydown', handleDocumentKeydown);
+
+          fileGridResizeObserver = new ResizeObserver(() => {
+            if (virtualState) {
+              renderFiles(currentFiles, false);
+            }
+          });
+          fileGridResizeObserver.observe(fileGrid);
+
+          if (!(await verifyExplorerAuth()) || lifecycleVersion !== explorerLifecycleVersion) return;
+          await loadExplorerConfig();
+          if (lifecycleVersion !== explorerLifecycleVersion) return;
+          startHealthCheck();
+          await loadDirectory(isPageRestore ? currentPath : sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY) || '/');
+        })();
+        explorerInitializationPromise = initializationPromise;
+
+        try {
+          await initializationPromise;
+        } finally {
+          if (explorerInitializationPromise === initializationPromise) {
+            explorerInitializationPromise = null;
           }
-        });
-        fileGridResizeObserver.observe(fileGrid);
+        }
+      }
 
-        if (!(await verifyExplorerAuth())) return;
-        await loadExplorerConfig();
-        startHealthCheck();
-        loadDirectory(sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY) || '/');
+      document.addEventListener('DOMContentLoaded', () => initializeExplorer());
+
+      window.addEventListener('pagehide', handlePageHide);
+      window.addEventListener('pageshow', event => {
+        if (event.persisted) initializeExplorer(true);
       });
-
-      window.addEventListener('beforeunload', cleanupEventListeners);
-      window.addEventListener('pagehide', cleanupEventListeners);
 
       function showContextMenu(x, y, filePath, isDirectory) {
         currentContextMenuFile = { path: filePath, isDirectory };

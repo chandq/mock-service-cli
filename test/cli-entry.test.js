@@ -143,6 +143,8 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(html.includes('renderedItems: new Map()'), `${entryFile} only updates files entering the virtual window`);
     t.ok(html.includes('freeItems: []'), `${entryFile} reuses items released at virtual window boundaries`);
     t.ok(html.includes('download=1'), `${entryFile} uses the raw download endpoint`);
+    t.ok(html.includes("window.addEventListener('pageshow'"), `${entryFile} restores explorer state from bfcache`);
+    t.ok(html.includes('event.persisted'), `${entryFile} only restores after a persisted page lifecycle event`);
 
     const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
     t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);
