@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.4.0](https://github.com/chandq/mock-service-cli/compare/v4.3.2...v4.4.0) (2026-07-28)
+
+
+### Features
+
+* add explorer uploads auth and host allowlists ([dd3284b](https://github.com/chandq/mock-service-cli/commit/dd3284b777a893a850a185242617c958f0d63390))
+
 ### [4.3.2](https://github.com/chandq/mock-service-cli/compare/v4.3.1...v4.3.2) (2026-07-27)
 
 
