@@ -149,6 +149,7 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(html.includes('event.persisted'), `${entryFile} only restores after a persisted page lifecycle event`);
     t.ok(html.includes('createUploadBatches'), `${entryFile} batches folder uploads in the browser`);
     t.ok(html.includes('MAX_UPLOAD_BATCH_FILE_COUNT = 100'), `${entryFile} batches folder uploads by file count`);
+    t.ok(html.includes('MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024'), `${entryFile} allows large LAN upload files`);
 
     const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
     t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);

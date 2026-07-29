@@ -36,8 +36,8 @@ const isEditMode = process.env.EXPLORER_EDIT === 'true';
 const explorerPassword = process.env.EXPLORER_AUTH || '';
 const isAuthEnabled = Boolean(explorerPassword);
 const visitorKeys = new Set();
-const MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_UPLOAD_TOTAL_SIZE = 100 * 1024 * 1024;
+const MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_UPLOAD_TOTAL_SIZE = 2 * 1024 * 1024 * 1024;
 const MAX_UPLOAD_FILE_COUNT = 100;
 const MAX_MULTIPART_OVERHEAD_SIZE = 2 * 1024 * 1024;
 const upload = multer({
@@ -262,7 +262,7 @@ function cleanupUploadedTempFiles(files = []) {
 function enforceUploadRequestSize(req, res, next) {
   const contentLength = Number(req.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_TOTAL_SIZE + MAX_MULTIPART_OVERHEAD_SIZE) {
-    return res.status(413).json({ error: 'Total upload size exceeds 100MB limit' });
+    return res.status(413).json({ error: 'Total upload size exceeds 2GB limit' });
   }
   next();
 }
@@ -612,7 +612,7 @@ function init() {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_UPLOAD_TOTAL_SIZE) {
       cleanupUploadedTempFiles(files);
-      return res.status(413).json({ error: 'Total upload size exceeds 100MB limit' });
+      return res.status(413).json({ error: 'Total upload size exceeds 2GB limit' });
     }
 
     const uploaded = [];
@@ -659,6 +659,8 @@ function init() {
 
 function startServer() {
   const http = require('http').createServer(app);
+  // Large LAN uploads may legitimately take longer than Node's five-minute default.
+  http.requestTimeout = 0;
 
   http.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
     console.info(

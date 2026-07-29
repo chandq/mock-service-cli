@@ -1130,8 +1130,8 @@
       const GRID_ROW_HEIGHT = 132;
       const GRID_MIN_ITEM_WIDTH = 100;
       const VIRTUAL_BUFFER_ROWS = 6;
-      const MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
-      const MAX_UPLOAD_BATCH_SIZE = 90 * 1024 * 1024;
+      const MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+      const MAX_UPLOAD_BATCH_SIZE = 1024 * 1024 * 1024;
       const MAX_UPLOAD_BATCH_FILE_COUNT = 100;
 
       let eventHandlers = [];
@@ -1680,7 +1680,7 @@
 
         Array.from(files).forEach(file => {
           if (file.size > MAX_UPLOAD_FILE_SIZE) {
-            failed.push({ name: file.webkitRelativePath || file.name, error: '单文件超过 20MB 限制' });
+            failed.push({ name: file.webkitRelativePath || file.name, error: '单文件超过 2GB 限制' });
             return;
           }
           const exceedsBatchLimit = batch.length >= MAX_UPLOAD_BATCH_FILE_COUNT || batchSize + file.size > MAX_UPLOAD_BATCH_SIZE;
