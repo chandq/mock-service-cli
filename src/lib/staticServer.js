@@ -2,12 +2,12 @@
  * Static Server
  * @Date: 2023-12-03 18:02:24
  * @LastEditors: chendq
- * @LastEditTime: 2025-07-29 19:20:21
+ * @LastEditTime: 2026-07-29 10:49:02
  * @Author      : chendq
  */
-const express = require('express'), // 引入express
-  colors = require('colors/safe'),
-  portfinder = require('portfinder');
+const express = require('express'); // 引入express
+const colors = require('colors/safe');
+const portfinder = require('portfinder');
 const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware } = require('./utils');
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);

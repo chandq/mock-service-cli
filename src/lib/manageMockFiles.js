@@ -2,14 +2,14 @@
  * @description: 生成Mock文件、获取mock数据统计
  * @Date: 2021-12-22 16:57:08
  * @LastEditors: chendq
- * @LastEditTime: 2025-06-15 22:25:45
+ * @LastEditTime: 2026-07-29 10:49:08
  * @Author: chendq
  */
-const fsa = require('fs-extra'),
-  fs = require('fs'),
-  path = require('path'),
-  isEqual = require('lodash/isEqual'),
-  colors = require('colors/safe');
+const fsa = require('fs-extra');
+const fs = require('fs');
+const path = require('path');
+const isEqual = require('lodash/isEqual');
+const colors = require('colors/safe');
 const {
   getFileLatestContent,
   SupportMethods,
@@ -136,8 +136,8 @@ const collectMockDataFromJsFile = function (mockDataMap, filePath) {
   const fileObject = getFileLatestContent(filePath);
 
   Object.keys(fileObject).forEach(item => {
-    let reqMethod = 'get',
-      reqUrl = item;
+    let reqMethod = 'get';
+    let reqUrl = item;
     if (methodRegExp.exec(item)) {
       const [, method, url] = methodRegExp.exec(item);
       reqMethod = method.toLowerCase();
@@ -172,8 +172,9 @@ const deepCollectMockData = function (mockDataMap, specialDir = '../mock') {
     if (el.name.endsWith('.json') && el.name !== 'mock-list.json') {
       const fileObject = getFileLatestContent(filePath);
       Object.keys(fileObject).forEach(method => {
-        mockDataMap[`${method.toLocaleLowerCase()} ${normalizeApiPath(decodeURIComponent(el.name).split('.json')[0])}`] =
-          fileObject[method];
+        mockDataMap[
+          `${method.toLocaleLowerCase()} ${normalizeApiPath(decodeURIComponent(el.name).split('.json')[0])}`
+        ] = fileObject[method];
       });
       continue;
     }

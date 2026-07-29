@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const colors = require('colors/safe'),
-  portfinder = require('portfinder'),
-  { resolve } = require('path'),
-  nodemon = require('nodemon');
+const colors = require('colors/safe');
+const portfinder = require('portfinder');
+const { resolve } = require('path');
+const nodemon = require('nodemon');
 const { existsSync } = require('fs-extra');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger, parseHostAllowlist } = require('../lib/utils');
@@ -98,15 +98,15 @@ delete argv.auth;
 // 保留命令行参数
 process.env.ARGV = JSON.stringify(argv);
 
-var port = argv.p || argv.port,
-  watchDir = argv.d,
-  specifiedFile = argv.f || argv.file,
-  version = argv.v || argv.version,
-  isStartSocketServer = argv.S || false,
-  rewrite = argv.r || argv.rewrite || false,
-  isOpenApiOverview = argv.w || argv.open || false,
-  explorerDir = argv.e || argv.explorer,
-  log = null;
+var port = argv.p || argv.port;
+var watchDir = argv.d;
+var specifiedFile = argv.f || argv.file;
+var version = argv.v || argv.version;
+var isStartSocketServer = argv.S || false;
+var rewrite = argv.r || argv.rewrite || false;
+var isOpenApiOverview = argv.w || argv.open || false;
+var explorerDir = argv.e || argv.explorer;
+var log = null;
 
 if (!argv.s && !argv.silent) {
   log = logger(false);

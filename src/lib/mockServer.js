@@ -1,9 +1,9 @@
-const express = require('express'), // 引入express
-  { readdirSync, existsSync } = require('fs'),
-  path = require('path'),
-  colors = require('colors/safe'),
-  portfinder = require('portfinder'),
-  { exec } = require('child_process');
+const express = require('express'); // 引入express
+const { readdirSync, existsSync } = require('fs');
+const path = require('path');
+const colors = require('colors/safe');
+const portfinder = require('portfinder');
+const { exec } = require('child_process');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { Server } = require('socket.io');
 const {
@@ -29,14 +29,14 @@ const app = express();
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
 let socketServer = null; // Socket server instance
-let corsOrigin = [],
-  corsHeaders = '';
+const corsOrigin = [];
+let corsHeaders = '';
 
 const httpsRE = /^https:\/\//;
-let count = 0,
-  fileCount = 0, // 记录mock api个数,mock file个数
-  mockDirStat = {}, // 缓存mock目录的统计信息
-  mockFileStat = {}; // 缓存mock文件的统计信息
+let count = 0;
+let fileCount = 0; // 记录mock api个数,mock file个数
+let mockDirStat = {}; // 缓存mock目录的统计信息
+let mockFileStat = {}; // 缓存mock文件的统计信息
 
 // whether include web serve or not
 const includesWebServe = process.env.STATIC_DIRECTORY || process.env.WEB_ROOT;
@@ -172,8 +172,8 @@ function composeRouteFromJsFile(file) {
     return;
   }
   Object.keys(fileObject).forEach(item => {
-    let reqMethod = 'get',
-      reqUrl = item;
+    let reqMethod = 'get';
+    let reqUrl = item;
     // 支持(GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS|COPY|LINK|UNLINK|PURGE)常用方法, 默认GET请求
     const [, , method, url] = methodRegExp.exec(item);
     if (method) {
@@ -266,9 +266,9 @@ function parseMockFiles(specialDir = '../mock') {
  * Start web server、socket server
  */
 function startServer() {
-  let webApp = null,
-    webPublicPath = '/',
-    proxyTable = {};
+  let webApp = null;
+  let webPublicPath = '/';
+  const proxyTable = {};
   // Enable Web Server
   if (process.env.WEB_ROOT) {
     webApp = express();
@@ -414,9 +414,7 @@ function startServer() {
         ].join('')
       );
       if (!process.env.RESTARTED) {
-        console.info(
-          [colors.yellow('\n🌍  mock-server version: '), colors.cyan(getPackageVersion()), '\n'].join('')
-        );
+        console.info([colors.yellow('\n🌍  mock-server version: '), colors.cyan(getPackageVersion()), '\n'].join(''));
         console.info(colors.yellow(`\n Mock server available on:\n`));
         getServerUrls(process.env.PORT).forEach(url => {
           console.info('    ' + url.replace(String(process.env.PORT), colors.green(process.env.PORT)));

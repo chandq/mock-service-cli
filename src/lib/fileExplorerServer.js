@@ -1,28 +1,35 @@
-const express = require('express'),
-  {
-    existsSync,
-    readFileSync,
-    statSync,
-    lstatSync,
-    rmSync,
-    mkdirSync,
-    writeFileSync,
-    renameSync,
-    realpathSync,
-    copyFileSync,
-    unlinkSync,
-    constants: fsConstants,
-    promises: fsPromises
-  } = require('fs'),
-  path = require('path'),
-  os = require('os'),
-  crypto = require('crypto'),
-  multer = require('multer'),
-  { UAParser } = require('ua-parser-js'),
-  colors = require('colors/safe'),
-  portfinder = require('portfinder'),
-  { exec, execFile } = require('child_process');
-const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware, normalizeRemoteAddress } = require('./utils');
+const express = require('express');
+const {
+  existsSync,
+  readFileSync,
+  statSync,
+  lstatSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  renameSync,
+  realpathSync,
+  copyFileSync,
+  unlinkSync,
+  constants: fsConstants,
+  promises: fsPromises
+} = require('fs');
+const path = require('path');
+const os = require('os');
+const crypto = require('crypto');
+const multer = require('multer');
+const { UAParser } = require('ua-parser-js');
+const colors = require('colors/safe');
+const portfinder = require('portfinder');
+const { exec, execFile } = require('child_process');
+const {
+  dateFormat,
+  logger,
+  getServerHost,
+  getServerUrls,
+  hostAllowlistMiddleware,
+  normalizeRemoteAddress
+} = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 
 const app = express();
@@ -200,7 +207,9 @@ function logExplorerVisit(req) {
 }
 
 function getUploadTargetPath(parentPath, originalName) {
-  const normalizedName = String(originalName || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  const normalizedName = String(originalName || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '');
   const parts = normalizedName.split('/').filter(Boolean);
   if (parts.length === 0 || normalizedName !== parts.join('/')) {
     const error = new Error('Invalid upload path');
@@ -301,8 +310,12 @@ if (!process.env.PORT) {
 function init() {
   app.use(hostAllowlistMiddleware());
   app.use(express.json());
-  app.get('/favicon-file-explorer.svg', (req, res) => res.sendFile(path.resolve(__dirname, './favicon-file-explorer.svg')));
-  app.get('/favicon-file-explorer-login.svg', (req, res) => res.sendFile(path.resolve(__dirname, './favicon-file-explorer-login.svg')));
+  app.get('/favicon-file-explorer.svg', (req, res) =>
+    res.sendFile(path.resolve(__dirname, './favicon-file-explorer.svg'))
+  );
+  app.get('/favicon-file-explorer-login.svg', (req, res) =>
+    res.sendFile(path.resolve(__dirname, './favicon-file-explorer-login.svg'))
+  );
 
   // 文件浏览页面
   app.get('/', (req, res) => {
@@ -362,33 +375,35 @@ function init() {
         return res.status(400).json({ error: 'Not a directory' });
       }
       const files = await fsPromises.readdir(fullPath, { withFileTypes: true });
-      const result = await Promise.all(files.map(async file => {
-        const filePath = path.join(fullPath, file.name);
-        let fileStats;
-        let hasError = false;
+      const result = await Promise.all(
+        files.map(async file => {
+          const filePath = path.join(fullPath, file.name);
+          let fileStats;
+          let hasError = false;
 
-        try {
-          fileStats = await fsPromises.lstat(filePath);
-        } catch (statError) {
-          hasError = true;
-        }
+          try {
+            fileStats = await fsPromises.lstat(filePath);
+          } catch (statError) {
+            hasError = true;
+          }
 
-        const relativePath = path.posix.join(dirPath, file.name);
+          const relativePath = path.posix.join(dirPath, file.name);
 
-        // lstat avoids following symlinks outside the explorer root.
-        const isDirectory = hasError ? file.isDirectory() : fileStats.isDirectory();
+          // lstat avoids following symlinks outside the explorer root.
+          const isDirectory = hasError ? file.isDirectory() : fileStats.isDirectory();
 
-        return {
-          name: file.name,
-          path: relativePath.replace(/\\/g, '/'),
-          isDirectory: isDirectory,
-          size: hasError ? 0 : fileStats.size,
-          mtime: hasError ? new Date() : fileStats.mtime,
-          birthtime: hasError ? new Date() : fileStats.birthtime,
-          isHidden: file.name.startsWith('.'),
-          error: hasError ? 'Cannot access file' : null
-        };
-      }));
+          return {
+            name: file.name,
+            path: relativePath.replace(/\\/g, '/'),
+            isDirectory: isDirectory,
+            size: hasError ? 0 : fileStats.size,
+            mtime: hasError ? new Date() : fileStats.mtime,
+            birthtime: hasError ? new Date() : fileStats.birthtime,
+            isHidden: file.name.startsWith('.'),
+            error: hasError ? 'Cannot access file' : null
+          };
+        })
+      );
 
       // 排序：目录在前，文件在后，然后按名称排序
       result.sort((a, b) => {
@@ -630,7 +645,10 @@ function init() {
           return;
         }
         moveUploadedFile(file.path, targetPath);
-        uploaded.push({ name: file.originalname, path: path.posix.join(normalizeExplorerInputPath(parentPath), ...parts) });
+        uploaded.push({
+          name: file.originalname,
+          path: path.posix.join(normalizeExplorerInputPath(parentPath), ...parts)
+        });
       } catch (error) {
         failed.push({ name: file.originalname, error: error.message, statusCode: error.statusCode || 500 });
       } finally {

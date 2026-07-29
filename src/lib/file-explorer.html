@@ -1011,14 +1011,29 @@
           <button class="toolbar-action-btn edit-only edit-inline" onclick="createEntry('file')" title="新建文件">
             新建文件
           </button>
-          <button class="toolbar-action-btn edit-only edit-inline" onclick="document.getElementById('uploadFilesInput').click()" title="上传文件">
+          <button
+            class="toolbar-action-btn edit-only edit-inline"
+            onclick="document.getElementById('uploadFilesInput').click()"
+            title="上传文件"
+          >
             上传文件
           </button>
-          <button class="toolbar-action-btn edit-only edit-inline" onclick="document.getElementById('uploadFolderInput').click()" title="上传文件夹">
+          <button
+            class="toolbar-action-btn edit-only edit-inline"
+            onclick="document.getElementById('uploadFolderInput').click()"
+            title="上传文件夹"
+          >
             上传文件夹
           </button>
           <input id="uploadFilesInput" type="file" multiple hidden onchange="uploadSelectedFiles(this.files)" />
-          <input id="uploadFolderInput" type="file" webkitdirectory directory hidden onchange="uploadSelectedFiles(this.files)" />
+          <input
+            id="uploadFolderInput"
+            type="file"
+            webkitdirectory
+            directory
+            hidden
+            onchange="uploadSelectedFiles(this.files)"
+          />
           <button
             class="toolbar-action-btn danger edit-only edit-inline"
             id="deleteSelectedBtn"
@@ -1683,7 +1698,8 @@
             failed.push({ name: file.webkitRelativePath || file.name, error: '单文件超过 2GB 限制' });
             return;
           }
-          const exceedsBatchLimit = batch.length >= MAX_UPLOAD_BATCH_FILE_COUNT || batchSize + file.size > MAX_UPLOAD_BATCH_SIZE;
+          const exceedsBatchLimit =
+            batch.length >= MAX_UPLOAD_BATCH_FILE_COUNT || batchSize + file.size > MAX_UPLOAD_BATCH_SIZE;
           if (batch.length && exceedsBatchLimit) {
             batches.push(batch);
             batch = [];
@@ -2525,7 +2541,9 @@
                 </div>
               </div>
             `;
-            document.getElementById('previewDownloadBtn').addEventListener('click', () => downloadFile(path, path.split('/').pop()));
+            document
+              .getElementById('previewDownloadBtn')
+              .addEventListener('click', () => downloadFile(path, path.split('/').pop()));
           } else {
             if (isLargeFile) {
               body.innerHTML = `
@@ -2541,7 +2559,9 @@
                   </div>
                 </div>
               `;
-              document.getElementById('previewDownloadBtn').addEventListener('click', () => downloadFile(path, path.split('/').pop()));
+              document
+                .getElementById('previewDownloadBtn')
+                .addEventListener('click', () => downloadFile(path, path.split('/').pop()));
             } else {
               const response = await explorerFetch(`/__api/file?path=${encodeURIComponent(path)}`);
               const contentType = response.headers.get('content-type');

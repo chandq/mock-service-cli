@@ -95,8 +95,11 @@
     }
   },
   "lint-staged": {
-    "*.{js,vue}": [
-      "eslint"
+    "*.[tj]s?(x)": [
+      "eslint --fix"
+    ],
+    "*.{css,less,scss,json,md}": [
+      "prettier --write"
     ]
   },
   "commitlint": {
