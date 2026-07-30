@@ -44,6 +44,7 @@ if (argv.h || argv.help) {
       '  -b --web-baseurl     Specify website public path when enabled web server.',
       '',
       '  -R --static-server   Specify static resource file directory when enabled static server.',
+      '  --static-config <file>  JSON configuration for static server live reload, HTTPS, mounts, proxy and fallback.',
       '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
       '  --edit               Enable file create, rename, and delete operations in file explorer.',
       '  --auth <password>    Require a password for file explorer access.',
@@ -74,6 +75,16 @@ if (argv.auth !== undefined && (typeof argv.auth !== 'string' || !argv.auth)) {
 
 if (argv.auth && !(argv.e || argv.explorer)) {
   console.error('--auth can only be used with --explorer');
+  process.exit(1);
+}
+
+if (argv['static-config'] !== undefined && (typeof argv['static-config'] !== 'string' || !argv['static-config'])) {
+  console.error('--static-config requires a JSON file path');
+  process.exit(1);
+}
+
+if (argv['static-config'] && !(argv.R || argv['static-server'])) {
+  console.error('--static-config can only be used with --static-server');
   process.exit(1);
 }
 
@@ -153,6 +164,14 @@ injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
 injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
+if (argv['static-config']) {
+  const staticConfigPath = resolve(process.cwd(), argv['static-config']);
+  if (!existsSync(staticConfigPath)) {
+    console.error(`static-config: 文件 ${staticConfigPath} 不存在`);
+    process.exit(1);
+  }
+  process.env.STATIC_CONFIG = staticConfigPath;
+}
 injectEnvVariable('EXPLORER_DIRECTORY', explorerDir);
 process.env.SERVER_HOST = argv.host === true || hostAllowlist.length > 0 ? '0.0.0.0' : '127.0.0.1';
 if (hostAllowlist.length > 0) {

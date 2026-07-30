@@ -37,6 +37,12 @@ npm install --global mock-service-cli
 brew install mock-service-cli
 ```
 
+需要 RAR、7z、bzip2、xz 等高级归档格式时，安装 Ultra 版。它与轻量版使用相同的命令，不能同时全局安装：
+
+```bash
+npm install --global mock-service-cli-ultra
+```
+
 ### 局部安装
 
 ```bash
@@ -71,6 +77,7 @@ npx mock-service-cli [options] [path]
 | `-P` 或 `--web-port`       | Web 服务器端口                                                    | 9090   |
 | `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                                     | -      |
 | `-R` 或 `--static-server`  | 启用静态服务器，指定静态资源目录                                  | -      |
+| `--static-config <file>`   | 静态服务器的 JSON 配置：热更新、HTTPS、挂载、代理与 SPA 回退      | -      |
 | `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                                 | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
 | `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
@@ -100,7 +107,17 @@ mock-service-cli -f ./mock.js
 ```bash
 # 启动静态服务器
 mock-service-cli -R ./public
+
+# 使用 Live Server 风格的热更新配置
+mock-service-cli -R ./public --static-config ./static-server.json
 ```
+
+静态服务器会监听资源变化并向 HTML 页面注入热更新客户端：CSS 文件更新时替换样式表，其余变更刷新页面。
+默认不打开浏览器；在配置中设置 `"open": true` 或提供页面路径即可打开。完整配置字段和示例见
+[`docs/static-server.config.example.json`](./docs/static-server.config.example.json)：支持忽略规则、SPA 回退、挂载目录、代理、HTTPS、CORS、响应头和自定义浏览器命令。
+`-p`、`--host`、`-A` 和 `--proxy-options` 仍可使用，且同名 CLI 配置优先。
+未设置 `spaFallback` 时，根目录和子目录会显示可点击的目录索引，不会自动加载 `index.html`；用户可直接访问该文件。
+只有显式设置 `"spaFallback": "/index.html"`（或其他入口）时，未命中的路由才会返回 SPA 入口页。
 
 ### Web 服务器 (SPA)
 
@@ -156,6 +173,10 @@ mock-service-cli -e ./ --host ./allowed-ips.txt
 同名路径不会覆盖，其他无冲突文件仍会继续上传。单文件和单次请求最大 2GB，单次最多 100 个文件；
 文件夹上传会按最多 100 个文件且 1GB 自动分批，依次完成上传。大文件会先写入系统临时目录再复制到目标目录，
 上传时请确保临时目录和目标磁盘合计至少有文件大小两倍的可用空间。
+
+编辑模式下还可压缩选中项、预览压缩包目录和解压压缩包。轻量版创建压缩包支持 ZIP 和 TAR.GZ，预览和解压支持 ZIP、TAR 与 TAR.GZ；归档操作在后台执行，可取消；单个压缩包及解压后的总大小上限为 2GB，压缩包内最多 10,000 项，且会拒绝加密包、路径穿越、符号链接和目标冲突。
+
+Ultra 版额外支持 RAR、7z、gzip、bzip2 与 xz 系列的预览和解压；RAR 为只读支持，不能创建。Ultra 包会额外安装约 12MB 的跨平台 7-Zip 二进制，RAR 通过只读解码器处理；轻量版不包含这些二进制。
 
 `--auth` 会在文件浏览器中显示登录页，并在每次页面加载和每个 API 请求时验证密码。密码仅保存在当前浏览器标签页的
 `sessionStorage` 中，但命令行参数仍可能暴露在 shell 历史和进程列表里，因此只适用于可信本机或局域网环境。

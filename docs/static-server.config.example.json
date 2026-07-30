@@ -1,0 +1,28 @@
+{
+  "open": false,
+  "browser": "default",
+  "watch": {
+    "ignore": ["**/node_modules/**", "**/.git/**"],
+    "delay": 100,
+    "fullReload": false
+  },
+  "injectTag": "body",
+  "spaFallback": "/index.html",
+  "mounts": [
+    {
+      "path": "/vendor",
+      "directory": "../node_modules"
+    }
+  ],
+  "proxy": {
+    "/api": "http://127.0.0.1:3000"
+  },
+  "cors": false,
+  "headers": {
+    "Cache-Control": "no-store"
+  },
+  "https": {
+    "cert": "./certs/local-cert.pem",
+    "key": "./certs/local-key.pem"
+  }
+}

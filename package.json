@@ -7,7 +7,9 @@
     "mock-service-cli": "bin/mock-service-cli"
   },
   "scripts": {
-    "build": "node ./scripts/build.js",
+    "build": "node ./scripts/build.js --edition=light",
+    "build:light": "node ./scripts/build.js --edition=light",
+    "build:ultra": "node ./scripts/build.js --edition=ultra",
     "prepack": "npm run build",
     "prestart": "npm run build",
     "start": "node ./bin/mock-service-cli",
@@ -20,6 +22,11 @@
     "fix": "eslint --ext .js,.vue,.css --fix",
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
     "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
+    "package:light": "node ./scripts/package-edition.js light",
+    "package:ultra": "node ./scripts/package-edition.js ultra",
+    "package:editions": "npm run package:light && npm run package:ultra && npm run build:light",
+    "verify:packages": "node ./scripts/verify-packages.js",
+    "publish:editions": "node ./scripts/publish-editions.js",
     "release:prerelease": "standard-version --prerelease",
     "release:prefix": "standard-version --prerelease alpha",
     "release:patch": "standard-version --release-as patch && git push --follow-tags origin master",
@@ -29,7 +36,8 @@
   "files": [
     "bin",
     "dist/*.js",
-    "dist/*.html"
+    "dist/*.html",
+    "docs/static-server.config.example.json"
   ],
   "engines": {
     "node": ">=18"
@@ -56,14 +64,20 @@
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
+    "archiver": "^8.0.0",
+    "chokidar": "^3.6.0",
+    "http-proxy-middleware": "^2.0.10",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14",
-    "ua-parser-js": "^2.0.10"
+    "tar-stream": "^3.2.0",
+    "ua-parser-js": "^2.0.10",
+    "yauzl": "^2.10.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
     "babel-eslint": "^10.1.0",
+    "7zip-bin": "^5.2.0",
     "colors": "^1.4.0",
     "esbuild": "^0.28.1",
     "eslint": "^7.0.0",
@@ -71,7 +85,6 @@
     "eslint-plugin-mocha": "^9.0.0",
     "express": "^4.22.2",
     "fs-extra": "^11.3.6",
-    "http-proxy-middleware": "^2.0.10",
     "husky": "^4.3.8",
     "lint-staged": "^10.2.2",
     "lodash": "^4.18.1",
@@ -79,6 +92,7 @@
     "mockjs": "^0.1.10",
     "portfinder": "^1.0.38",
     "socket.io": "^4.8.3",
+    "node-unrar-js": "^2.0.2",
     "standard-version": "^8.0.0",
     "tap": "^15.0.10"
   },

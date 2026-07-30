@@ -31,6 +31,7 @@ const {
   normalizeRemoteAddress
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
+const { ArchiveService } = require('./archiveService');
 
 const app = express();
 const log = logger(process.env.SILENT);
@@ -51,6 +52,11 @@ const upload = multer({
   dest: path.join(os.tmpdir(), 'mock-service-cli-upload'),
   preservePath: true,
   limits: { fileSize: MAX_UPLOAD_FILE_SIZE, files: MAX_UPLOAD_FILE_COUNT, fields: 10 }
+});
+const archiveService = new ArchiveService({
+  rootPath: explorerRootRealPath,
+  resolvePath: resolveExplorerPath,
+  getChildPath
 });
 
 function isPathInsideRoot(fullPath, resolvedRoot = explorerRootRealPath) {
@@ -348,6 +354,10 @@ function init() {
   app.get('/__api/config', (req, res) => {
     logExplorerVisit(req);
     res.json({ editMode: isEditMode, authEnabled: isAuthEnabled });
+  });
+
+  app.get('/__api/archive/capabilities', requireEditMode, (req, res) => {
+    res.json(archiveService.getCapabilities());
   });
 
   app.get('/__api/health', (req, res) => {
@@ -657,6 +667,53 @@ function init() {
     });
 
     res.status(failed.length ? 207 : 200).json({ success: failed.length === 0, uploaded, failed });
+  });
+
+  app.get('/__api/archive/preview', requireEditMode, async (req, res) => {
+    try {
+      const preview = await archiveService.listArchive(normalizeExplorerInputPath(req.query.path || '/'));
+      res.json(preview);
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  });
+
+  app.post('/__api/archive/jobs', requireEditMode, (req, res) => {
+    const payload = req.body || {};
+    const operation = payload.operation;
+    if (operation !== 'create' && operation !== 'extract') {
+      return res.status(400).json({ error: 'Archive operation must be create or extract' });
+    }
+    try {
+      const job = archiveService.startJob(operation, payload);
+      res.status(202).json({ id: job.id, status: job.status, type: job.type });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  });
+
+  app.get('/__api/archive/jobs/:id', requireEditMode, (req, res) => {
+    const job = archiveService.getJob(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Archive job not found' });
+    res.json({
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      progress: job.progress,
+      result: job.result,
+      error: job.error,
+      createdAt: job.createdAt,
+      finishedAt: job.finishedAt || null
+    });
+  });
+
+  app.delete('/__api/archive/jobs/:id', requireEditMode, (req, res) => {
+    try {
+      const job = archiveService.cancelJob(req.params.id);
+      res.json({ id: job.id, status: job.status });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ error: error.message });
+    }
   });
 
   app.use((error, req, res, next) => {

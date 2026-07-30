@@ -1044,6 +1044,15 @@
             删除选中
           </button>
           <button
+            class="toolbar-action-btn edit-only edit-inline"
+            id="archiveSelectedBtn"
+            onclick="createArchiveFromSelection()"
+            title="压缩选中项"
+            disabled
+          >
+            压缩选中
+          </button>
+          <button
             class="toggle-hidden-btn"
             id="toggleHiddenBtn"
             onclick="toggleHiddenFiles()"
@@ -1107,6 +1116,16 @@
       <div class="context-menu-item edit-only edit-flex" id="ctxDelete" onclick="handleContextMenuAction('delete')">
         🗑️ 删除
       </div>
+      <div class="context-menu-divider edit-only edit-block"></div>
+      <div class="context-menu-item edit-only edit-flex" id="ctxCompress" onclick="handleContextMenuAction('compress')">
+        🗜️ 压缩
+      </div>
+      <div class="context-menu-item edit-only edit-flex" id="ctxExtract" onclick="handleContextMenuAction('extract')">
+        📦 解压到当前目录
+      </div>
+      <div class="context-menu-item edit-only edit-flex" id="ctxArchivePreview" onclick="handleContextMenuAction('archivePreview')">
+        🔎 查看压缩包
+      </div>
     </div>
 
     <script>
@@ -1137,6 +1156,8 @@
       let serviceWasUnavailable = false;
       let explorerInitializationPromise = null;
       let explorerLifecycleVersion = 0;
+      let currentArchiveJobId = null;
+      let archiveCapabilities = { createFormats: [], readExtensions: [] };
 
       const EXPLORER_AUTH_STORAGE_KEY = 'mock-service-cli.file-explorer.password';
       const EXPLORER_PATH_STORAGE_KEY = 'mock-service-cli.file-explorer.path';
@@ -1264,6 +1285,20 @@
           editMode = false;
         }
         syncEditModeUI();
+      }
+
+      async function loadArchiveCapabilities() {
+        archiveCapabilities = { createFormats: [], readExtensions: [] };
+        if (!editMode) return;
+        try {
+          const capabilities = await requestJson('/__api/archive/capabilities');
+          archiveCapabilities = {
+            createFormats: Array.isArray(capabilities.createFormats) ? capabilities.createFormats : [],
+            readExtensions: Array.isArray(capabilities.readExtensions) ? capabilities.readExtensions : []
+          };
+        } catch (error) {
+          console.warn('Failed to load archive capabilities:', error);
+        }
       }
 
       function handleFileGridClick(e) {
@@ -1404,6 +1439,8 @@
           if (!(await verifyExplorerAuth()) || lifecycleVersion !== explorerLifecycleVersion) return;
           await loadExplorerConfig();
           if (lifecycleVersion !== explorerLifecycleVersion) return;
+          await loadArchiveCapabilities();
+          if (lifecycleVersion !== explorerLifecycleVersion) return;
           startHealthCheck();
           await loadDirectory(isPageRestore ? currentPath : sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY) || '/');
         })();
@@ -1430,12 +1467,17 @@
 
         const menu = document.getElementById('contextMenu');
         const ctxDownload = document.getElementById('ctxDownload');
+        const isArchive = !isDirectory && isArchiveFile(filePath);
+        const ctxExtract = document.getElementById('ctxExtract');
+        const ctxArchivePreview = document.getElementById('ctxArchivePreview');
 
         if (isDirectory) {
           ctxDownload.classList.add('disabled');
         } else {
           ctxDownload.classList.remove('disabled');
         }
+        ctxExtract.classList.toggle('disabled', !isArchive);
+        ctxArchivePreview.classList.toggle('disabled', !isArchive);
 
         menu.style.left = `${x}px`;
         menu.style.top = `${y}px`;
@@ -1480,6 +1522,15 @@
             break;
           case 'delete':
             deletePath(path, path.split('/').pop());
+            break;
+          case 'compress':
+            createArchiveFromSelection([path]);
+            break;
+          case 'extract':
+            if (!isDirectory && isArchiveFile(path)) extractArchive(path);
+            break;
+          case 'archivePreview':
+            if (!isDirectory && isArchiveFile(path)) previewArchive(path);
             break;
         }
 
@@ -1685,6 +1736,131 @@
           throw new Error(data.error || '请求失败');
         }
         return data;
+      }
+
+      function isArchiveFile(filePath) {
+        const lowerPath = String(filePath || '').toLowerCase();
+        return archiveCapabilities.readExtensions.some(extension => lowerPath.endsWith(`.${String(extension).toLowerCase()}`));
+      }
+
+      async function createArchiveFromSelection(sourceOverride) {
+        const sources = sourceOverride || [...selectedPaths];
+        if (!sources.length) {
+          showToast('请先选择要压缩的文件或文件夹');
+          return;
+        }
+        const defaultName = sources.length === 1 ? sources[0].split('/').pop().replace(/\.[^.]+$/, '') : 'archive';
+        const name = window.prompt('压缩包名称', defaultName);
+        if (name === null || !name.trim()) return;
+        const formats = archiveCapabilities.createFormats;
+        if (!formats.length) {
+          showToast('当前版本未提供压缩格式');
+          return;
+        }
+        const format = window.prompt(`压缩格式（${formats.join(' 或 ')}）`, formats[0]);
+        if (format === null) return;
+        if (!formats.includes(format.trim())) {
+          alert(`仅支持 ${formats.join(' 或 ')}`);
+          return;
+        }
+        await startArchiveJob({
+          operation: 'create',
+          sources,
+          destinationPath: currentPath,
+          name: name.trim(),
+          format: format.trim()
+        });
+      }
+
+      async function extractArchive(filePath) {
+        const confirmed = window.confirm(`将 “${filePath.split('/').pop()}” 解压到当前目录吗？已有同名文件将导致整个操作失败。`);
+        if (!confirmed) return;
+        await startArchiveJob({ operation: 'extract', path: filePath, destinationPath: currentPath });
+      }
+
+      async function startArchiveJob(payload) {
+        try {
+          const job = await requestJson('/__api/archive/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          currentArchiveJobId = job.id;
+          monitorArchiveJob(job.id);
+        } catch (error) {
+          alert(`归档操作无法启动: ${error.message}`);
+        }
+      }
+
+      async function monitorArchiveJob(id) {
+        const modal = document.getElementById('previewModal');
+        const title = document.getElementById('previewTitle');
+        const body = document.getElementById('previewBody');
+        title.textContent = '归档任务';
+        modal.classList.add('active');
+        try {
+          const job = await requestJson(`/__api/archive/jobs/${encodeURIComponent(id)}`);
+          const progress = job.progress || {};
+          body.innerHTML = `
+            <div class="preview-container">
+              <p>状态：${escapeHtml(job.status)}</p>
+              <p>进度：${Number(progress.processedEntries || 0)} / ${Number(progress.totalEntries || 0)} 项</p>
+              ${job.status === 'running' || job.status === 'queued' ? '<button class="toolbar-action-btn danger" onclick="cancelArchiveJob()">取消任务</button>' : ''}
+              ${job.error ? `<p style="color:#d32f2f">${escapeHtml(job.error)}</p>` : ''}
+            </div>
+          `;
+          if (job.status === 'running' || job.status === 'queued') {
+            setTimeout(() => {
+              if (currentArchiveJobId === id) monitorArchiveJob(id);
+            }, 500);
+            return;
+          }
+          currentArchiveJobId = null;
+          if (job.status === 'completed') {
+            showToast('归档任务已完成');
+            await loadDirectory(currentPath);
+          }
+        } catch (error) {
+          currentArchiveJobId = null;
+          body.innerHTML = `<div class="empty-state"><p>归档任务失败: ${escapeHtml(error.message)}</p></div>`;
+        }
+      }
+
+      async function cancelArchiveJob() {
+        if (!currentArchiveJobId) return;
+        try {
+          await requestJson(`/__api/archive/jobs/${encodeURIComponent(currentArchiveJobId)}`, { method: 'DELETE' });
+          showToast('正在取消归档任务');
+        } catch (error) {
+          alert(`取消任务失败: ${error.message}`);
+        }
+      }
+
+      async function previewArchive(filePath) {
+        const modal = document.getElementById('previewModal');
+        const title = document.getElementById('previewTitle');
+        const body = document.getElementById('previewBody');
+        title.textContent = `${filePath.split('/').pop()} - 压缩包内容`;
+        body.innerHTML = '<div class="loading"><div class="spinner"></div><p>读取压缩包目录...</p></div>';
+        modal.classList.add('active');
+        try {
+          const preview = await requestJson(`/__api/archive/preview?path=${encodeURIComponent(filePath)}`);
+          const entries = preview.entries || [];
+          body.innerHTML = `
+            <div class="preview-container">
+              <div class="binary-info">${entries.length} 项 · 解压后 ${formatSize(preview.totalSize || 0)} · 包内数据 ${formatSize(preview.totalPackedSize || 0)}</div>
+              <div class="text-preview">${entries
+                .map(entry => {
+                  const depth = entry.path.split('/').length - 1;
+                  const label = `${entry.isDirectory ? '📁' : '📄'} ${entry.path.split('/').pop()}${entry.isDirectory ? '/' : ` (${formatSize(entry.size || 0)})`}`;
+                  return `<div style="padding-left:${depth * 16}px">${escapeHtml(label)}</div>`;
+                })
+                .join('')}</div>
+            </div>
+          `;
+        } catch (error) {
+          body.innerHTML = `<div class="empty-state"><p>读取压缩包失败: ${escapeHtml(error.message)}</p></div>`;
+        }
       }
 
       function createUploadBatches(files) {
@@ -1910,11 +2086,16 @@
 
       function updateSelectionToolbar() {
         const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        const archiveSelectedBtn = document.getElementById('archiveSelectedBtn');
         if (!deleteSelectedBtn) return;
 
         const count = selectedPaths.size;
         deleteSelectedBtn.disabled = count === 0;
         deleteSelectedBtn.textContent = count ? `删除选中(${count})` : '删除选中';
+        if (archiveSelectedBtn) {
+          archiveSelectedBtn.disabled = count === 0;
+          archiveSelectedBtn.textContent = count ? `压缩选中(${count})` : '压缩选中';
+        }
       }
 
       function renderBreadcrumb(currentPath) {
@@ -2482,6 +2663,10 @@
         currentImageIndex = findCurrentImageIndex(path);
 
         try {
+          if (isArchiveFile(path)) {
+            await previewArchive(path);
+            return;
+          }
           const ext = path.split('.').pop().toLowerCase();
 
           const fileInfo = await getFileInfo(path);
@@ -2642,6 +2827,7 @@
 
       function closeModal() {
         document.getElementById('previewModal').classList.remove('active');
+        currentArchiveJobId = null;
         releasePreviewObjectUrl();
       }
 
