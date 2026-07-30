@@ -132,8 +132,10 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(data.files.some(file => file.name === marker), `${entryFile} can start file explorer`);
 
     const html = await fetch(baseUrl).then(response => response.text());
-    t.match(html, /favicon-file-explorer.svg/, `${entryFile} declares the file explorer tab icon`);
-    t.equal((await fetch(`${baseUrl}/favicon-file-explorer.svg`)).status, 200, `${entryFile} serves the file explorer tab icon`);
+    t.match(html, /favicon-file-explorer\.svg\?instance=/, `${entryFile} declares a cache-busted file explorer tab icon`);
+    const faviconResponse = await fetch(`${baseUrl}/favicon-file-explorer.svg`);
+    t.equal(faviconResponse.status, 200, `${entryFile} serves the file explorer tab icon`);
+    t.equal(faviconResponse.headers.get('cache-control'), 'no-store', `${entryFile} prevents stale favicon caching`);
     t.notOk(html.includes('id="editModeToggle"'), `${entryFile} does not expose an edit mode toggle`);
     t.ok(html.includes('edit-only'), `${entryFile} marks edit-only controls`);
     t.ok(html.includes('virtual-content'), `${entryFile} includes virtualized file rendering`);
@@ -248,7 +250,9 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
     await waitForExplorer(baseUrl, child, output, { headers: authHeaders });
     const loginResponse = await fetch(`${baseUrl}/__login`);
     t.equal(loginResponse.status, 200, `${entryFile} serves the login page`);
-    t.match(await loginResponse.text(), /访问密码/, `${entryFile} login page asks for a password`);
+    const loginHtml = await loginResponse.text();
+    t.match(loginHtml, /访问密码/, `${entryFile} login page asks for a password`);
+    t.match(loginHtml, /favicon-file-explorer-login\.svg\?instance=/, `${entryFile} cache-busts the login tab icon`);
 
     const unauthenticatedResponse = await fetch(`${baseUrl}/__api/list?path=%2F`);
     t.equal(unauthenticatedResponse.status, 401, `${entryFile} protects explorer APIs`);

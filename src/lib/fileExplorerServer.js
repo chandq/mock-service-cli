@@ -317,31 +317,24 @@ if (!process.env.PORT) {
 function init() {
   app.use(hostAllowlistMiddleware());
   app.use(express.json());
-  app.get('/favicon-file-explorer.svg', (req, res) =>
-    res.sendFile(path.resolve(__dirname, './favicon-file-explorer.svg'))
-  );
-  app.get('/favicon-file-explorer-login.svg', (req, res) =>
-    res.sendFile(path.resolve(__dirname, './favicon-file-explorer-login.svg'))
-  );
+  const faviconInstanceId = crypto.randomUUID();
+  const explorerFaviconUrl = `/favicon-file-explorer.svg?instance=${faviconInstanceId}`;
+  const loginFaviconUrl = `/favicon-file-explorer-login.svg?instance=${faviconInstanceId}`;
+  const sendFavicon = (filename, res) => {
+    res.type('image/svg+xml').set('Cache-Control', 'no-store').sendFile(path.resolve(__dirname, filename));
+  };
+  const sendExplorerPage = (filename, faviconUrl, res) => {
+    const htmlPath = path.resolve(__dirname, filename);
+    if (!existsSync(htmlPath)) return res.status(404).send('File explorer page not found');
+    res.type('html').send(readFileSync(htmlPath, 'utf8').replace('__FILE_EXPLORER_FAVICON_URL__', faviconUrl));
+  };
+  app.get('/favicon-file-explorer.svg', (req, res) => sendFavicon('./favicon-file-explorer.svg', res));
+  app.get('/favicon-file-explorer-login.svg', (req, res) => sendFavicon('./favicon-file-explorer-login.svg', res));
 
   // 文件浏览页面
-  app.get('/', (req, res) => {
-    const htmlPath = path.resolve(__dirname, './file-explorer.html');
-    if (existsSync(htmlPath)) {
-      res.sendFile(htmlPath);
-    } else {
-      res.status(404).send('File explorer page not found');
-    }
-  });
+  app.get('/', (req, res) => sendExplorerPage('./file-explorer.html', explorerFaviconUrl, res));
 
-  app.get('/__login', (req, res) => {
-    const htmlPath = path.resolve(__dirname, './file-explorer-login.html');
-    if (existsSync(htmlPath)) {
-      res.sendFile(htmlPath);
-    } else {
-      res.status(404).send('File explorer login page not found');
-    }
-  });
+  app.get('/__login', (req, res) => sendExplorerPage('./file-explorer-login.html', loginFaviconUrl, res));
 
   app.post('/__api/auth/verify', (req, res) => {
     if (!isValidExplorerPassword(getExplorerPassword(req))) {
