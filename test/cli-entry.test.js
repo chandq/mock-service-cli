@@ -162,6 +162,7 @@ async function assertFileExplorerCli(t, entryFile) {
 
     const config = await requestJson(`${baseUrl}/__api/config`);
     t.equal(config.editMode, true, `${entryFile} enables edits with --edit`);
+    t.match(config.rootId, /^[a-f0-9]{64}$/, `${entryFile} scopes saved navigation to its explorer root`);
 
     if (process.platform !== 'win32') {
       const externalDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-external-'));

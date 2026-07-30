@@ -1158,6 +1158,7 @@
       let explorerLifecycleVersion = 0;
       let currentArchiveJobId = null;
       let currentArchiveJobOperation = null;
+      let explorerRootId = null;
       let archiveCapabilities = { createFormats: [], readExtensions: [] };
 
       const EXPLORER_AUTH_STORAGE_KEY = 'mock-service-cli.file-explorer.password';
@@ -1281,6 +1282,7 @@
           const config = await response.json();
           if (!response.ok || config.error) throw new Error(config.error || 'Failed to load configuration');
           editMode = Boolean(config.editMode);
+          explorerRootId = typeof config.rootId === 'string' ? config.rootId : null;
         } catch (error) {
           console.warn('Failed to load file explorer configuration:', error);
           editMode = false;
@@ -1413,7 +1415,25 @@
         }
       }
 
-      async function initializeExplorer(isPageRestore = false) {
+      function getStoredExplorerPath() {
+        try {
+          const stored = JSON.parse(sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY));
+          if (stored && stored.rootId === explorerRootId && typeof stored.path === 'string' && stored.path.startsWith('/')) {
+            return stored.path;
+          }
+        } catch (error) {
+          // Earlier releases stored the path directly; discard that unscoped value.
+        }
+        sessionStorage.removeItem(EXPLORER_PATH_STORAGE_KEY);
+        return '/';
+      }
+
+      function storeExplorerPath(path) {
+        if (!explorerRootId) return;
+        sessionStorage.setItem(EXPLORER_PATH_STORAGE_KEY, JSON.stringify({ rootId: explorerRootId, path }));
+      }
+
+      async function initializeExplorer() {
         if (explorerInitializationPromise) return explorerInitializationPromise;
 
         const lifecycleVersion = explorerLifecycleVersion;
@@ -1443,7 +1463,7 @@
           await loadArchiveCapabilities();
           if (lifecycleVersion !== explorerLifecycleVersion) return;
           startHealthCheck();
-          await loadDirectory(isPageRestore ? currentPath : sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY) || '/');
+          await loadDirectory(getStoredExplorerPath(), { fallbackToRoot: true });
         })();
         explorerInitializationPromise = initializationPromise;
 
@@ -1460,7 +1480,7 @@
 
       window.addEventListener('pagehide', handlePageHide);
       window.addEventListener('pageshow', event => {
-        if (event.persisted) initializeExplorer(true);
+        if (event.persisted) initializeExplorer();
       });
 
       function showContextMenu(x, y, filePath, isDirectory) {
@@ -1538,7 +1558,7 @@
         hideContextMenu();
       }
 
-      async function loadDirectory(path) {
+      async function loadDirectory(path, { fallbackToRoot = false } = {}) {
         const fileGrid = document.getElementById('fileGrid');
         const oldCurrentPath = currentPath;
         const requestId = ++directoryRequestId;
@@ -1562,12 +1582,14 @@
           const data = await response.json();
 
           if (!response.ok || data.error) {
-            throw new Error(data.error);
+            const error = new Error(data.error || 'Failed to load directory');
+            error.status = response.status;
+            throw error;
           }
           if (requestId !== directoryRequestId) return;
 
           currentPath = data.currentPath;
-          sessionStorage.setItem(EXPLORER_PATH_STORAGE_KEY, currentPath);
+          storeExplorerPath(currentPath);
           allFiles = data.files || [];
 
           if (document.getElementById('searchInput')) {
@@ -1580,6 +1602,10 @@
           updateBackButton(data.parentPath);
         } catch (error) {
           if (error.name === 'AbortError' || requestId !== directoryRequestId) return;
+          if (fallbackToRoot && path !== '/' && error.status === 404) {
+            sessionStorage.removeItem(EXPLORER_PATH_STORAGE_KEY);
+            return loadDirectory('/', { fallbackToRoot: false });
+          }
           console.error('Error loading directory:', error);
           currentPath = oldCurrentPath;
           const parentPath = currentPath === '/' ? null : currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';

@@ -39,6 +39,7 @@ const argv = JSON.parse(process.env.ARGV);
 
 const explorerRoot = path.resolve(process.env.EXPLORER_DIRECTORY || process.cwd());
 const explorerRootRealPath = realpathSync(explorerRoot);
+const explorerRootId = crypto.createHash('sha256').update(explorerRootRealPath).digest('hex');
 const port = argv.p || argv.port;
 const isEditMode = process.env.EXPLORER_EDIT === 'true';
 const explorerPassword = process.env.EXPLORER_AUTH || '';
@@ -353,7 +354,7 @@ function init() {
 
   app.get('/__api/config', (req, res) => {
     logExplorerVisit(req);
-    res.json({ editMode: isEditMode, authEnabled: isAuthEnabled });
+    res.json({ editMode: isEditMode, authEnabled: isAuthEnabled, rootId: explorerRootId });
   });
 
   app.get('/__api/archive/capabilities', requireEditMode, (req, res) => {
