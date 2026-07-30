@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.5.1](https://github.com/chandq/mock-service-cli/compare/v4.5.0...v4.5.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* issue of save wrong path in explorer mode ([0d77ab9](https://github.com/chandq/mock-service-cli/commit/0d77ab983b4a619ceeafb9be766fdbdb3d209c47))
+* sometimes not show explorer favicon ([42ef430](https://github.com/chandq/mock-service-cli/commit/42ef43056a85ed2a0acaaf4024710a1057674d96))
+
 ## [4.5.0](https://github.com/chandq/mock-service-cli/compare/v4.4.0...v4.5.0) (2026-07-30)
 
 
