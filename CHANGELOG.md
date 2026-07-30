@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.5.0](https://github.com/chandq/mock-service-cli/compare/v4.4.0...v4.5.0) (2026-07-30)
+
+
+### Features
+
+* add archive editions and improve static server experience ([723044c](https://github.com/chandq/mock-service-cli/commit/723044c921e8f8533203d000fff0660f87e0917d))
+* display page icon ([9c146e6](https://github.com/chandq/mock-service-cli/commit/9c146e6a6875e32f81e789ee5c62a4038c55e5a2))
+
+
+### Bug Fixes
+
+* bfcache resume to reload page ([d8c43d9](https://github.com/chandq/mock-service-cli/commit/d8c43d91ed4de7098ee77e25ec4d96032b4816f1))
+* increase upload's file size ([49d4198](https://github.com/chandq/mock-service-cli/commit/49d4198f6fbea427a330f17b6a8b95373d1176eb))
+* optimize limit of upload folders ([8b5608d](https://github.com/chandq/mock-service-cli/commit/8b5608dd11d4ed9c7ca47b3fa53886dfb3b5b12e))
+* upgrade eslint to v9, improve uncompress tip content ([b3b280e](https://github.com/chandq/mock-service-cli/commit/b3b280e2df046127e56d1625cb23eb77b0685f38))
+
 ## [4.4.0](https://github.com/chandq/mock-service-cli/compare/v4.3.2...v4.4.0) (2026-07-28)
 
 
