@@ -10,7 +10,7 @@ const {
 } = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { TarArchive, ZipArchive } = require('archiver');
+const archiver = require('archiver');
 const archiveProvider = require('./archiveProvider');
 const { createArchiveError, isInside, isSafeArchiveEntry } = require('./archiveShared');
 
@@ -146,7 +146,7 @@ class ArchiveService {
     await new Promise((resolve, reject) => {
       const output = createWriteStream(outputPath, { flags: 'wx' });
       const archive =
-        format === 'zip' ? new ZipArchive({ zlib: { level: 9 } }) : new TarArchive({ gzip: true, gzipOptions: { level: 9 } });
+        format === 'zip' ? archiver('zip', { zlib: { level: 9 } }) : archiver('tar', { gzip: true, gzipOptions: { level: 9 } });
       job.archive = archive;
       output.on('close', resolve);
       output.on('error', reject);

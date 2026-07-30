@@ -19,7 +19,8 @@
     "test:unit": "node ./scripts/run-tests.js unit",
     "test": "node ./scripts/run-tests.js unit",
     "test-watch": "tap --reporter=spec --watch test/*.test.js",
-    "fix": "eslint --ext .js,.vue,.css --fix",
+    "lint": "eslint src scripts test --max-warnings=0",
+    "fix": "eslint src scripts test --fix",
     "prettier": "prettier -c --write \"**/*.{ts,js,jsx,css,less,scss,json}\"",
     "coverage": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls -v",
     "package:light": "node ./scripts/package-edition.js light",
@@ -40,7 +41,7 @@
     "docs/static-server.config.example.json"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=18.18"
   },
   "author": "chendq <deqiaochen@gmail.com>",
   "keywords": [
@@ -64,7 +65,7 @@
   "license": "MIT",
   "homepage": "https://github.com/chandq/mock-service-cli#readme",
   "dependencies": {
-    "archiver": "^8.0.0",
+    "archiver": "^7.0.1",
     "chokidar": "^3.6.0",
     "http-proxy-middleware": "^2.0.10",
     "multer": "^2.2.0",
@@ -76,15 +77,14 @@
   "devDependencies": {
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
-    "babel-eslint": "^10.1.0",
+    "@eslint/js": "^9.39.5",
     "7zip-bin": "^5.2.0",
     "colors": "^1.4.0",
     "esbuild": "^0.28.1",
-    "eslint": "^7.0.0",
-    "eslint-config-populist": "^4.2.0",
-    "eslint-plugin-mocha": "^9.0.0",
+    "eslint": "^9.39.5",
     "express": "^4.22.2",
     "fs-extra": "^11.3.6",
+    "globals": "^17.8.0",
     "husky": "^4.3.8",
     "lint-staged": "^10.2.2",
     "lodash": "^4.18.1",

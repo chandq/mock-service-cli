@@ -35,6 +35,8 @@ jobs:
 
       - name: Install deps
         run: npm ci
+      - name: Lint
+        run: npm run lint
       - name: Build
         run: npm run build --if-present
       - name: Test
@@ -69,6 +71,8 @@ jobs:
         run: npm install --global npm@11.5.1
       - name: Install deps
         run: npm ci
+      - name: Lint
+        run: npm run lint
       - name: Test
         run: npm test --if-present
       - name: Smoke Test

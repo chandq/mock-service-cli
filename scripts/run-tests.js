@@ -23,7 +23,7 @@ function runTap(args) {
     throw result.error;
   }
 
-  process.exit(result.status == null ? 1 : result.status);
+  process.exit(result.status === null ? 1 : result.status);
 }
 
 const allTests = listTestFiles();

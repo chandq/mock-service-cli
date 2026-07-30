@@ -1157,6 +1157,7 @@
       let explorerInitializationPromise = null;
       let explorerLifecycleVersion = 0;
       let currentArchiveJobId = null;
+      let currentArchiveJobOperation = null;
       let archiveCapabilities = { createFormats: [], readExtensions: [] };
 
       const EXPLORER_AUTH_STORAGE_KEY = 'mock-service-cli.file-explorer.password';
@@ -1779,6 +1780,7 @@
       }
 
       async function startArchiveJob(payload) {
+        const operationName = payload.operation === 'extract' ? '解压' : '压缩';
         try {
           const job = await requestJson('/__api/archive/jobs', {
             method: 'POST',
@@ -1786,20 +1788,28 @@
             body: JSON.stringify(payload)
           });
           currentArchiveJobId = job.id;
-          monitorArchiveJob(job.id);
+          currentArchiveJobOperation = job.type || payload.operation;
+          monitorArchiveJob(job.id, currentArchiveJobOperation);
         } catch (error) {
-          alert(`归档操作无法启动: ${error.message}`);
+          alert(`${operationName}无法启动: ${error.message}`);
         }
       }
 
-      async function monitorArchiveJob(id) {
+      function archiveOperationName(operation) {
+        return operation === 'extract' ? '解压' : '压缩';
+      }
+
+      async function monitorArchiveJob(id, operation) {
         const modal = document.getElementById('previewModal');
         const title = document.getElementById('previewTitle');
         const body = document.getElementById('previewBody');
-        title.textContent = '归档任务';
+        const operationName = archiveOperationName(operation || currentArchiveJobOperation);
+        title.textContent = `${operationName}任务`;
         modal.classList.add('active');
         try {
           const job = await requestJson(`/__api/archive/jobs/${encodeURIComponent(id)}`);
+          const jobOperationName = archiveOperationName(job.type || operation || currentArchiveJobOperation);
+          title.textContent = `${jobOperationName}任务`;
           const progress = job.progress || {};
           body.innerHTML = `
             <div class="preview-container">
@@ -1811,18 +1821,20 @@
           `;
           if (job.status === 'running' || job.status === 'queued') {
             setTimeout(() => {
-              if (currentArchiveJobId === id) monitorArchiveJob(id);
+              if (currentArchiveJobId === id) monitorArchiveJob(id, job.type || operation);
             }, 500);
             return;
           }
           currentArchiveJobId = null;
+          currentArchiveJobOperation = null;
           if (job.status === 'completed') {
-            showToast('归档任务已完成');
+            showToast(`${jobOperationName}完成`);
             await loadDirectory(currentPath);
           }
         } catch (error) {
           currentArchiveJobId = null;
-          body.innerHTML = `<div class="empty-state"><p>归档任务失败: ${escapeHtml(error.message)}</p></div>`;
+          currentArchiveJobOperation = null;
+          body.innerHTML = `<div class="empty-state"><p>${escapeHtml(operationName)}失败: ${escapeHtml(error.message)}</p></div>`;
         }
       }
 
@@ -1830,7 +1842,7 @@
         if (!currentArchiveJobId) return;
         try {
           await requestJson(`/__api/archive/jobs/${encodeURIComponent(currentArchiveJobId)}`, { method: 'DELETE' });
-          showToast('正在取消归档任务');
+          showToast(`正在取消${archiveOperationName(currentArchiveJobOperation)}任务`);
         } catch (error) {
           alert(`取消任务失败: ${error.message}`);
         }
@@ -2828,6 +2840,7 @@
       function closeModal() {
         document.getElementById('previewModal').classList.remove('active');
         currentArchiveJobId = null;
+        currentArchiveJobOperation = null;
         releasePreviewObjectUrl();
       }
 

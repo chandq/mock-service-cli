@@ -403,7 +403,7 @@ function createStaticServer(config) {
     });
   }
   // Express recognizes an error handler only when all four arguments are declared.
-  app.use((error, req, res, next) => {
+  app.use((error, req, res, _next) => {
     log.info(colors.red(`static-server request failed: ${error.message}`));
     res.status(500).send('Static server request failed');
   });

@@ -229,7 +229,6 @@ function parseMockFiles(specialDir = '../mock') {
         // console.error(colors.red(`[warning] "${filePath}" 文件解析失败，请检查并确保文件中的js语法正确`));
         continue;
       }
-      // eslint-disable-next-line no-loop-func
       Object.keys(fileObject).forEach(method => {
         const apiUrl = filePath2ApiUrl(decodeURIComponent(el.name.split('.')[0]));
         argv.a &&

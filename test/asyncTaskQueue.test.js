@@ -58,7 +58,6 @@ test('AsyncTaskQueue run method - sequential execution', t => {
 
   const queue = new AsyncTaskQueue();
   let count = 0;
-
   const task1 = next => {
     count++;
     next();
@@ -169,10 +168,7 @@ test('AsyncTaskQueue retry method - with fix', t => {
   t.plan(1);
 
   const queue = new AsyncTaskQueue();
-  let count = 0;
-
   const task1 = next => {
-    count++;
     next();
   };
 

@@ -294,10 +294,7 @@ test('test logger function with non-silent mode', t => {
 test('test throttle function - edge cases', t => {
   t.plan(3);
 
-  let counter = 0;
-  const func = () => {
-    counter++;
-  };
+  const func = () => {};
 
   const throttled = throttle(func, 100, false);
   t.ok(typeof throttled === 'function', 'throttle returns a function');
@@ -318,10 +315,7 @@ test('test throttle function - edge cases', t => {
 test('test throttle function - delayed call', t => {
   t.plan(2);
 
-  let counter = 0;
-  const func = () => {
-    counter++;
-  };
+  const func = () => {};
 
   const throttled = throttle(func, 50, false);
 
