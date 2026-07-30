@@ -433,15 +433,32 @@ function createStaticServer(config) {
   }
   function startWatchers() {
     const targets = [root, ...config.mounts.map(mount => mount.directory)];
+    // Node 24's Windows fs.watch backend can abort the process for some short
+    // temporary paths. Polling is limited to that runtime combination.
+    const usePolling = process.platform === 'win32' && Number.parseInt(process.versions.node, 10) >= 24;
     const watcher = chokidar.watch(targets, {
       ignoreInitial: true,
       ignored: config.watch.ignore,
+      usePolling,
+      interval: usePolling ? 250 : undefined,
+      binaryInterval: usePolling ? 250 : undefined,
       awaitWriteFinish: { stabilityThreshold: Math.max(config.watch.delay, 50), pollInterval: 20 }
     });
     watcher.on('all', (event, changedPath) => {
       if (['add', 'change', 'unlink', 'addDir', 'unlinkDir'].includes(event)) scheduleReload(changedPath);
     });
     watchers.push(watcher);
+    return new Promise((resolve, reject) => {
+      let ready = false;
+      watcher.once('ready', () => {
+        ready = true;
+        resolve();
+      });
+      watcher.on('error', error => {
+        log.info(colors.red(`static-server watcher failed: ${error.message}`));
+        if (!ready) reject(error);
+      });
+    });
   }
 
   const server = config.https
@@ -460,6 +477,7 @@ function createStaticServer(config) {
       clients.forEach(client => client.end());
       await Promise.all(watchers.map(watcher => watcher.close()));
       await new Promise(resolve => {
+        if (!server.listening) return resolve();
         server.close(resolve);
         // Do not let keep-alive requests prevent SIGTERM from completing.
         if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
@@ -472,24 +490,10 @@ function startServer() {
   const config = normalizeConfig();
   const instance = createStaticServer(config);
   const port = Number.parseInt(process.env.PORT, 10);
-  instance.server.listen(port, getServerHost(), () => {
-    const urls = getServerUrls(port).map(url => url.replace(/^http:/, `${instance.protocol}:`));
-    console.info(
-      [
-        colors.yellow('\nStarting up Static Server, serving '),
-        colors.cyan(instance.root),
-        colors.yellow(`  ${dateFormat('YYYY-mm-dd HH:MM:SS', new Date())}`)
-      ].join('')
-    );
-    console.info(colors.yellow('\n Static Server available on:\n'));
-    urls.forEach(url => console.info('    ' + url.replace(String(port), colors.green(port))));
-    instance.startWatchers();
-    if (config.open) {
-      const openPath = typeof config.open === 'string' ? config.open : '/';
-      openBrowser(`${urls[0]}${openPath.startsWith('/') ? openPath : `/${openPath}`}`, config.browser);
-    }
-  });
+  let shuttingDown = false;
   const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     instance.close().finally(() => {
       log.info(colors.red('static-server process stopped.'));
       process.exit();
@@ -497,6 +501,34 @@ function startServer() {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+
+  // Do not report the server as ready until the watcher has completed its
+  // initial scan. Otherwise a save immediately after startup can be missed.
+  instance
+    .startWatchers()
+    .then(() => {
+      if (shuttingDown) return;
+      instance.server.listen(port, getServerHost(), () => {
+        const urls = getServerUrls(port).map(url => url.replace(/^http:/, `${instance.protocol}:`));
+        console.info(
+          [
+            colors.yellow('\nStarting up Static Server, serving '),
+            colors.cyan(instance.root),
+            colors.yellow(`  ${dateFormat('YYYY-mm-dd HH:MM:SS', new Date())}`)
+          ].join('')
+        );
+        console.info(colors.yellow('\n Static Server available on:\n'));
+        urls.forEach(url => console.info('    ' + url.replace(String(port), colors.green(port))));
+        if (config.open) {
+          const openPath = typeof config.open === 'string' ? config.open : '/';
+          openBrowser(`${urls[0]}${openPath.startsWith('/') ? openPath : `/${openPath}`}`, config.browser);
+        }
+      });
+    })
+    .catch(error => {
+      console.error(colors.red(`static-server watcher failed: ${error.message}`));
+      shutdown();
+    });
 }
 
 if (!process.env.PORT) {
