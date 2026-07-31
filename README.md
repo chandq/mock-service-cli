@@ -120,8 +120,8 @@ mock-service-cli --static-config ./static-server.json
 静态服务器会监听资源变化并向 HTML 页面注入热更新客户端：CSS 文件更新时替换样式表，其余变更刷新页面。
 默认不打开浏览器；在配置中设置 `"open": true` 或提供页面路径即可打开。完整配置字段和示例见
 [`docs/static-server.config.example.json`](./docs/static-server.config.example.json)：支持忽略规则、SPA 回退、挂载目录、代理、HTTPS、CORS、响应头和自定义浏览器命令。
-配置文件只在顶层保留服务器级字段。所有应用都放在 `mounts` 中，并可独立设置 `directory`、`spaFallback`、`proxy`、`cors`、`headers` 和 `secure`。mount 未设置 `path` 时默认挂载到 `/`；`directory` 可省略，但该应用必须配置至少一条代理。代理键使用完整公开路径，例如 `/api/app`。
-代理规则使用 `{ "target": "http://...", "rewrite": true }`；`rewrite` 为 true 时只移除匹配的完整代理前缀并保留剩余路径和 query string。应用级 `secure` 控制其代理 HTTPS 目标的证书校验，默认 `false`。配置模式不接受 `--proxy-options`、`--rewrite` 或 `--spa-fallback`。
+配置文件只在顶层保留服务器级字段。所有应用都放在 `mounts` 中，并可独立设置 `directory`、`spaFallback`、`proxy`、`cors`、`headers`、`requestHeaders` 和 `secure`。mount 未设置 `path` 时默认挂载到 `/`；`directory` 可省略，但该应用必须配置至少一条代理。代理键使用完整公开路径，例如 `/api/app`。
+`headers` 是发送给客户端的响应头。`requestHeaders` 是发送给该应用全部代理上游的请求头；也可放在单个 `proxy` 规则中，覆盖或追加 mount 级请求头。代理规则使用 `{ "target": "http://...", "rewrite": true }`；`rewrite` 为 true 时只移除匹配的完整代理前缀并保留剩余路径和 query string。应用级 `secure` 控制其代理 HTTPS 目标的证书校验，默认 `false`。配置模式不接受 `--proxy-options`、`--rewrite` 或 `--spa-fallback`。
 未设置 `spaFallback` 时，应用目录会显示可点击的目录索引；可直接访问其中的 HTML 文件。mount 未命中的路由不会继续进入其他应用的 SPA fallback。
 设置了 `spaFallback` 的应用可选配置 `accessLog.success` 与 `accessLog.failure` 文件路径。服务将把每次访问以 JSON Lines 写入对应文件：2xx/3xx 写入 success，4xx/5xx 写入 failure；路径相对配置文件解析。启动后控制台会突出显示每条代理所属的应用、公开前缀、目标和 rewrite 状态。
 

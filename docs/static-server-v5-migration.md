@@ -38,8 +38,7 @@ when the mount defines at least one proxy route. Do not combine `-R <directory>`
 Mount `path` values define only the browser base URL. Proxy keys are complete
 public paths and are not derived from the mount path. `rewrite: true` removes
 the matching proxy prefix, retaining the remaining path and query string.
-`cors`, `headers`, and `secure` can be configured for every mount. `secure` controls TLS certificate verification for that application's
-proxy targets.
+`cors`, `headers`, `requestHeaders`, and `secure` can be configured for every mount. `headers` applies to client responses, while `requestHeaders` is forwarded to every proxy target for that mount. A single proxy rule can define `requestHeaders` to override or append mount-level values. `secure` controls TLS certificate verification for that application's proxy targets.
 
 SPA mounts can additionally configure request logs:
 

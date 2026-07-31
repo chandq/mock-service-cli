@@ -15,12 +15,18 @@
       "proxy": {
         "/api": {
           "target": "http://127.0.0.1:3000",
-          "rewrite": false
+          "rewrite": false,
+          "requestHeaders": {
+            "X-Route-Environment": "local"
+          }
         }
       },
       "cors": true,
       "headers": {
         "Cache-Control": "no-store"
+      },
+      "requestHeaders": {
+        "X-Application": "shell"
       },
       "secure": false,
       "accessLog": {
@@ -34,18 +40,20 @@
       "proxy": {
         "/vendor/api": {
           "target": "http://127.0.0.1:3100",
-          "rewrite": true
+          "rewrite": true,
+          "requestHeaders": {
+            "X-Route-Environment": "local"
+          }
         }
       },
       "cors": false,
       "headers": {
         "X-Vendor-App": "enabled"
       },
-      "secure": false,
-      "accessLog": {
-        "success": "./logs/vendor-success.jsonl",
-        "failure": "./logs/vendor-failure.jsonl"
-      }
+      "requestHeaders": {
+        "X-Application": "vendor"
+      },
+      "secure": false
     }
   ],
   "https": {

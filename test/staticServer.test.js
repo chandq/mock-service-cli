@@ -365,8 +365,16 @@ test('static server development behaviors', async t => {
     const port = await getFreePort();
     const output = { value: '' };
     let child;
-    const rootUpstream = http.createServer((req, res) => res.end(`root:${req.url}`));
-    const ordersUpstream = http.createServer((req, res) => res.end(`orders:${req.url}`));
+    const rootUpstream = http.createServer((req, res) => {
+      res.setHeader('X-Upstream-Application', req.headers['x-application-request'] || '');
+      res.setHeader('X-Upstream-Route', req.headers['x-route-request'] || '');
+      res.end(`root:${req.url}`);
+    });
+    const ordersUpstream = http.createServer((req, res) => {
+      res.setHeader('X-Upstream-Application', req.headers['x-application-request'] || '');
+      res.setHeader('X-Upstream-Route', req.headers['x-route-request'] || '');
+      res.end(`orders:${req.url}`);
+    });
     const rootUpstreamPort = await new Promise((resolve, reject) => {
       rootUpstream.once('error', reject);
       rootUpstream.listen(0, '127.0.0.1', () => resolve(rootUpstream.address().port));
@@ -390,9 +398,16 @@ test('static server development behaviors', async t => {
               path: '/',
               directory: rootDirectory,
               spaFallback: '/index.html',
-              proxy: { '/api': { target: `http://127.0.0.1:${rootUpstreamPort}`, rewrite: false } },
+              proxy: {
+                '/api': {
+                  target: `http://127.0.0.1:${rootUpstreamPort}`,
+                  rewrite: false,
+                  requestHeaders: { 'X-Route-Request': 'root-route' }
+                }
+              },
               cors: true,
               headers: { 'X-Application': 'root' },
+              requestHeaders: { 'X-Application-Request': 'root-application' },
               secure: false,
               accessLog: { success: './logs/root-success.jsonl', failure: './logs/root-failure.jsonl' }
             },
@@ -400,8 +415,15 @@ test('static server development behaviors', async t => {
               path: '/orders',
               directory: ordersDirectory,
               spaFallback: '/index.html',
-              proxy: { '/api/orders': { target: `http://127.0.0.1:${ordersUpstreamPort}`, rewrite: true } },
+              proxy: {
+                '/api/orders': {
+                  target: `http://127.0.0.1:${ordersUpstreamPort}`,
+                  rewrite: true,
+                  requestHeaders: { 'X-Route-Request': 'orders-route' }
+                }
+              },
               headers: { 'X-Application': 'orders' },
+              requestHeaders: { 'X-Application-Request': 'orders-application' },
               secure: false,
               accessLog: { success: './logs/orders-success.jsonl', failure: './logs/orders-failure.jsonl' }
             },
@@ -441,8 +463,14 @@ test('static server development behaviors', async t => {
       t.match(nestedDocsIndex.text, /guide\.txt/, 'non-SPA mount serves its own directory index');
       t.match(nestedDocsIndex.text, /href="\/docs\/"/, 'mount directory breadcrumbs retain the mount base path');
       t.equal((await request(`${baseUrl}/docs/missing`)).status, 404, 'non-SPA mount does not fall through to root fallback');
-      t.equal((await request(`${baseUrl}/api/orders/items?source=test`)).text, 'orders:/items?source=test', 'longest proxy route rewrites its full prefix');
-      t.equal((await request(`${baseUrl}/api/orders2`)).text, 'root:/api/orders2', 'proxy matching observes path boundaries');
+      const ordersProxyResponse = await request(`${baseUrl}/api/orders/items?source=test`);
+      t.equal(ordersProxyResponse.text, 'orders:/items?source=test', 'longest proxy route rewrites its full prefix');
+      t.equal(ordersProxyResponse.headers['x-upstream-application'], 'orders-application', 'forwards mount request headers to its proxy');
+      t.equal(ordersProxyResponse.headers['x-upstream-route'], 'orders-route', 'forwards route request headers to its proxy');
+      const rootProxyResponse = await request(`${baseUrl}/api/orders2`);
+      t.equal(rootProxyResponse.text, 'root:/api/orders2', 'proxy matching observes path boundaries');
+      t.equal(rootProxyResponse.headers['x-upstream-application'], 'root-application', 'forwards root request headers to its proxy');
+      t.equal(rootProxyResponse.headers['x-upstream-route'], 'root-route', 'forwards root route request headers to its proxy');
       const ansiColorPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
       const plainOutput = output.value.replace(ansiColorPattern, '');
       t.match(plainOutput, /Static application proxy routes/, 'prints the static application proxy summary');

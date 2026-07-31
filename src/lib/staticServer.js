@@ -97,6 +97,18 @@ function normalizeAccessLog(value, label, configDir) {
   return accessLog;
 }
 
+function normalizeRequestHeaders(value, label) {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) throw new Error(`${label} must be an object`);
+  return Object.entries(value).reduce((headers, [name, headerValue]) => {
+    if (!name || headerValue === null || typeof headerValue === 'object') {
+      throw new Error(`${label}.${name} must be a primitive value`);
+    }
+    headers[name] = String(headerValue);
+    return headers;
+  }, {});
+}
+
 function normalizeApplicationOptions(value, label, configDir) {
   if (value.cors !== undefined && typeof value.cors !== 'boolean') throw new Error(`${label}.cors must be boolean`);
   if (value.headers !== undefined && !isPlainObject(value.headers)) throw new Error(`${label}.headers must be an object`);
@@ -106,6 +118,7 @@ function normalizeApplicationOptions(value, label, configDir) {
     headers: isPlainObject(value.headers) ? value.headers : {},
     // Preserve the static server's previous proxy behavior for self-signed local HTTPS targets.
     secure: value.secure === true,
+    requestHeaders: normalizeRequestHeaders(value.requestHeaders, `${label}.requestHeaders`),
     accessLog: normalizeAccessLog(value.accessLog, label, configDir)
   };
 }
@@ -131,9 +144,11 @@ function normalizeProxyTable(value, label, allowStringValues) {
     }
     let target = rule;
     let rewrite = false;
+    let requestHeaders = {};
     if (isPlainObject(rule)) {
       target = rule.target;
       rewrite = rule.rewrite === true;
+      requestHeaders = normalizeRequestHeaders(rule.requestHeaders, `${label}[${prefix}].requestHeaders`);
       if (rule.rewrite !== undefined && typeof rule.rewrite !== 'boolean') {
         throw new Error(`${label}[${prefix}].rewrite must be boolean`);
       }
@@ -141,7 +156,7 @@ function normalizeProxyTable(value, label, allowStringValues) {
       throw new Error(`${label}[${prefix}] must contain target and rewrite`);
     }
     if (typeof target !== 'string' || !/^https?:\/\//.test(target)) throw new Error(`Invalid proxy target for ${prefix}`);
-    table[normalizedPrefix] = { target, rewrite };
+    table[normalizedPrefix] = { target, rewrite, requestHeaders };
     return table;
   }, {});
 }
@@ -196,6 +211,7 @@ function normalizeConfig() {
           cors: false,
           headers: {},
           secure: false,
+          requestHeaders: {},
           accessLog: null
         }
       ]
@@ -214,7 +230,7 @@ function normalizeConfig() {
   const configDir = path.dirname(configPath);
   const watch = isPlainObject(supplied.watch) ? supplied.watch : {};
   if (process.env.PROXY_OPTIONS) throw new Error('--proxy-options/--rewrite cannot be used with --static-config');
-  const rootApplicationFields = ['directory', 'spaFallback', 'proxy', 'cors', 'headers', 'secure', 'accessLog'];
+  const rootApplicationFields = ['directory', 'spaFallback', 'proxy', 'cors', 'headers', 'secure', 'requestHeaders', 'accessLog'];
   const suppliedRootField = rootApplicationFields.find(field => supplied[field] !== undefined);
   if (suppliedRootField) throw new Error(`${suppliedRootField} must be declared on a mount in static config`);
   const mounts = supplied.mounts === undefined ? [] : supplied.mounts;
@@ -545,6 +561,7 @@ function createStaticServer(config) {
         changeOrigin: true,
         ws: true,
         secure: route.application.secure,
+        headers: { ...route.application.requestHeaders, ...route.requestHeaders },
         pathRewrite
       })
     );
