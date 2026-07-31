@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.6.0](https://github.com/chandq/mock-service-cli/compare/v4.5.1...v4.6.0) (2026-07-31)
+
+
+### Features
+
+* add mount static applications with full-path proxy routing and CLI SPA fallback support ([d711e7c](https://github.com/chandq/mock-service-cli/commit/d711e7c59001b211e7927d73d42ed86a8e20536e))
+
 ### [4.5.1](https://github.com/chandq/mock-service-cli/compare/v4.5.0...v4.5.1) (2026-07-30)
 
 
