@@ -73,20 +73,134 @@ function parseProxyOptions() {
   }
 }
 
+function normalizePublicPath(value, label, allowEmptyRoot) {
+  if (typeof value !== 'string') throw new Error(`${label} must be a path`);
+  if (!value && allowEmptyRoot) return '/';
+  if (!value) throw new Error(`${label} must be a non-empty path`);
+  const normalized = '/' + value.replace(/^\/+|\/+$/g, '');
+  if (normalized !== '/' && (normalized.includes('..') || normalized.includes('?') || normalized.includes('#'))) {
+    throw new Error(`${label} must be a root-relative path`);
+  }
+  return normalized;
+}
+
+function normalizeAccessLog(value, label, configDir) {
+  if (value === undefined) return null;
+  if (!isPlainObject(value)) throw new Error(`${label}.accessLog must be an object`);
+  const accessLog = {};
+  ['success', 'failure'].forEach(name => {
+    if (value[name] === undefined) return;
+    if (typeof value[name] !== 'string' || !value[name]) throw new Error(`${label}.accessLog.${name} must be a file path`);
+    accessLog[name] = path.resolve(configDir, value[name]);
+  });
+  if (Object.keys(accessLog).length === 0) throw new Error(`${label}.accessLog requires success or failure`);
+  return accessLog;
+}
+
+function normalizeApplicationOptions(value, label, configDir) {
+  if (value.cors !== undefined && typeof value.cors !== 'boolean') throw new Error(`${label}.cors must be boolean`);
+  if (value.headers !== undefined && !isPlainObject(value.headers)) throw new Error(`${label}.headers must be an object`);
+  if (value.secure !== undefined && typeof value.secure !== 'boolean') throw new Error(`${label}.secure must be boolean`);
+  return {
+    cors: value.cors === true,
+    headers: isPlainObject(value.headers) ? value.headers : {},
+    // Preserve the static server's previous proxy behavior for self-signed local HTTPS targets.
+    secure: value.secure === true,
+    accessLog: normalizeAccessLog(value.accessLog, label, configDir)
+  };
+}
+
+function normalizeSpaFallback(value, directory, label) {
+  if (value === undefined || value === false) return false;
+  if (typeof value !== 'string' || !value || !value.startsWith('/') || value.includes('..')) {
+    throw new Error(`${label} must be a root-relative path`);
+  }
+  if (!directory) throw new Error(`${label} requires an application directory`);
+  const fallbackPath = getStaticPath(directory, value);
+  if (!fallbackPath || !/\.html?$/i.test(fallbackPath)) throw new Error(`${label} does not exist: ${value}`);
+  return value;
+}
+
+function normalizeProxyTable(value, label, allowStringValues) {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) throw new Error(`${label} must be an object`);
+  return Object.entries(value).reduce((table, [prefix, rule]) => {
+    const normalizedPrefix = normalizePublicPath(prefix, `${label} route`);
+    if (Object.prototype.hasOwnProperty.call(table, normalizedPrefix)) {
+      throw new Error(`Duplicate proxy route: ${normalizedPrefix}`);
+    }
+    let target = rule;
+    let rewrite = false;
+    if (isPlainObject(rule)) {
+      target = rule.target;
+      rewrite = rule.rewrite === true;
+      if (rule.rewrite !== undefined && typeof rule.rewrite !== 'boolean') {
+        throw new Error(`${label}[${prefix}].rewrite must be boolean`);
+      }
+    } else if (!allowStringValues || typeof rule !== 'string') {
+      throw new Error(`${label}[${prefix}] must contain target and rewrite`);
+    }
+    if (typeof target !== 'string' || !/^https?:\/\//.test(target)) throw new Error(`Invalid proxy target for ${prefix}`);
+    table[normalizedPrefix] = { target, rewrite };
+    return table;
+  }, {});
+}
+
+function hasPathPrefix(prefix, requestPath) {
+  return prefix === '/' || requestPath === prefix || requestPath.startsWith(`${prefix}/`);
+}
+
+function validateMountPaths(mounts) {
+  const rootMounts = mounts.filter(mount => mount.path === '/');
+  if (rootMounts.length > 1) throw new Error('mounts can only contain one root path');
+  const nonRootMounts = mounts.filter(mount => mount.path !== '/');
+  nonRootMounts.forEach((mount, index) => {
+    nonRootMounts.forEach((other, otherIndex) => {
+      if (index === otherIndex) return;
+      if (hasPathPrefix(mount.path, other.path)) {
+        throw new Error(`mounts paths cannot overlap: ${mount.path} and ${other.path}`);
+      }
+    });
+  });
+}
+
 function normalizeConfig() {
   const defaults = {
     open: false,
     browser: 'default',
     watch: { ignore: ['**/node_modules/**', '**/.git/**'], delay: 100, fullReload: false },
     injectTag: 'body',
-    spaFallback: false,
-    mounts: [],
-    proxy: {},
-    https: false,
-    cors: false,
-    headers: {}
+    https: false
   };
-  if (!process.env.STATIC_CONFIG) return { ...defaults, configDir: process.cwd() };
+  const cliDirectory = process.env.STATIC_DIRECTORY ? path.resolve(process.env.STATIC_DIRECTORY) : null;
+  if (process.env.STATIC_CONFIG && argv['spa-fallback'] !== undefined) {
+    throw new Error('--spa-fallback cannot be used with --static-config');
+  }
+  const cliSpaFallback = process.env.STATIC_CONFIG ? false : normalizeSpaFallback(argv['spa-fallback'], cliDirectory, 'spaFallback');
+  if (!process.env.STATIC_CONFIG) {
+    if (!cliDirectory) throw new Error('Static server requires -R <directory> or --static-config <file>');
+    if (!existsSync(cliDirectory) || !lstatSync(cliDirectory).isDirectory()) {
+      throw new Error(`static-server: directory does not exist: ${cliDirectory}`);
+    }
+    const cliProxy = normalizeProxyTable(parseProxyOptions(), 'proxy', true);
+    if (argv.r || argv.rewrite) Object.values(cliProxy).forEach(rule => (rule.rewrite = true));
+    return {
+      ...defaults,
+      configDir: process.cwd(),
+      mounts: [
+        {
+          path: '/',
+          directory: cliDirectory,
+          spaFallback: cliSpaFallback,
+          proxy: cliProxy,
+          cors: false,
+          headers: {},
+          secure: false,
+          accessLog: null
+        }
+      ]
+    };
+  }
 
   const configPath = path.resolve(process.env.STATIC_CONFIG);
   let supplied;
@@ -99,17 +213,41 @@ function normalizeConfig() {
 
   const configDir = path.dirname(configPath);
   const watch = isPlainObject(supplied.watch) ? supplied.watch : {};
-  const mounts = Array.isArray(supplied.mounts) ? supplied.mounts : [];
+  if (process.env.PROXY_OPTIONS) throw new Error('--proxy-options/--rewrite cannot be used with --static-config');
+  const rootApplicationFields = ['directory', 'spaFallback', 'proxy', 'cors', 'headers', 'secure', 'accessLog'];
+  const suppliedRootField = rootApplicationFields.find(field => supplied[field] !== undefined);
+  if (suppliedRootField) throw new Error(`${suppliedRootField} must be declared on a mount in static config`);
+  const mounts = supplied.mounts === undefined ? [] : supplied.mounts;
+  if (!Array.isArray(mounts)) throw new Error('mounts must be an array');
+  if (mounts.length === 0) throw new Error('Static config requires at least one mount');
   const normalizedMounts = mounts.map((mount, index) => {
-    if (!isPlainObject(mount) || typeof mount.path !== 'string' || typeof mount.directory !== 'string') {
-      throw new Error(`mounts[${index}] requires path and directory strings`);
+    if (!isPlainObject(mount)) {
+      throw new Error(`mounts[${index}] must be an object`);
     }
-    const mountPath = '/' + mount.path.replace(/^\/+|\/+$/g, '');
-    if (mountPath === '/') throw new Error('Mount path cannot be /');
-    const directory = path.resolve(configDir, mount.directory);
-    if (!existsSync(directory) || !lstatSync(directory).isDirectory()) throw new Error(`Mount directory does not exist: ${directory}`);
-    return { path: mountPath === '/' ? '/' : mountPath, directory };
+    const mountPath = mount.path === undefined ? '/' : normalizePublicPath(mount.path, `mounts[${index}].path`, true);
+    if (mount.directory !== undefined && typeof mount.directory !== 'string') {
+      throw new Error(`mounts[${index}].directory must be a string`);
+    }
+    const directory = mount.directory === undefined ? null : path.resolve(configDir, mount.directory);
+    if (directory && (!existsSync(directory) || !lstatSync(directory).isDirectory())) {
+      throw new Error(`Mount directory does not exist: ${directory}`);
+    }
+    const normalizedMount = {
+      path: mountPath,
+      directory,
+      spaFallback: normalizeSpaFallback(mount.spaFallback, directory, `mounts[${index}].spaFallback`),
+      proxy: normalizeProxyTable(mount.proxy, `mounts[${index}].proxy`, false),
+      ...normalizeApplicationOptions(mount, `mounts[${index}]`, configDir)
+    };
+    if (!normalizedMount.directory && Object.keys(normalizedMount.proxy).length === 0) {
+      throw new Error(`mounts[${index}] requires directory or proxy`);
+    }
+    if (normalizedMount.accessLog && !normalizedMount.spaFallback) {
+      throw new Error(`mounts[${index}].accessLog requires spaFallback`);
+    }
+    return normalizedMount;
   });
+  validateMountPaths(normalizedMounts);
   const httpsConfig = supplied.https;
   let normalizedHttps = false;
   if (httpsConfig === true) throw new Error('https requires cert and key paths');
@@ -123,13 +261,10 @@ function normalizeConfig() {
       passphrase: typeof httpsConfig.passphrase === 'string' ? httpsConfig.passphrase : undefined
     };
   }
-  const spaFallback = typeof supplied.spaFallback === 'string' ? supplied.spaFallback : false;
-  if (spaFallback && (!spaFallback.startsWith('/') || spaFallback.includes('..'))) {
-    throw new Error('spaFallback must be a root-relative path');
-  }
   return {
     ...defaults,
-    ...supplied,
+    open: supplied.open === undefined ? defaults.open : supplied.open,
+    browser: supplied.browser === undefined ? defaults.browser : supplied.browser,
     configDir,
     watch: {
       ignore: Array.isArray(watch.ignore) ? watch.ignore : defaults.watch.ignore,
@@ -138,11 +273,7 @@ function normalizeConfig() {
     },
     injectTag: supplied.injectTag === 'head' ? 'head' : 'body',
     mounts: normalizedMounts,
-    proxy: isPlainObject(supplied.proxy) ? supplied.proxy : {},
-    https: normalizedHttps,
-    cors: supplied.cors === true,
-    headers: isPlainObject(supplied.headers) ? supplied.headers : {},
-    spaFallback
+    https: normalizedHttps
   };
 }
 
@@ -185,7 +316,12 @@ function isHiddenDirectoryEntry(entry) {
   return entry.name.startsWith('.') && entry.name !== '.' && entry.name !== '..';
 }
 
-async function getDirectoryIndexData(directoryPath, requestPath, showHidden) {
+function joinPublicPath(basePath, localPath) {
+  if (basePath === '/') return localPath;
+  return `${basePath}${localPath === '/' ? '/' : localPath}`.replace(/\/+/g, '/');
+}
+
+async function getDirectoryIndexData(directoryPath, requestPath, showHidden, basePath) {
   const entries = await fsPromises.readdir(directoryPath, { withFileTypes: true });
   const visibleEntries = entries.filter(entry => showHidden || !isHiddenDirectoryEntry(entry));
   visibleEntries.sort((left, right) => {
@@ -198,6 +334,7 @@ async function getDirectoryIndexData(directoryPath, requestPath, showHidden) {
   return {
     currentPath: normalizedPath,
     parentPath,
+    basePath,
     showHidden,
     entries: visibleEntries.map(entry => ({
       name: entry.name,
@@ -218,15 +355,18 @@ function encodeDirectoryPath(directoryPath) {
 
 function renderDirectoryIndex(data) {
   const normalizedPath = data.currentPath;
-  const encodedDirectoryPath = encodeDirectoryPath(normalizedPath);
+  const publicCurrentPath = joinPublicPath(data.basePath, normalizedPath);
+  const publicParentPath = data.parentPath ? joinPublicPath(data.basePath, data.parentPath) : null;
+  const encodedDirectoryPath = encodeDirectoryPath(publicCurrentPath);
+  const encodedApplicationRootPath = encodeDirectoryPath(joinPublicPath(data.basePath, '/'));
   const withVisibility = url => (data.showHidden ? `${url}?showHidden=1` : url);
   const breadcrumbParts = normalizedPath.split('/').filter(Boolean);
   let breadcrumbPath = '';
   const breadcrumb = [
-    `<a href="${withVisibility('/')}">根目录</a>`,
+    `<a href="${withVisibility(encodedApplicationRootPath)}">根目录</a>`,
     ...breadcrumbParts.map(part => {
       breadcrumbPath += `/${part}`;
-      const target = withVisibility(encodeDirectoryPath(breadcrumbPath));
+      const target = withVisibility(encodeDirectoryPath(joinPublicPath(data.basePath, breadcrumbPath)));
       return `<a href="${target}">${escapeHtml(part)}</a>`;
     })
   ].join('<span aria-hidden="true"> / </span>');
@@ -241,14 +381,14 @@ function renderDirectoryIndex(data) {
     })
     .join('');
   const parent = data.parentPath
-    ? `<p id="directoryParent"><a href="${withVisibility(encodeDirectoryPath(data.parentPath))}">← 返回上级</a></p>`
+    ? `<p id="directoryParent"><a href="${withVisibility(encodeDirectoryPath(publicParentPath))}">← 返回上级</a></p>`
     : '<p id="directoryParent" hidden></p>';
   const visibilityToggleUrl = data.showHidden ? encodedDirectoryPath : `${encodedDirectoryPath}?showHidden=1`;
   const visibilityToggle = `<a class="visibility-toggle" href="${visibilityToggleUrl}">${
     data.showHidden ? '隐藏隐藏项目' : '显示隐藏项目'
   }</a>`;
   const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" type="image/svg+xml" href="${STATIC_FAVICON_PATH}"><title>目录索引 ${escapeHtml(
-    normalizedPath
+    publicCurrentPath
   )}</title><style>body{font:14px system-ui,sans-serif;margin:32px;max-width:900px}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}.directory-header{display:flex;align-items:center;gap:12px;margin:12px 0;flex-wrap:wrap}.directory-header h1{font-size:20px;margin:0}.directory-header nav{color:#4b5563;min-width:0;flex:1;overflow-wrap:anywhere}.directory-header nav span{padding:0 5px;color:#9ca3af}.visibility-toggle{color:#374151;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;padding:5px 8px;white-space:nowrap}.visibility-toggle:hover{background:#f3f4f6;text-decoration:none}.is-hidden{opacity:.55}ul{list-style:none;padding:0}li{padding:7px 0;border-bottom:1px solid #eee}</style></head><body><header class="directory-header"><h1>目录索引</h1><nav aria-label="路径导航">${breadcrumb}</nav>${visibilityToggle}</header>${parent}<ul>${items || '<li>（空目录）</li>'}</ul></body></html>`;
   return html;
 }
@@ -300,45 +440,63 @@ function openBrowser(url, browser) {
 
 function createStaticServer(config) {
   const app = express();
-  const root = path.resolve(process.env.STATIC_DIRECTORY);
-  if (!existsSync(root) || !lstatSync(root).isDirectory()) throw new Error(`static-server: directory does not exist: ${root}`);
-
-  const headers = { ...config.headers, ...parseHeaderList(argv.A || argv['append-headers']) };
-  const proxyTable = { ...config.proxy, ...parseProxyOptions() };
+  const cliHeaders = parseHeaderList(argv.A || argv['append-headers']);
   const clients = new Set();
   const watchers = [];
   let pendingChanges = [];
   let reloadTimer = null;
   let closing = false;
+  const pendingLogWrites = new Set();
+
+  const applications = config.mounts.map(mount => ({ ...mount, basePath: mount.path }));
+  const rootApplication = applications.find(application => application.basePath === '/' && application.directory);
+  const root = rootApplication ? rootApplication.directory : null;
 
   app.use(hostAllowlistMiddleware());
   app.use((req, res, next) => {
-    Object.entries(headers).forEach(([key, value]) => res.setHeader(key, String(value)));
-    if (config.cors) {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      if (req.method === 'OPTIONS') return res.status(204).end();
-    }
+    Object.entries(cliHeaders).forEach(([key, value]) => res.setHeader(key, String(value)));
     next();
   });
 
-  Object.entries(proxyTable).forEach(([prefix, target]) => {
-    if (typeof target !== 'string' || !/^https?:\/\//.test(target)) throw new Error(`Invalid proxy target for ${prefix}`);
-    app.use(prefix, createProxyMiddleware({ target, changeOrigin: true, ws: true, secure: false }));
-  });
+  function applyApplicationOptions(application) {
+    return (req, res, next) => {
+      Object.entries({ ...application.headers, ...cliHeaders }).forEach(([key, value]) => res.setHeader(key, String(value)));
+      if (application.cors) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        if (req.method === 'OPTIONS') return res.status(204).end();
+      }
+      return next();
+    };
+  }
 
-  config.mounts.forEach(mount => {
-    app.use(
-      mount.path,
-      express.static(mount.directory, {
-        dotfiles: 'allow',
-        index: false,
-        redirect: false,
-        setHeaders: setStaticHeaders
-      })
-    );
-  });
+  function writeAccessLog(application, req, res) {
+    if (!application.accessLog) return;
+    const logFile = res.statusCode >= 400 ? application.accessLog.failure : application.accessLog.success;
+    if (!logFile) return;
+    const entry = `${JSON.stringify({
+      timestamp: new Date().toISOString(),
+      application: application.basePath,
+      method: req.method,
+      url: req.originalUrl || req.url,
+      status: res.statusCode
+    })}\n`;
+    const write = fsPromises
+      .mkdir(path.dirname(logFile), { recursive: true })
+      .then(() => fsPromises.appendFile(logFile, entry, 'utf8'))
+      .catch(error => log.info(colors.red(`static-server access log failed: ${error.message}`)));
+    pendingLogWrites.add(write);
+    write.finally(() => pendingLogWrites.delete(write));
+  }
+
+  function createAccessLogMiddleware(application) {
+    if (!application.accessLog) return (_req, _res, next) => next();
+    return (req, res, next) => {
+      res.once('finish', () => writeAccessLog(application, req, res));
+      next();
+    };
+  }
 
   app.get(LIVE_RELOAD_PATH, (req, res) => {
     res.status(200).set({
@@ -359,6 +517,39 @@ function createStaticServer(config) {
   app.get(STATIC_FAVICON_PATH, (req, res) => {
     res.sendFile(path.resolve(__dirname, './favicon-static-server.svg'));
   });
+
+  const proxyRoutes = [];
+  const proxyOwners = new Map();
+  applications.forEach(application => {
+    Object.entries(application.proxy || {}).forEach(([prefix, rule]) => {
+      if (proxyOwners.has(prefix)) throw new Error(`Duplicate proxy route: ${prefix}`);
+      proxyOwners.set(prefix, application.basePath);
+      proxyRoutes.push({ prefix, application, ...rule });
+    });
+  });
+  proxyRoutes.sort((left, right) => right.prefix.length - left.prefix.length);
+  proxyRoutes.forEach(route => {
+    const pathRewrite = route.rewrite
+      ? requestPath => {
+          if (route.prefix === '/') return requestPath;
+          if (requestPath === route.prefix) return '/';
+          return requestPath.startsWith(`${route.prefix}/`) ? requestPath.slice(route.prefix.length) || '/' : requestPath;
+        }
+      : undefined;
+    app.use(
+      route.prefix,
+      applyApplicationOptions(route.application),
+      createAccessLogMiddleware(route.application),
+      createProxyMiddleware({
+        target: route.target,
+        changeOrigin: true,
+        ws: true,
+        secure: route.application.secure,
+        pathRewrite
+      })
+    );
+  });
+
   const sendHtml = async (filePath, res, next) => {
     try {
       const html = await fsPromises.readFile(filePath, 'utf8');
@@ -367,41 +558,71 @@ function createStaticServer(config) {
       next(error);
     }
   };
-  app.get('*', async (req, res, next) => {
-    if (req.path.startsWith('/__mock-service-cli/')) return next();
-    const filePath = getStaticPath(root, req.path);
-    if (filePath && /\.html?$/i.test(filePath)) return sendHtml(filePath, res, next);
-    // SPA mode deliberately owns directory and unknown routes. Without it,
-    // each directory request renders a fresh document with ordinary links.
-    if (!config.spaFallback) {
-      const directoryPath = getStaticDirectory(root, req.path);
-      if (directoryPath) {
-        try {
-          const data = await getDirectoryIndexData(directoryPath, req.path, req.query.showHidden === '1');
-          return res.type('html').set('Cache-Control', 'no-store').send(injectLiveReload(renderDirectoryIndex(data), config));
-        } catch (error) {
-          return next(error);
+
+  function createApplicationRouter(application) {
+    const router = express.Router();
+    router.use(applyApplicationOptions(application));
+    router.use(createAccessLogMiddleware(application));
+    router.get('*', async (req, res, next) => {
+      if (req.path.startsWith('/__mock-service-cli/')) return next();
+      const filePath = getStaticPath(application.directory, req.path);
+      if (filePath && /\.html?$/i.test(filePath)) return sendHtml(filePath, res, next);
+      if (!application.spaFallback) {
+        const directoryPath = getStaticDirectory(application.directory, req.path);
+        if (directoryPath) {
+          try {
+            const data = await getDirectoryIndexData(
+              directoryPath,
+              req.path,
+              req.query.showHidden === '1',
+              application.basePath
+            );
+            return res
+              .type('html')
+              .set('Cache-Control', 'no-store')
+              .send(injectLiveReload(renderDirectoryIndex(data), config));
+          } catch (error) {
+            return next(error);
+          }
         }
       }
-    }
-    next();
-  });
-  app.use(
-    express.static(root, {
-      dotfiles: 'allow',
-      index: false,
-      redirect: false,
-      setHeaders: setStaticHeaders
-    })
-  );
-  if (config.spaFallback) {
-    const fallbackPath = getStaticPath(root, config.spaFallback);
-    if (!fallbackPath || !/\.html?$/i.test(fallbackPath)) throw new Error(`SPA fallback does not exist: ${config.spaFallback}`);
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/__mock-service-cli/')) return next();
-      sendHtml(fallbackPath, res, next);
+      next();
     });
+    router.use(
+      express.static(application.directory, {
+        dotfiles: 'allow',
+        index: false,
+        redirect: false,
+        setHeaders: setStaticHeaders
+      })
+    );
+    if (application.spaFallback) {
+      const fallbackPath = getStaticPath(application.directory, application.spaFallback);
+      if (!fallbackPath || !/\.html?$/i.test(fallbackPath)) {
+        throw new Error(`SPA fallback does not exist: ${application.spaFallback}`);
+      }
+      router.get('*', (req, res, next) => {
+        if (req.path.startsWith('/__mock-service-cli/')) return next();
+        sendHtml(fallbackPath, res, next);
+      });
+    }
+    return router;
   }
+
+  const mountApplications = applications.filter(application => application.basePath !== '/' && application.directory);
+  mountApplications.forEach(application => {
+    const router = createApplicationRouter(application);
+    app.use(application.basePath, (req, res, next) => {
+      router.handle(req, res, error => {
+        if (error) return next(error);
+        if (!res.headersSent) return res.status(404).send('Not Found');
+        return undefined;
+      });
+    });
+  });
+  if (rootApplication) app.use(createApplicationRouter(rootApplication));
+  app.use((req, res) => res.status(404).send('Not Found'));
+
   // Express recognizes an error handler only when all four arguments are declared.
   app.use((error, req, res, _next) => {
     log.info(colors.red(`static-server request failed: ${error.message}`));
@@ -409,15 +630,20 @@ function createStaticServer(config) {
   });
 
   function toUrlPath(changedPath) {
-    const rootRelative = path.relative(root, changedPath);
-    if (!rootRelative.startsWith('..') && !path.isAbsolute(rootRelative)) return `/${rootRelative.split(path.sep).join('/')}`;
     const mount = config.mounts.find(item => {
+      if (!item.directory) return false;
       const relative = path.relative(item.directory, changedPath);
       return !relative.startsWith('..') && !path.isAbsolute(relative);
     });
-    if (!mount) return '/';
-    const relative = path.relative(mount.directory, changedPath).split(path.sep).join('/');
-    return `${mount.path.replace(/\/$/, '')}/${relative}`.replace(/\/+/g, '/');
+    if (mount) {
+      const relative = path.relative(mount.directory, changedPath).split(path.sep).join('/');
+      return `${mount.path.replace(/\/$/, '')}/${relative}`.replace(/\/+/g, '/');
+    }
+    if (root) {
+      const rootRelative = path.relative(root, changedPath);
+      if (!rootRelative.startsWith('..') && !path.isAbsolute(rootRelative)) return `/${rootRelative.split(path.sep).join('/')}`;
+    }
+    return '/';
   }
   function notifyClients() {
     const changes = pendingChanges;
@@ -432,7 +658,8 @@ function createStaticServer(config) {
     reloadTimer = setTimeout(notifyClients, config.watch.delay);
   }
   function startWatchers() {
-    const targets = [root, ...config.mounts.map(mount => mount.directory)];
+    const targets = [...new Set(applications.map(application => application.directory).filter(Boolean))];
+    if (targets.length === 0) return Promise.resolve();
     // Node 24's Windows fs.watch backend can abort the process for some short
     // temporary paths. Polling is limited to that runtime combination.
     const usePolling = process.platform === 'win32' && Number.parseInt(process.versions.node, 10) >= 24;
@@ -469,6 +696,7 @@ function createStaticServer(config) {
     server,
     root,
     protocol: config.https ? 'https' : 'http',
+    proxyRoutes,
     startWatchers,
     close: async () => {
       if (closing) return;
@@ -476,6 +704,7 @@ function createStaticServer(config) {
       clearTimeout(reloadTimer);
       clients.forEach(client => client.end());
       await Promise.all(watchers.map(watcher => watcher.close()));
+      await Promise.all([...pendingLogWrites]);
       await new Promise(resolve => {
         if (!server.listening) return resolve();
         server.close(resolve);
@@ -513,12 +742,22 @@ function startServer() {
         console.info(
           [
             colors.yellow('\nStarting up Static Server, serving '),
-            colors.cyan(instance.root),
+            colors.cyan(instance.root || config.configDir),
             colors.yellow(`  ${dateFormat('YYYY-mm-dd HH:MM:SS', new Date())}`)
           ].join('')
         );
         console.info(colors.yellow('\n Static Server available on:\n'));
         urls.forEach(url => console.info('    ' + url.replace(String(port), colors.green(port))));
+        if (instance.proxyRoutes.length > 0) {
+          log.info(colors.yellow('\n Static application proxy routes:\n'));
+          instance.proxyRoutes.forEach(route => {
+            log.info(
+              `    ${colors.cyan(route.application.basePath)} ${colors.green(route.prefix)} -> ${colors.magenta(route.target)}${
+                route.rewrite ? colors.yellow(' (rewrite)') : ''
+              }`
+            );
+          });
+        }
         if (config.open) {
           const openPath = typeof config.open === 'string' ? config.open : '/';
           openBrowser(`${urls[0]}${openPath.startsWith('/') ? openPath : `/${openPath}`}`, config.browser);

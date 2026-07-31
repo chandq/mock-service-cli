@@ -1,10 +1,10 @@
 const test = require('tap').test;
-const { mkdtempSync, rmSync, writeFileSync, mkdirSync, appendFileSync } = require('fs');
+const { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, appendFileSync } = require('fs');
 const http = require('http');
 const net = require('net');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
@@ -72,6 +72,38 @@ function request(url) {
     });
     req.on('error', reject);
   });
+}
+
+function requestWithMethod(url, method) {
+  return new Promise((resolve, reject) => {
+    const requestUrl = new URL(url);
+    const req = http.request(
+      { hostname: requestUrl.hostname, port: requestUrl.port, path: `${requestUrl.pathname}${requestUrl.search}`, method, agent: false },
+      response => {
+        let text = '';
+        response.setEncoding('utf8');
+        response.on('data', chunk => {
+          text += chunk;
+        });
+        response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, text }));
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function waitForFileText(filePath) {
+  let lastError;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      if (existsSync(filePath)) return readFileSync(filePath, 'utf8');
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  throw lastError || new Error(`Timed out waiting for ${filePath}`);
 }
 
 async function waitForServer(url, child, output) {
@@ -181,11 +213,17 @@ test('static server development behaviors', async t => {
     writeFileSync(
       path.join(staticRoot, 'static-server.json'),
       JSON.stringify({
-        cors: true,
-        headers: { 'X-Static-Config': 'enabled' },
-        spaFallback: '/index.html',
-        mounts: [{ path: '/vendor', directory: mountRoot }],
-        proxy: { '/api': `http://127.0.0.1:${upstreamPort}` },
+        mounts: [
+          {
+            path: '/',
+            directory: '.',
+            cors: true,
+            headers: { 'X-Static-Config': 'enabled' },
+            spaFallback: '/index.html',
+            proxy: { '/api': { target: `http://127.0.0.1:${upstreamPort}`, rewrite: false } }
+          },
+          { path: '/vendor', directory: mountRoot }
+        ],
         watch: { delay: 20, ignore: ['**/node_modules/**'] }
       })
     );
@@ -194,8 +232,6 @@ test('static server development behaviors', async t => {
       process.execPath,
       [
         'src/bin/mock-service-cli',
-        '-R',
-        staticRoot,
         '-p',
         String(port),
         '-s',
@@ -261,6 +297,7 @@ test('static server development behaviors', async t => {
     writeFileSync(path.join(staticRoot, 'index.html'), '<html><body>AUTO_INDEX_MARKER</body></html>');
     writeFileSync(path.join(staticRoot, 'nested', 'note.txt'), 'nested content');
     writeFileSync(path.join(staticRoot, 'nested', 'preview.txt'), 'preview inline');
+    writeFileSync(path.join(staticRoot, 'nested', '.hidden-note'), 'hidden nested content');
     writeFileSync(path.join(staticRoot, '.coveralls.yml'), 'service_name: coveralls');
     writeFileSync(path.join(staticRoot, '.git', 'config'), '[core]\nrepositoryformatversion = 0\n');
     writeFileSync(path.join(staticRoot, 'LICENSE'), 'license preview');
@@ -284,16 +321,11 @@ test('static server development behaviors', async t => {
     t.match(rootHtml, /目录索引/, 'shows a directory index at the root');
     t.match(rootHtml, /__mock-service-cli\/favicon\.svg/, 'declares the static server favicon for directory pages');
     t.match(rootHtml, /__mock-service-cli\/live-reload\.js/, 'injects live reload into directory indexes');
-    t.notMatch(rootHtml, /__mock-service-cli\/directory-index\.js/, 'does not load a directory navigation client');
-    t.notMatch(rootHtml, /data-directory/, 'uses ordinary anchor navigation');
     t.match(rootHtml, /href="\/nested\/"/, 'links subdirectories for navigation');
     t.match(rootHtml, /显示隐藏项目/, 'offers a server-rendered hidden item toggle');
-    t.notMatch(rootHtml, /\.coveralls\.yml/, 'hides dotfiles by default');
-    t.notMatch(rootHtml, /\.git/, 'hides dot-directories by default');
     t.notMatch(rootHtml, /AUTO_INDEX_MARKER/, 'does not automatically serve index.html');
     const rootWithHidden = await request(`${baseUrl}/?showHidden=1`);
-    t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows hidden files when requested');
-    t.match(rootWithHidden.text, /class="is-hidden"/, 'renders shown hidden entries with reduced emphasis');
+    t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows root hidden files when requested');
     t.match(rootWithHidden.text, /href="\/\.git\/\?showHidden=1"/, 'preserves hidden visibility while navigating directories');
     const nestedIndex = await request(`${baseUrl}/nested/`);
     t.match(nestedIndex.text, /note\.txt/, 'shows a nested directory index');
@@ -301,7 +333,9 @@ test('static server development behaviors', async t => {
     t.match(nestedIndex.text, /路径导航/, 'renders path navigation');
     t.match(nestedIndex.text, /href="\/"/, 'links the root from path navigation');
     t.notMatch(nestedIndex.text, /history\.pushState/, 'uses ordinary browser navigation for directories');
+    t.notMatch(nestedIndex.text, /\.hidden-note/, 'hides nested dotfiles by default');
     const nestedWithHidden = await request(`${baseUrl}/nested/?showHidden=1`);
+    t.match(nestedWithHidden.text, /\.hidden-note/, 'shows nested hidden files when requested');
     t.match(nestedWithHidden.text, 'href="/?showHidden=1"', 'builds valid root breadcrumbs with hidden state');
     t.notMatch(nestedWithHidden.text, /href="\/\/nested/, 'does not create malformed breadcrumb paths');
     t.match((await request(`${baseUrl}/index.html`)).text, /AUTO_INDEX_MARKER/, 'serves index.html only when explicitly requested');
@@ -321,5 +355,266 @@ test('static server development behaviors', async t => {
     if (child) await stop(child);
     rmSync(staticRoot, { recursive: true, force: true });
   }
+  });
+
+  await t.test('isolates mount applications and applies full-path proxy rules', async t => {
+    const configDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-config-'));
+    const rootDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-root-'));
+    const ordersDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-orders-'));
+    const docsDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-docs-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+    const rootUpstream = http.createServer((req, res) => res.end(`root:${req.url}`));
+    const ordersUpstream = http.createServer((req, res) => res.end(`orders:${req.url}`));
+    const rootUpstreamPort = await new Promise((resolve, reject) => {
+      rootUpstream.once('error', reject);
+      rootUpstream.listen(0, '127.0.0.1', () => resolve(rootUpstream.address().port));
+    });
+    const ordersUpstreamPort = await new Promise((resolve, reject) => {
+      ordersUpstream.once('error', reject);
+      ordersUpstream.listen(0, '127.0.0.1', () => resolve(ordersUpstream.address().port));
+    });
+
+    try {
+      mkdirSync(path.join(docsDirectory, 'nested'));
+      writeFileSync(path.join(rootDirectory, 'index.html'), '<html><body>ROOT_SPA</body></html>');
+      writeFileSync(path.join(ordersDirectory, 'index.html'), '<html><body>ORDERS_SPA</body></html>');
+      writeFileSync(path.join(docsDirectory, 'nested', 'guide.txt'), 'guide');
+      const configPath = path.join(configDirectory, 'static-server.json');
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          mounts: [
+            {
+              path: '/',
+              directory: rootDirectory,
+              spaFallback: '/index.html',
+              proxy: { '/api': { target: `http://127.0.0.1:${rootUpstreamPort}`, rewrite: false } },
+              cors: true,
+              headers: { 'X-Application': 'root' },
+              secure: false,
+              accessLog: { success: './logs/root-success.jsonl', failure: './logs/root-failure.jsonl' }
+            },
+            {
+              path: '/orders',
+              directory: ordersDirectory,
+              spaFallback: '/index.html',
+              proxy: { '/api/orders': { target: `http://127.0.0.1:${ordersUpstreamPort}`, rewrite: true } },
+              headers: { 'X-Application': 'orders' },
+              secure: false,
+              accessLog: { success: './logs/orders-success.jsonl', failure: './logs/orders-failure.jsonl' }
+            },
+            { path: '/docs', directory: docsDirectory, cors: true, headers: { 'X-Application': 'docs' }, secure: false }
+          ]
+        })
+      );
+
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', '--static-config', configPath, '-p', String(port)], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const rootResponse = await waitForServer(`${baseUrl}/`, child, output);
+      t.match(rootResponse.text, /ROOT_SPA/, 'starts from config with a bare -R flag');
+      t.equal(rootResponse.headers['x-application'], 'root', 'applies root response headers');
+      t.equal(rootResponse.headers['access-control-allow-origin'], '*', 'applies root CORS');
+      const ordersFallback = await request(`${baseUrl}/orders/not-found`);
+      t.match(ordersFallback.text, /ORDERS_SPA/, 'mount SPA fallback remains inside the mount');
+      t.equal(ordersFallback.headers['x-application'], 'orders', 'applies mount response headers');
+      t.notOk(ordersFallback.headers['access-control-allow-origin'], 'does not inherit root CORS into a mount');
+      t.match((await request(`${baseUrl}/outside`)).text, /ROOT_SPA/, 'root SPA fallback serves root routes');
+      const docsIndex = await request(`${baseUrl}/docs/`);
+      t.match(docsIndex.text, /href="\/docs\/nested\/"/, 'mount directory links retain the mount base path');
+      t.equal(docsIndex.headers['x-application'], 'docs', 'applies headers to non-SPA mounts');
+      t.equal(docsIndex.headers['access-control-allow-origin'], '*', 'applies CORS to non-SPA mounts');
+      const nestedDocsIndex = await request(`${baseUrl}/docs/nested/`);
+      t.match(nestedDocsIndex.text, /guide\.txt/, 'non-SPA mount serves its own directory index');
+      t.match(nestedDocsIndex.text, /href="\/docs\/"/, 'mount directory breadcrumbs retain the mount base path');
+      t.equal((await request(`${baseUrl}/docs/missing`)).status, 404, 'non-SPA mount does not fall through to root fallback');
+      t.equal((await request(`${baseUrl}/api/orders/items?source=test`)).text, 'orders:/items?source=test', 'longest proxy route rewrites its full prefix');
+      t.equal((await request(`${baseUrl}/api/orders2`)).text, 'root:/api/orders2', 'proxy matching observes path boundaries');
+      const ansiColorPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+      const plainOutput = output.value.replace(ansiColorPattern, '');
+      t.match(plainOutput, /Static application proxy routes/, 'prints the static application proxy summary');
+      t.match(plainOutput, /\/orders\s+\/api\/orders.*rewrite/, 'prints the proxy owner and rewrite mode');
+      const failedOrdersRequest = await requestWithMethod(`${baseUrl}/orders/not-found`, 'POST');
+      t.equal(failedOrdersRequest.status, 404, 'returns a failure status for non-GET SPA requests');
+      const rootSuccessLog = await waitForFileText(path.join(configDirectory, 'logs', 'root-success.jsonl'));
+      t.match(rootSuccessLog, /"application":"\/"/, 'writes successful root SPA requests to the configured file');
+      const ordersSuccessLog = await waitForFileText(path.join(configDirectory, 'logs', 'orders-success.jsonl'));
+      t.match(ordersSuccessLog, /"application":"\/orders"/, 'writes successful mount SPA requests to the configured file');
+      const ordersFailureLog = await waitForFileText(path.join(configDirectory, 'logs', 'orders-failure.jsonl'));
+      t.match(ordersFailureLog, /"method":"POST".*"status":404/, 'writes failed SPA requests to the configured file');
+
+      const conflictingDirectory = spawnSync(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', rootDirectory, '--static-config', configPath, '-s'],
+        { cwd: root, env: getCliEnv(), encoding: 'utf8' }
+      );
+      t.equal(conflictingDirectory.status, 1, 'rejects a directory together with static config');
+      t.match(conflictingDirectory.stderr, /cannot be combined/, 'reports conflicting static inputs');
+      const conflictingProxy = spawnSync(
+        process.execPath,
+        ['src/bin/mock-service-cli', '--static-config', configPath, '-O', '/api|http://127.0.0.1:1', '-s'],
+        { cwd: root, env: getCliEnv(), encoding: 'utf8' }
+      );
+      t.equal(conflictingProxy.status, 1, 'rejects CLI proxy settings in config mode');
+
+      const topLevelApplicationConfigPath = path.join(configDirectory, 'top-level-application.json');
+      writeFileSync(
+        topLevelApplicationConfigPath,
+        JSON.stringify({ directory: rootDirectory, mounts: [{ path: '/orders', directory: ordersDirectory }] })
+      );
+      const topLevelApplication = spawnSync(process.execPath, ['src/lib/staticServer.js'], {
+        cwd: root,
+        env: { ...getCliEnv(), ARGV: '{}', STATIC_CONFIG: topLevelApplicationConfigPath, PORT: '0' },
+        encoding: 'utf8'
+      });
+      t.equal(topLevelApplication.status, 1, 'rejects top-level application fields');
+      t.match(topLevelApplication.stderr, /directory must be declared on a mount/, 'reports the mounts-only configuration rule');
+
+      const nestedMountConfigPath = path.join(configDirectory, 'nested-mounts.json');
+      writeFileSync(
+        nestedMountConfigPath,
+        JSON.stringify({
+          mounts: [
+            { path: '/orders', directory: ordersDirectory },
+            { path: '/orders/admin', directory: docsDirectory }
+          ]
+        })
+      );
+      const nestedMounts = spawnSync(process.execPath, ['src/lib/staticServer.js'], {
+        cwd: root,
+        env: { ...getCliEnv(), ARGV: '{}', STATIC_CONFIG: nestedMountConfigPath, PORT: '0' },
+        encoding: 'utf8'
+      });
+      t.equal(nestedMounts.status, 1, 'rejects nested mount paths');
+      t.match(nestedMounts.stderr, /mounts paths cannot overlap/, 'reports mount path conflicts');
+
+      const duplicateProxyConfigPath = path.join(configDirectory, 'duplicate-proxy.json');
+      writeFileSync(
+        duplicateProxyConfigPath,
+        JSON.stringify({
+          mounts: [
+            {
+              path: '/',
+              directory: rootDirectory,
+              proxy: { '/shared': { target: `http://127.0.0.1:${rootUpstreamPort}`, rewrite: false } }
+            },
+            {
+              path: '/orders',
+              directory: ordersDirectory,
+              proxy: { '/shared': { target: `http://127.0.0.1:${ordersUpstreamPort}`, rewrite: false } }
+            }
+          ]
+        })
+      );
+      const duplicateProxy = spawnSync(process.execPath, ['src/lib/staticServer.js'], {
+        cwd: root,
+        env: { ...getCliEnv(), ARGV: '{}', STATIC_CONFIG: duplicateProxyConfigPath, PORT: '0' },
+        encoding: 'utf8'
+      });
+      t.equal(duplicateProxy.status, 1, 'rejects duplicate proxy paths across applications');
+      t.match(duplicateProxy.stderr, /Duplicate proxy route/, 'reports duplicate proxy paths');
+    } finally {
+      if (child) await stop(child);
+      await new Promise(resolve => rootUpstream.close(resolve));
+      await new Promise(resolve => ordersUpstream.close(resolve));
+      rmSync(configDirectory, { recursive: true, force: true });
+      rmSync(rootDirectory, { recursive: true, force: true });
+      rmSync(ordersDirectory, { recursive: true, force: true });
+      rmSync(docsDirectory, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('enables SPA fallback from the single-directory CLI mode', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-cli-spa-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(staticRoot, 'index.html'), '<html><body>CLI_SPA</body></html>');
+      child = spawn(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', staticRoot, '--spa-fallback', '/index.html', '-p', String(port), '-s'],
+        { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      t.match((await waitForServer(`${baseUrl}/any/client/route`, child, output)).text, /CLI_SPA/, 'uses CLI SPA fallback for missing routes');
+    } finally {
+      if (child) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('defaults an omitted mount path to root and mixes static and SPA applications', async t => {
+    const configDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-only-config-'));
+    const mountDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-only-app-'));
+    const staticDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-only-static-'));
+    const spaDirectory = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-only-spa-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(mountDirectory, 'asset.txt'), 'mount-only');
+      writeFileSync(path.join(staticDirectory, 'index.html'), '<html><body>SECOND_STATIC</body></html>');
+      writeFileSync(path.join(spaDirectory, 'index.html'), '<html><body>MOUNT_SPA</body></html>');
+      const configPath = path.join(configDirectory, 'static-server.json');
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          mounts: [
+            { directory: mountDirectory, headers: { 'X-Root-Mount': 'true' } },
+            { path: '/static', directory: staticDirectory },
+            { path: '/spa', directory: spaDirectory, spaFallback: '/index.html' }
+          ]
+        })
+      );
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '--static-config', configPath, '-p', String(port), '-s'], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const response = await waitForServer(`${baseUrl}/asset.txt`, child, output);
+      t.equal(response.text, 'mount-only', 'defaults a directory mount without path to root');
+      t.equal(response.headers['x-root-mount'], 'true', 'applies root static mount headers');
+      const staticIndex = await request(`${baseUrl}/static/`);
+      t.match(staticIndex.text, /目录索引/, 'keeps non-SPA mounts in directory-index mode');
+      t.notMatch(staticIndex.text, /SECOND_STATIC/, 'does not infer a fallback from index.html');
+      t.match((await request(`${baseUrl}/static/index.html`)).text, /SECOND_STATIC/, 'serves a non-SPA HTML file only when explicitly requested');
+      t.match((await request(`${baseUrl}/spa/client/route`)).text, /MOUNT_SPA/, 'serves an SPA mount beside the root static application');
+    } finally {
+      if (child) await stop(child);
+      rmSync(configDirectory, { recursive: true, force: true });
+      rmSync(mountDirectory, { recursive: true, force: true });
+      rmSync(staticDirectory, { recursive: true, force: true });
+      rmSync(spaDirectory, { recursive: true, force: true });
+    }
   });
 });

@@ -7,20 +7,47 @@
     "fullReload": false
   },
   "injectTag": "body",
-  "spaFallback": "/index.html",
   "mounts": [
     {
+      "path": "/",
+      "directory": "./public",
+      "spaFallback": "/index.html",
+      "proxy": {
+        "/api": {
+          "target": "http://127.0.0.1:3000",
+          "rewrite": false
+        }
+      },
+      "cors": true,
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "secure": false,
+      "accessLog": {
+        "success": "./logs/root-success.jsonl",
+        "failure": "./logs/root-failure.jsonl"
+      }
+    },
+    {
       "path": "/vendor",
-      "directory": "../node_modules"
+      "directory": "../project1",
+      "proxy": {
+        "/vendor/api": {
+          "target": "http://127.0.0.1:3100",
+          "rewrite": true
+        }
+      },
+      "cors": false,
+      "headers": {
+        "X-Vendor-App": "enabled"
+      },
+      "secure": false,
+      "accessLog": {
+        "success": "./logs/vendor-success.jsonl",
+        "failure": "./logs/vendor-failure.jsonl"
+      }
     }
   ],
-  "proxy": {
-    "/api": "http://127.0.0.1:3000"
-  },
-  "cors": false,
-  "headers": {
-    "Cache-Control": "no-store"
-  },
   "https": {
     "cert": "./certs/local-cert.pem",
     "key": "./certs/local-key.pem"

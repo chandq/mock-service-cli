@@ -41,7 +41,7 @@
     "docs/static-server.config.example.json"
   ],
   "engines": {
-    "node": ">=18.18"
+    "node": ">=18"
   },
   "author": "chendq <deqiaochen@gmail.com>",
   "keywords": [

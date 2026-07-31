@@ -44,7 +44,8 @@ if (argv.h || argv.help) {
       '  -b --web-baseurl     Specify website public path when enabled web server.',
       '',
       '  -R --static-server   Specify static resource file directory when enabled static server.',
-      '  --static-config <file>  JSON configuration for static server live reload, HTTPS, mounts, proxy and fallback.',
+      '  --spa-fallback <path>  Enable SPA fallback for -R mode using a root-relative HTML path.',
+      '  --static-config <file>  Self-contained static server configuration for root apps, mounts, proxy and fallback.',
       '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
       '  --edit               Enable file create, rename, and delete operations in file explorer.',
       '  --auth <password>    Require a password for file explorer access.',
@@ -83,8 +84,25 @@ if (argv['static-config'] !== undefined && (typeof argv['static-config'] !== 'st
   process.exit(1);
 }
 
-if (argv['static-config'] && !(argv.R || argv['static-server'])) {
-  console.error('--static-config can only be used with --static-server');
+const staticDirectoryArg = argv.R !== undefined ? argv.R : argv['static-server'];
+if (staticDirectoryArg !== undefined && staticDirectoryArg !== true && typeof staticDirectoryArg !== 'string') {
+  console.error('-R/--static-server requires a directory path');
+  process.exit(1);
+}
+if (argv['spa-fallback'] !== undefined && (typeof argv['spa-fallback'] !== 'string' || !argv['spa-fallback'])) {
+  console.error('--spa-fallback requires a root-relative HTML path');
+  process.exit(1);
+}
+if (argv['static-config'] && typeof staticDirectoryArg === 'string') {
+  console.error('--static-config cannot be combined with -R <directory>');
+  process.exit(1);
+}
+if (!argv['static-config'] && staticDirectoryArg === true) {
+  console.error('-R requires a directory path unless --static-config is provided');
+  process.exit(1);
+}
+if (argv['static-config'] && (argv.O || argv['proxy-options'] || argv.r || argv.rewrite)) {
+  console.error('--proxy-options/--rewrite cannot be used with --static-config');
   process.exit(1);
 }
 
@@ -163,7 +181,7 @@ injectEnvVariable('CORS_ORIGIN', argv.o || argv['cors-origin']);
 injectEnvVariable('CORS_HEADERS', argv.H || argv['cors-headers']);
 
 injectEnvVariable('WEB_PUBLIC_PATH', argv.b || argv['web-baseurl']);
-injectEnvVariable('STATIC_DIRECTORY', argv.R || argv['static-server']);
+if (typeof staticDirectoryArg === 'string') injectEnvVariable('STATIC_DIRECTORY', staticDirectoryArg);
 if (argv['static-config']) {
   const staticConfigPath = resolve(process.cwd(), argv['static-config']);
   if (!existsSync(staticConfigPath)) {
@@ -326,9 +344,9 @@ function initServe() {
     } else {
       watchMockFiles(process.env.SPECIFIED_DIR);
     }
-  } else if (process.env.STATIC_DIRECTORY) {
+  } else if (process.env.STATIC_DIRECTORY || process.env.STATIC_CONFIG) {
     // 静态服务器
-    process.env.STATIC_DIRECTORY = resolve(process.cwd(), process.env.STATIC_DIRECTORY);
+    if (process.env.STATIC_DIRECTORY) process.env.STATIC_DIRECTORY = resolve(process.cwd(), process.env.STATIC_DIRECTORY);
     startStaticServer();
   } else {
     // Mock服务：使用默认目录
