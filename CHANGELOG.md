@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.7.0](https://github.com/chandq/mock-service-cli/compare/v4.6.0...v4.7.0) (2026-08-07)
+
+
+### Features
+
+* add optional request headers's settings ([b8e91dd](https://github.com/chandq/mock-service-cli/commit/b8e91ddc41e90ab472b5267b2063683196cb05eb))
+
+
+### Bug Fixes
+
+* Fix the issue of port still being occupied after Ctrl+C ([284c634](https://github.com/chandq/mock-service-cli/commit/284c63453a700f702f683c1d48f824006f8eab71))
+
 ## [4.6.0](https://github.com/chandq/mock-service-cli/compare/v4.5.1...v4.6.0) (2026-07-31)
 
 
