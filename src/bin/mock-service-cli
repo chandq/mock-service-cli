@@ -3,7 +3,6 @@
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
 const { resolve } = require('path');
-const nodemon = require('nodemon');
 const { existsSync } = require('fs-extra');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger, parseHostAllowlist } = require('../lib/utils');
@@ -271,6 +270,7 @@ if (argv.D || argv['web-dir']) {
  * @param watchDir
  */
 function watchMockFiles(watchDir) {
+  const nodemon = require('nodemon');
   /**
    * script 重启的脚本
    * ext 检测的文件
