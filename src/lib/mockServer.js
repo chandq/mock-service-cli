@@ -29,6 +29,9 @@ const app = express();
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
 let socketServer = null; // Socket server instance
+let httpServer = null;
+let webServer = null;
+let shuttingDown = false;
 const corsOrigin = [];
 let corsHeaders = '';
 
@@ -343,12 +346,12 @@ function startServer() {
       });
     }
   }
-  const http = require('http').createServer(app);
+  httpServer = require('http').createServer(app);
   if (process.env.SOCKET_SERVER) {
     const AsyncTaskQueue = require('./asyncTaskQueue');
     const saveDataAsyncTask = new AsyncTaskQueue();
 
-    socketServer = new Server(http, {
+    socketServer = new Server(httpServer, {
       path: '/ws/mock-service',
       allowRequest: (req, callback) => {
         const rules = getHostAllowlist();
@@ -402,7 +405,7 @@ function startServer() {
   }
 
   if (existsSync(mockFileOrDir)) {
-    http.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
+    httpServer.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
       console.info(colors.red('\n Mock File仅支持commonjs规范的js、cjs文件，不支持ES Module'));
 
       console.info(
@@ -456,7 +459,7 @@ function startServer() {
   }
 
   if (webApp && !process.env.RESTARTED) {
-    webApp.listen(Number.parseInt(process.env.WEB_PORT, 10), getServerHost(), () => {
+    webServer = webApp.listen(Number.parseInt(process.env.WEB_PORT, 10), getServerHost(), () => {
       console.info(colors.yellow(`\n Web server available on:\n`));
       getServerUrls(process.env.WEB_PORT, webPublicPath).forEach(url => {
         console.info('    ' + url.replace(String(process.env.WEB_PORT), colors.green(process.env.WEB_PORT)));
@@ -471,6 +474,32 @@ function startServer() {
   }
 }
 
+function closeServer(server) {
+  return new Promise(resolve => {
+    if (!server || !server.listening) return resolve();
+    server.close(() => resolve());
+    // Do not leave keep-alive requests holding either service port open.
+    if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+  });
+}
+
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try {
+    if (socketServer) {
+      await socketServer.close();
+      socketServer = null;
+    } else {
+      await closeServer(httpServer);
+    }
+    await closeServer(webServer);
+  } finally {
+    log.info(colors.red('mock-server process stopped.'));
+    process.exit();
+  }
+}
+
 if (process.platform === 'win32') {
   require('readline')
     .createInterface({
@@ -482,15 +511,8 @@ if (process.platform === 'win32') {
     });
 }
 
-process.on('SIGINT', function () {
-  log.info(colors.red('mock-server process stopped.'));
-  process.exit();
-});
-
-process.on('SIGTERM', function () {
-  log.info(colors.red('mock-server process stopped.'));
-  process.exit();
-});
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
 
 module.exports = {
   composeRouteFromJsFile,

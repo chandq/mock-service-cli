@@ -60,6 +60,43 @@ function stop(child) {
   });
 }
 
+function stopParent(child) {
+  return new Promise(resolve => {
+    let settled = false;
+    let forceKillTimer;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(forceKillTimer);
+      resolve();
+    };
+    child.once('exit', finish);
+    child.kill('SIGINT');
+    forceKillTimer = setTimeout(() => {
+      if (child.exitCode === null) child.kill('SIGKILL');
+      finish();
+    }, 1000);
+  });
+}
+
+async function waitForPortRelease(port) {
+  let lastError;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', () => server.close(resolve));
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  }
+  throw lastError || new Error(`Port ${port} was not released`);
+}
+
 function request(url) {
   return new Promise((resolve, reject) => {
     const req = http.get(url, { agent: false }, response => {
@@ -194,6 +231,36 @@ function executeReloadClient(script) {
 }
 
 test('static server development behaviors', async t => {
+  await t.test('releases the port when the CLI parent receives SIGINT', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-shutdown-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(staticRoot, 'index.html'), '<html><body>shutdown</body></html>');
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'], {
+        cwd: root,
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+
+      await waitForServer(`http://127.0.0.1:${port}/`, child, output);
+      await stopParent(child);
+      await waitForPortRelease(port);
+      t.pass('CLI shutdown also stops the static server child');
+    } finally {
+      if (child && child.exitCode === null) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
+
   await t.test('injects live reload, applies config, serves mounts, fallback, and CSS events', async t => {
   const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-'));
   const mountRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-'));

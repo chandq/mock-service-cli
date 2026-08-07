@@ -136,6 +136,8 @@ var rewrite = argv.r || argv.rewrite || false;
 var isOpenApiOverview = argv.w || argv.open || false;
 var explorerDir = argv.e || argv.explorer;
 var log = null;
+let managedServerProcess = null;
+let managedServerShutdown = false;
 
 if (!argv.s && !argv.silent) {
   log = logger(false);
@@ -295,25 +297,44 @@ function watchMockFiles(watchDir) {
     });
 }
 
-// Node子进程启动MockServer
-function startMockServer() {
-  spawn(node, [resolveServerEntry('mockServer')], {
+function startManagedServer(fileName) {
+  managedServerProcess = spawn(node, [resolveServerEntry(fileName)], {
     stdio: 'inherit'
   });
+
+  const shutdown = signal => {
+    if (managedServerShutdown) return;
+    managedServerShutdown = true;
+    managedServerProcess.kill(signal);
+  };
+
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  managedServerProcess.once('exit', (code, signal) => {
+    if (managedServerShutdown) {
+      process.exit(signal ? 1 : code || 0);
+    }
+  });
+
+  managedServerProcess.once('error', error => {
+    console.error(colors.red(`Unable to start ${fileName}: ${error.message}`));
+    process.exit(1);
+  });
+}
+
+// Node子进程启动MockServer
+function startMockServer() {
+  startManagedServer('mockServer');
 }
 
 // Node子进程启动StaticServer
 function startStaticServer() {
-  spawn(node, [resolveServerEntry('staticServer')], {
-    stdio: 'inherit'
-  });
+  startManagedServer('staticServer');
 }
 
 // Node子进程启动FileExplorerServer
 function startFileExplorerServer() {
-  spawn(node, [resolveServerEntry('fileExplorerServer')], {
-    stdio: 'inherit'
-  });
+  startManagedServer('fileExplorerServer');
 }
 /**
  * 初始化服务

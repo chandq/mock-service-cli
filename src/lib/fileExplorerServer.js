@@ -45,6 +45,8 @@ const isEditMode = process.env.EXPLORER_EDIT === 'true';
 const explorerPassword = process.env.EXPLORER_AUTH || '';
 const isAuthEnabled = Boolean(explorerPassword);
 const visitorKeys = new Set();
+let httpServer = null;
+let shuttingDown = false;
 const MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 const MAX_UPLOAD_TOTAL_SIZE = 2 * 1024 * 1024 * 1024;
 const MAX_UPLOAD_FILE_COUNT = 100;
@@ -727,11 +729,11 @@ function init() {
 }
 
 function startServer() {
-  const http = require('http').createServer(app);
+  httpServer = require('http').createServer(app);
   // Large LAN uploads may legitimately take longer than Node's five-minute default.
-  http.requestTimeout = 0;
+  httpServer.requestTimeout = 0;
 
-  http.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
+  httpServer.listen(Number.parseInt(process.env.PORT, 10), getServerHost(), () => {
     console.info(
       [
         colors.yellow(`\nStarting up file-explorer-server, serving `),
@@ -775,6 +777,24 @@ function startServer() {
   });
 }
 
+function closeServer(server) {
+  return new Promise(resolve => {
+    if (!server || !server.listening) return resolve();
+    server.close(() => resolve());
+    // Uploads and keep-alive connections must not keep the listening socket alive.
+    if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+  });
+}
+
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  closeServer(httpServer).finally(() => {
+    log.info(colors.red('file-explorer-server process stopped.'));
+    process.exit();
+  });
+}
+
 if (process.platform === 'win32') {
   require('readline')
     .createInterface({
@@ -786,12 +806,5 @@ if (process.platform === 'win32') {
     });
 }
 
-process.on('SIGINT', function () {
-  log.info(colors.red('file-explorer-server process stopped.'));
-  process.exit();
-});
-
-process.on('SIGTERM', function () {
-  log.info(colors.red('file-explorer-server process stopped.'));
-  process.exit();
-});
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
