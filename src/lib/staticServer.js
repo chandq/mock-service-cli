@@ -748,6 +748,19 @@ function startServer() {
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 
+  // On Windows, readline receives Ctrl+C from the console input stream;
+  // forward it so the normal process-level shutdown handler runs.
+  if (process.platform === 'win32') {
+    require('readline')
+      .createInterface({
+        input: process.stdin,
+        output: process.stdout
+      })
+      .on('SIGINT', function () {
+        process.emit('SIGINT');
+      });
+  }
+
   // Do not report the server as ready until the watcher has completed its
   // initial scan. Otherwise a save immediately after startup can be missed.
   instance

@@ -501,6 +501,8 @@ async function shutdown() {
 }
 
 if (process.platform === 'win32') {
+  // On Windows, readline receives Ctrl+C from the console input stream;
+  // forward it so the normal process-level shutdown handler runs.
   require('readline')
     .createInterface({
       input: process.stdin,
