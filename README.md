@@ -1,7 +1,7 @@
 [![release status](https://github.com/chandq/mock-service-cli/actions/workflows/release.yml/badge.svg)](https://github.com/chandq/mock-service-cli/actions/workflows/release.yml)
 [![Coverage Status](https://coveralls.io/repos/github/chandq/mock-service-cli/badge.svg?branch=master)](https://coveralls.io/github/chandq/mock-service-cli?branch=master)
 [![mock-service-cli](https://img.shields.io/github/package-json/v/chandq/mock-service-cli?style=flat-square)](https://www.npmjs.com/package/mock-service-cli)
-[![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE.md)
+[![license:MIT](https://img.shields.io/npm/l/vue.svg?sanitize=true)](https://github.com/chandq/mock-service-cli/blob/master/LICENSE)
 
 # 🦅 mock-service-cli
 
@@ -322,6 +322,12 @@ socket.on('mock-dir-stat', data => {
 
 欢迎提交 Issue 和 Pull Request！
 
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - 开发指南、代码规范、提交规范
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - 社区行为准则
+- **[SECURITY.md](SECURITY.md)** - 安全漏洞报告方式（请勿公开提交安全问题）
+- **Issue 模板** - Bug 反馈 / 功能建议（新建 Issue 时自动弹出）
+- **PR 模板** - 提交 Pull Request 时自动填充
+
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE.md](LICENSE.md)
+MIT License - 详见 [LICENSE](LICENSE)
