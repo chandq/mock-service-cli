@@ -103,7 +103,9 @@ jobs:
       - name: Publish light and Ultra packages with provenance
         run: npm run publish:editions
 
-      - name: Sync Homebrew and Scoop manifests
-        env:
-          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: node scripts/publish-package-managers.js
+      # 若本步失败而 npm 包其实已发布，不要重跑整个 release（会因 git tag 已存在 /
+      # npm 拒绝重复发布同版本而报错）。改在 Actions 页手动运行 sync-package-managers workflow 重试即可。
+      # - name: Sync Homebrew and Scoop manifests
+      #   env:
+      #     RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      #   run: node scripts/publish-package-managers.js

@@ -1,0 +1,36 @@
+# 手动（重新）同步 Homebrew / Scoop 清单，无需重新 npm publish。
+#
+# 用途：release 流程里的 "Sync Homebrew and Scoop manifests" 一步若因 registry 副本同步滞后、
+# RELEASE_TOKEN 缺失或远端 tap/bucket 仓库暂时不可用而失败，而 npm 包其实已发布成功时，
+# 直接重跑整个 release 会再次执行 standard-version 打 tag 和 npm publish，反而报错
+# （git tag 已存在、npm 拒绝重复发布同版本）。此时在 Actions 页面手动运行本 workflow 即可：
+# 它只做清单渲染与推送，不提升版本、不打 tag、不发布 npm，且幂等 —— 远端文件已一致则跳过推送。
+#
+# 用法：仓库 Actions 页 → sync-package-managers → Run workflow（分支选 master）。
+# 同步目标版本 = master 上 package.json 的版本（即最近一次已成功发布的版本）。
+name: sync-package-managers
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_registry_wait_ms:
+        description: '等待 npm registry 提供新 tarball 的最大毫秒数（默认 60000）'
+        required: false
+        type: string
+        default: '60000'
+
+jobs:
+  sync:
+    name: Sync Homebrew and Scoop manifests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Sync Homebrew and Scoop manifests
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          MAX_REGISTRY_WAIT_MS: ${{ inputs.max_registry_wait_ms }}
+        run: node scripts/publish-package-managers.js
