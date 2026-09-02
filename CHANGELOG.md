@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.8.0](https://github.com/chandq/mock-service-cli/compare/v4.7.0...v4.8.0) (2026-09-02)
+
+
+### Features
+
+* support Homebrew, Scoop and Nix installs ([01808f5](https://github.com/chandq/mock-service-cli/commit/01808f5b4dccf768da10823793eaa0a674a94bc0))
+
 ## [4.7.0](https://github.com/chandq/mock-service-cli/compare/v4.6.0...v4.7.0) (2026-08-07)
 
 
