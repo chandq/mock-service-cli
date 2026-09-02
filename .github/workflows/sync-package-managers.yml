@@ -1,13 +1,14 @@
-# 手动（重新）同步 Homebrew / Scoop 清单，无需重新 npm publish。
+# Homebrew / Scoop 清单同步：独立于 npm 发布流程，失败不会把 release 标红。
 #
-# 用途：release 流程里的 "Sync Homebrew and Scoop manifests" 一步若因 registry 副本同步滞后、
-# RELEASE_TOKEN 缺失或远端 tap/bucket 仓库暂时不可用而失败，而 npm 包其实已发布成功时，
-# 直接重跑整个 release 会再次执行 standard-version 打 tag 和 npm publish，反而报错
-# （git tag 已存在、npm 拒绝重复发布同版本）。此时在 Actions 页面手动运行本 workflow 即可：
-# 它只做清单渲染与推送，不提升版本、不打 tag、不发布 npm，且幂等 —— 远端文件已一致则跳过推送。
+# 触发方式：
+#   1. 自动 —— 当 release workflow（name: release）成功完成后经 workflow_run 触发。
+#      npm 发布已在该 release 内完成，此处只做清单渲染与推送；即便 registry 复制延迟
+#      导致本次失败，也只红本流程，不影响 npm 发布状态。可手动重跑（幂等，无变化则跳过推送）。
+#   2. 手动 —— 在 Actions 页 Run workflow，用于失败后重试 / 强制刷新。
 #
-# 用法：仓库 Actions 页 → sync-package-managers → Run workflow（分支选 master）。
-# 同步目标版本 = master 上 package.json 的版本（即最近一次已成功发布的版本）。
+# 同步目标版本 = 本仓库 master 上 package.json 的版本（即最近一次已发布的版本）。
+# 说明：workflow_run 在 default 分支上下文中运行，checkout 取到的是 release 内部
+#       standard-version 已推送的、包含新版本号的 master HEAD，正好对应当前已发布版本。
 name: sync-package-managers
 
 on:
@@ -18,11 +19,17 @@ on:
         required: false
         type: string
         default: '60000'
+  workflow_run:
+    workflows: ['release']   # 必须与 release.yml 的 name: 一致
+    types:
+      - completed
 
 jobs:
   sync:
     name: Sync Homebrew and Scoop manifests
     runs-on: ubuntu-latest
+    # 手动触发直接执行；workflow_run 仅在 release 成功后才同步（失败时静默跳过，不报错）。
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
     steps:
@@ -32,5 +39,5 @@ jobs:
       - name: Sync Homebrew and Scoop manifests
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          MAX_REGISTRY_WAIT_MS: ${{ inputs.max_registry_wait_ms }}
+          MAX_REGISTRY_WAIT_MS: ${{ inputs.max_registry_wait_ms || '60000' }}
         run: node scripts/publish-package-managers.js
