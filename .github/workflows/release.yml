@@ -12,6 +12,8 @@ on:
       - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
+  # 允许手动重跑：若 npm 发布后 registry 副本同步滞后导致 manifest 同步失败，可直接重新触发（幂等，已同步则跳过）。
+  workflow_dispatch:
 
 jobs:
   unit-test:
@@ -100,3 +102,8 @@ jobs:
 
       - name: Publish light and Ultra packages with provenance
         run: npm run publish:editions
+
+      - name: Sync Homebrew and Scoop manifests
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: node scripts/publish-package-managers.js

@@ -32,15 +32,29 @@
 ### 全局安装
 
 ```bash
+# npm
 npm install --global mock-service-cli
-# 或
+
+# Homebrew (macOS / Linux)
+brew tap chandq/tap
 brew install mock-service-cli
+
+# Scoop (Windows)
+scoop bucket add chandq https://github.com/chandq/scoop-bucket
+scoop install mock-service-cli
+
+# Nix (Linux / macOS)
+nix run github:chandq/mock-service-cli -- --help     # 临时运行
+nix profile install github:chandq/mock-service-cli     # 安装到 profile
 ```
 
 需要 RAR、7z、bzip2、xz 等高级归档格式时，安装 Ultra 版。它与轻量版使用相同的命令，不能同时全局安装：
 
 ```bash
 npm install --global mock-service-cli-ultra
+# Homebrew / Scoop 对应 Ultra 包名：mock-service-cli-ultra
+brew tap chandq/tap && brew install mock-service-cli-ultra
+scoop bucket add chandq https://github.com/chandq/scoop-bucket && scoop install mock-service-cli-ultra
 ```
 
 ### 局部安装
