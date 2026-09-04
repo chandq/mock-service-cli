@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.9.0](https://github.com/chandq/mock-service-cli/compare/v4.8.0...v4.9.0) (2026-09-04)
+
+
+### Features
+
+* **server:** improve cross-platform file visibility and static watching ([2c13152](https://github.com/chandq/mock-service-cli/commit/2c1315264723ca5a746baa50745d9cfe858c5bba))
+
+
+### Bug Fixes
+
+* ensure verify hidden content under windows os ([0d96b94](https://github.com/chandq/mock-service-cli/commit/0d96b94e59ad3f692d14771077e18f0c4e02696d))
+* **explorer:** ignore explorer.exe exitcode when opening in file manager ([9bfdb3f](https://github.com/chandq/mock-service-cli/commit/9bfdb3f6356db68cb9ae7e363874bd3bb611be9c))
+
 ## [4.8.0](https://github.com/chandq/mock-service-cli/compare/v4.7.0...v4.8.0) (2026-09-02)
 
 
