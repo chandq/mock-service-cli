@@ -10,7 +10,7 @@ if (!['light', 'ultra'].includes(edition)) {
 const root = path.resolve(__dirname, '..');
 const rootManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 const outputDir = path.join(root, 'release', edition);
-const commonDependencies = ['archiver', 'chokidar', 'is-hidden-file', 'multer', 'nodemon', 'ua-parser-js'];
+const commonDependencies = ['archiver', 'chokidar', 'multer', 'nodemon', 'ua-parser-js'];
 const ultraDependencies = ['7zip-bin', 'node-unrar-js'];
 
 function dependencyVersions(names) {

@@ -10,7 +10,7 @@ const colors = require('colors/safe');
 const path = require('path');
 const os = require('os');
 const net = require('net');
-const { isHiddenFile } = require('is-hidden-file');
+const { spawnSync } = require('child_process');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -89,15 +89,31 @@ function logger(isSilent = false) {
   return logObj;
 }
 
+// 隐藏文件检测：Unix/macOS 遵循“点号文件名”约定；Windows 的隐藏是文件系统属性。
+// Windows 统一通过 `attrib` 读取隐藏属性（无原生编译依赖、各版本 Windows 均自带），
+// 保证隐藏文件/目录在 static 与 file explorer 界面不会作为普通内容展示。
+function isWindowsHiddenByAttrib(filePath) {
+  let result;
+  try {
+    result = spawnSync('attrib', [filePath], { encoding: 'utf8', windowsHide: true, timeout: 5000 });
+  } catch (error) {
+    return false;
+  }
+  if (result.error || result.status !== 0) return false;
+  // attrib 输出形如 "A  H  D:\path\file"，路径之前的字段是属性标志，包含 H 即为隐藏。
+  const line = String(result.stdout || '').split(/\r?\n/)[0] || '';
+  const pathStart = line.search(/[A-Za-z]:[\\/]|\\\\/);
+  const attributes = (pathStart === -1 ? line : line.slice(0, pathStart)).toUpperCase();
+  return attributes.includes('H');
+}
+
 function isHiddenPath(filePath) {
   if (typeof filePath !== 'string' || !filePath) return false;
   const name = path.basename(filePath);
   if (name.startsWith('.') && name !== '.' && name !== '..') return true;
-  try {
-    return isHiddenFile(filePath);
-  } catch (error) {
-    return false;
-  }
+  if (process.platform === 'win32') return isWindowsHiddenByAttrib(filePath);
+  // 非 Windows：任意路径段以点号开头（如隐藏目录下的内容）同样视为隐藏。
+  return /(^|[\\/])\.[^\\/.]/.test(filePath);
 }
 // MockServer 支持的请求类型
 const SupportMethods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'PATCH', 'OPTIONS', 'COPY', 'LINK', 'UNLINK', 'PURGE'];
@@ -273,7 +289,9 @@ function getServerHost() {
 }
 
 function normalizeRemoteAddress(address) {
-  const value = String(address || '').trim().replace(/^\[|\]$/g, '');
+  const value = String(address || '')
+    .trim()
+    .replace(/^\[|\]$/g, '');
   return value.toLowerCase().startsWith('::ffff:') ? value.slice(7) : value;
 }
 
@@ -331,7 +349,7 @@ function isAddressAllowed(address, rules = []) {
   return rules.some(rule => {
     if (rule.version !== version) return false;
     const remainingBits = BigInt((rule.version === 4 ? 32 : 128) - rule.prefix);
-    return (value >> remainingBits) === (rule.value >> remainingBits);
+    return value >> remainingBits === rule.value >> remainingBits;
   });
 }
 

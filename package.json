@@ -67,7 +67,6 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "chokidar": "^3.6.0",
-    "is-hidden-file": "^1.1.2",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14",
     "ua-parser-js": "^2.0.10"
@@ -91,6 +90,7 @@
     "mockjs": "^0.1.10",
     "node-unrar-js": "^2.0.2",
     "portfinder": "^1.0.38",
+    "prettier": "^3.9.6",
     "socket.io": "^4.8.3",
     "standard-version": "^8.0.0",
     "tap": "^15.0.10",

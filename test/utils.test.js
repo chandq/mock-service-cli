@@ -2,6 +2,7 @@ const test = require('tap').test;
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const {
   getLogger,
   dateFormat,
@@ -20,7 +21,8 @@ const {
   getServerHost,
   getServerUrls,
   parseHostAllowlist,
-  isAddressAllowed
+  isAddressAllowed,
+  isHiddenPath
 } = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
@@ -331,4 +333,57 @@ test('test throttle function - delayed call', t => {
     t.pass('test completed');
     t.end();
   }, 100);
+});
+
+test('isHiddenPath rejects invalid input', t => {
+  t.plan(4);
+
+  t.equal(isHiddenPath(''), false, 'empty string is not hidden');
+  t.equal(isHiddenPath(null), false, 'null is not hidden');
+  t.equal(isHiddenPath(undefined), false, 'undefined is not hidden');
+  t.equal(isHiddenPath(42), false, 'non-string is not hidden');
+
+  t.end();
+});
+
+test('isHiddenPath treats dotfile basenames as hidden on every platform', t => {
+  t.plan(3);
+
+  t.equal(isHiddenPath(path.join(os.tmpdir(), '.secret')), true, 'dotfile is hidden');
+  t.equal(isHiddenPath(path.join(os.tmpdir(), '..')), false, 'parent dir reference is not hidden');
+  t.equal(isHiddenPath(path.join(os.tmpdir(), 'README.md')), false, 'plain file is not hidden');
+
+  t.end();
+});
+
+test('isHiddenPath honors the Windows hidden attribute', t => {
+  if (process.platform !== 'win32') {
+    t.skip('Windows hidden attribute only applies on win32');
+    t.end();
+    return;
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-'));
+  const plainFile = path.join(tempDir, 'plain.txt');
+  const hiddenFile = path.join(tempDir, 'secret.txt');
+  const plainDir = path.join(tempDir, 'plain-dir');
+  const hiddenDir = path.join(tempDir, 'secret-dir');
+  fs.writeFileSync(plainFile, 'x');
+  fs.writeFileSync(hiddenFile, 'x');
+  fs.mkdirSync(plainDir);
+  fs.mkdirSync(hiddenDir);
+  spawnSync('attrib', ['+H', hiddenFile]);
+  spawnSync('attrib', ['+H', hiddenDir]);
+
+  try {
+    t.equal(isHiddenPath(plainFile), false, 'normal file is visible');
+    t.equal(isHiddenPath(hiddenFile), true, 'file with hidden attribute is hidden');
+    t.equal(isHiddenPath(plainDir), false, 'normal directory is visible');
+    t.equal(isHiddenPath(hiddenDir), true, 'directory with hidden attribute is hidden');
+  } finally {
+    spawnSync('attrib', ['-H', hiddenFile]);
+    spawnSync('attrib', ['-H', hiddenDir]);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  t.end();
 });
