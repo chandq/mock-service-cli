@@ -8,6 +8,8 @@ This is the canonical repository instruction file. Read it before planning or ed
 
 `mock-service-cli` is a JavaScript CommonJS CLI for local development, requiring Node.js `>=18`. It provides mock APIs, static/SPA servers, HTTP proxying, an API overview page, and a file explorer with optional editing and archive operations.
 
+The tool is cross-platform and must support Windows, Linux, and macOS. Path separators/casing, hidden-file attributes, process signals, browser launching, filesystem behavior, and network interfaces must be handled through platform-aware adapters rather than POSIX-only assumptions.
+
 Source of truth is `src/` and `scripts/`; `dist/`, `coverage/`, and `release/` are generated outputs. Do not hand-edit generated output.
 
 Repository map:
@@ -60,6 +62,7 @@ npm run verify:packages
 - Avoid new synchronous filesystem work in hot request paths unless the local module already requires it.
 - Keep comments short and explain only non-obvious invariants or security decisions.
 - Use existing HTML/static-asset patterns for browser changes.
+- Put platform-specific behavior behind shared, testable adapters and provide conservative fallbacks when a platform API is unavailable.
 
 ## Edition Boundary
 

@@ -23,7 +23,7 @@ const commonOptions = {
   platform: 'node',
   format: 'cjs',
   target: 'node18',
-  external: ['fsevents', 'nodemon', '7zip-bin', 'archiver', 'chokidar', 'node-unrar-js'],
+  external: ['fsevents', 'nodemon', '7zip-bin', 'archiver', 'chokidar', 'node-unrar-js', 'is-hidden-file'],
   logLevel: 'info',
   minifyWhitespace: true,
   minifySyntax: true,

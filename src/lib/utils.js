@@ -10,6 +10,7 @@ const colors = require('colors/safe');
 const path = require('path');
 const os = require('os');
 const net = require('net');
+const { isHiddenFile } = require('is-hidden-file');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -86,6 +87,17 @@ function logger(isSilent = false) {
     };
   }
   return logObj;
+}
+
+function isHiddenPath(filePath) {
+  if (typeof filePath !== 'string' || !filePath) return false;
+  const name = path.basename(filePath);
+  if (name.startsWith('.') && name !== '.' && name !== '..') return true;
+  try {
+    return isHiddenFile(filePath);
+  } catch (error) {
+    return false;
+  }
 }
 // MockServer 支持的请求类型
 const SupportMethods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'PATCH', 'OPTIONS', 'COPY', 'LINK', 'UNLINK', 'PURGE'];
@@ -410,5 +422,6 @@ module.exports = {
   parseHostAllowlist,
   isAddressAllowed,
   getHostAllowlist,
-  hostAllowlistMiddleware
+  hostAllowlistMiddleware,
+  isHiddenPath
 };

@@ -28,6 +28,7 @@ const {
   getServerHost,
   getServerUrls,
   hostAllowlistMiddleware,
+  isHiddenPath,
   normalizeRemoteAddress
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
@@ -405,7 +406,7 @@ function init() {
             size: hasError ? 0 : fileStats.size,
             mtime: hasError ? new Date() : fileStats.mtime,
             birthtime: hasError ? new Date() : fileStats.birthtime,
-            isHidden: file.name.startsWith('.'),
+            isHidden: isHiddenPath(filePath),
             error: hasError ? 'Cannot access file' : null
           };
         })

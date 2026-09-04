@@ -3,7 +3,7 @@ const { readdirSync, existsSync } = require('fs');
 const path = require('path');
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { Server } = require('socket.io');
 const {
@@ -431,7 +431,7 @@ function startServer() {
       }
 
       // 自动打开浏览器
-      if (process.env.OPEN_API_OVERVIEW && !process.env.RESTARTED) {
+      if (process.env.OPEN_API_OVERVIEW && !webApp && !process.env.RESTARTED) {
         const apiOverviewUrl = `http://localhost:${process.env.PORT}/__api-overview`;
         console.info(colors.yellow(`\nOpening API overview page...`));
         let openCommand;
@@ -464,6 +464,14 @@ function startServer() {
       getServerUrls(process.env.WEB_PORT, webPublicPath).forEach(url => {
         console.info('    ' + url.replace(String(process.env.WEB_PORT), colors.green(process.env.WEB_PORT)));
       });
+      if (process.env.OPEN_API_OVERVIEW) {
+        const webUrl = `http://localhost:${process.env.WEB_PORT}${webPublicPath === '/' ? '/' : webPublicPath}`;
+        const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
+        const args = process.platform === 'win32' ? ['/c', 'start', '', webUrl] : [webUrl];
+        const child = spawn(command, args, { detached: true, stdio: 'ignore' });
+        child.once('error', () => console.warn(colors.yellow(`Could not automatically open browser. Please visit: ${webUrl}`)));
+        child.unref();
+      }
       if (!isEmptyObj(proxyTable)) {
         console.info(colors.yellow(`\n Enable proxy at web server on:`));
         Object.keys(proxyTable).forEach(prefix => {

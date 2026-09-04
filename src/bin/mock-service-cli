@@ -43,6 +43,7 @@ if (argv.h || argv.help) {
       '  -b --web-baseurl     Specify website public path when enabled web server.',
       '',
       '  -R --static-server   Specify static resource file directory when enabled static server.',
+      '  --watch-depth <n>    Limit static server watch recursion depth (non-negative integer).',
       '  --spa-fallback <path>  Enable SPA fallback for -R mode using a root-relative HTML path.',
       '  --static-config <file>  Self-contained static server configuration for root apps, mounts, proxy and fallback.',
       '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
@@ -51,7 +52,7 @@ if (argv.h || argv.help) {
       '',
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
-      '  -w --open            Open API overview page automatically, default false.',
+      '  -w --open            Open the available web page/API overview automatically, default false.',
       '  -e --explorer        Enable file explorer server, specify directory to browse, default [./].'
     ].join('\n')
   );
@@ -91,6 +92,14 @@ if (staticDirectoryArg !== undefined && staticDirectoryArg !== true && typeof st
 if (argv['spa-fallback'] !== undefined && (typeof argv['spa-fallback'] !== 'string' || !argv['spa-fallback'])) {
   console.error('--spa-fallback requires a root-relative HTML path');
   process.exit(1);
+}
+if (argv['watch-depth'] !== undefined) {
+  const watchDepth = Number(argv['watch-depth']);
+  if (!Number.isInteger(watchDepth) || watchDepth < 0) {
+    console.error('--watch-depth requires a non-negative integer');
+    process.exit(1);
+  }
+  process.env.WATCH_DEPTH = String(watchDepth);
 }
 if (argv['static-config'] && typeof staticDirectoryArg === 'string') {
   console.error('--static-config cannot be combined with -R <directory>');

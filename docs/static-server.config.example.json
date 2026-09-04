@@ -4,7 +4,8 @@
   "watch": {
     "ignore": ["**/node_modules/**", "**/.git/**"],
     "delay": 100,
-    "fullReload": false
+    "fullReload": false,
+    "depth": 3
   },
   "injectTag": "body",
   "mounts": [

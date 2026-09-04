@@ -93,7 +93,8 @@ npx mock-service-cli [options] [path]
 | `-R` 或 `--static-server`  | 启用单目录静态服务器，指定静态资源目录                            | -      |
 | `--spa-fallback <path>`    | 单目录模式显式启用 SPA 回退                                       | -      |
 | `--static-config <file>`   | 使用自包含 JSON 配置启动静态服务器                                | -      |
-| `-w` 或 `--open`           | 自动打开 API 概览页、文件浏览器页                                 | false  |
+| `-w` 或 `--open`           | 自动打开可用的 Web 页面或 API 概览页                               | false  |
+| `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数）                         | 无限   |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
 | `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
 | `--auth <password>`        | 为文件浏览器启用密码认证（仅可搭配 `--explorer`）                 | -      |
@@ -132,8 +133,9 @@ mock-service-cli --static-config ./static-server.json
 ```
 
 静态服务器会监听资源变化并向 HTML 页面注入热更新客户端：CSS 文件更新时替换样式表，其余变更刷新页面。
-默认不打开浏览器；在配置中设置 `"open": true` 或提供页面路径即可打开。完整配置字段和示例见
+默认不打开浏览器；使用 `-w/--open` 可自动打开静态服务器页面。也可在配置中设置 `"open": true` 或提供页面路径。完整配置字段和示例见
 [`docs/static-server.config.example.json`](./docs/static-server.config.example.json)：支持忽略规则、SPA 回退、挂载目录、代理、HTTPS、CORS、响应头和自定义浏览器命令。
+`watch.depth` 可限制 chokidar 递归监听层数；未设置时为无限深度，大目录建议显式设置有限值。命令行 `--watch-depth <n>` 优先于配置文件。
 配置文件只在顶层保留服务器级字段。所有应用都放在 `mounts` 中，并可独立设置 `directory`、`spaFallback`、`proxy`、`cors`、`headers`、`requestHeaders` 和 `secure`。mount 未设置 `path` 时默认挂载到 `/`；`directory` 可省略，但该应用必须配置至少一条代理。代理键使用完整公开路径，例如 `/api/app`。
 `headers` 是发送给客户端的响应头。`requestHeaders` 是发送给该应用全部代理上游的请求头；也可放在单个 `proxy` 规则中，覆盖或追加 mount 级请求头。代理规则使用 `{ "target": "http://...", "rewrite": true }`；`rewrite` 为 true 时只移除匹配的完整代理前缀并保留剩余路径和 query string。应用级 `secure` 控制其代理 HTTPS 目标的证书校验，默认 `false`。配置模式不接受 `--proxy-options`、`--rewrite` 或 `--spa-fallback`。
 未设置 `spaFallback` 时，应用目录会显示可点击的目录索引；可直接访问其中的 HTML 文件。mount 未命中的路由不会继续进入其他应用的 SPA fallback。
@@ -147,6 +149,9 @@ mock-service-cli -D ./dist
 
 # 指定公共路径和端口
 mock-service-cli -D ./dist -b /app -P 9090
+
+# 自动打开 Web 页面
+mock-service-cli -D ./dist --open
 ```
 
 ### HTTP 代理

@@ -9,7 +9,7 @@ const chokidar = require('chokidar');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
-const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware } = require('./utils');
+const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware, isHiddenPath } = require('./utils');
 
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
@@ -90,7 +90,8 @@ function normalizeAccessLog(value, label, configDir) {
   const accessLog = {};
   ['success', 'failure'].forEach(name => {
     if (value[name] === undefined) return;
-    if (typeof value[name] !== 'string' || !value[name]) throw new Error(`${label}.accessLog.${name} must be a file path`);
+    if (typeof value[name] !== 'string' || !value[name])
+      throw new Error(`${label}.accessLog.${name} must be a file path`);
     accessLog[name] = path.resolve(configDir, value[name]);
   });
   if (Object.keys(accessLog).length === 0) throw new Error(`${label}.accessLog requires success or failure`);
@@ -111,8 +112,10 @@ function normalizeRequestHeaders(value, label) {
 
 function normalizeApplicationOptions(value, label, configDir) {
   if (value.cors !== undefined && typeof value.cors !== 'boolean') throw new Error(`${label}.cors must be boolean`);
-  if (value.headers !== undefined && !isPlainObject(value.headers)) throw new Error(`${label}.headers must be an object`);
-  if (value.secure !== undefined && typeof value.secure !== 'boolean') throw new Error(`${label}.secure must be boolean`);
+  if (value.headers !== undefined && !isPlainObject(value.headers))
+    throw new Error(`${label}.headers must be an object`);
+  if (value.secure !== undefined && typeof value.secure !== 'boolean')
+    throw new Error(`${label}.secure must be boolean`);
   return {
     cors: value.cors === true,
     headers: isPlainObject(value.headers) ? value.headers : {},
@@ -155,7 +158,8 @@ function normalizeProxyTable(value, label, allowStringValues) {
     } else if (!allowStringValues || typeof rule !== 'string') {
       throw new Error(`${label}[${prefix}] must contain target and rewrite`);
     }
-    if (typeof target !== 'string' || !/^https?:\/\//.test(target)) throw new Error(`Invalid proxy target for ${prefix}`);
+    if (typeof target !== 'string' || !/^https?:\/\//.test(target))
+      throw new Error(`Invalid proxy target for ${prefix}`);
     table[normalizedPrefix] = { target, rewrite, requestHeaders };
     return table;
   }, {});
@@ -183,15 +187,21 @@ function normalizeConfig() {
   const defaults = {
     open: false,
     browser: 'default',
-    watch: { ignore: ['**/node_modules/**', '**/.git/**'], delay: 100, fullReload: false },
+    watch: { ignore: ['**/node_modules/**', '**/.git/**'], delay: 100, fullReload: false, depth: undefined },
     injectTag: 'body',
     https: false
   };
+  if (process.env.WATCH_DEPTH !== undefined) {
+    const cliDepth = Number(process.env.WATCH_DEPTH);
+    if (!Number.isInteger(cliDepth) || cliDepth < 0) throw new Error('watch.depth must be a non-negative integer');
+  }
   const cliDirectory = process.env.STATIC_DIRECTORY ? path.resolve(process.env.STATIC_DIRECTORY) : null;
   if (process.env.STATIC_CONFIG && argv['spa-fallback'] !== undefined) {
     throw new Error('--spa-fallback cannot be used with --static-config');
   }
-  const cliSpaFallback = process.env.STATIC_CONFIG ? false : normalizeSpaFallback(argv['spa-fallback'], cliDirectory, 'spaFallback');
+  const cliSpaFallback = process.env.STATIC_CONFIG
+    ? false
+    : normalizeSpaFallback(argv['spa-fallback'], cliDirectory, 'spaFallback');
   if (!process.env.STATIC_CONFIG) {
     if (!cliDirectory) throw new Error('Static server requires -R <directory> or --static-config <file>');
     if (!existsSync(cliDirectory) || !lstatSync(cliDirectory).isDirectory()) {
@@ -201,6 +211,8 @@ function normalizeConfig() {
     if (argv.r || argv.rewrite) Object.values(cliProxy).forEach(rule => (rule.rewrite = true));
     return {
       ...defaults,
+      open: process.env.OPEN_API_OVERVIEW ? true : defaults.open,
+      watch: { ...defaults.watch, depth: process.env.WATCH_DEPTH === undefined ? undefined : Number(process.env.WATCH_DEPTH) },
       configDir: process.cwd(),
       mounts: [
         {
@@ -229,8 +241,21 @@ function normalizeConfig() {
 
   const configDir = path.dirname(configPath);
   const watch = isPlainObject(supplied.watch) ? supplied.watch : {};
+  const depthValue = process.env.WATCH_DEPTH !== undefined ? Number(process.env.WATCH_DEPTH) : watch.depth;
+  if (depthValue !== undefined && (!Number.isInteger(depthValue) || depthValue < 0)) {
+    throw new Error('watch.depth must be a non-negative integer');
+  }
   if (process.env.PROXY_OPTIONS) throw new Error('--proxy-options/--rewrite cannot be used with --static-config');
-  const rootApplicationFields = ['directory', 'spaFallback', 'proxy', 'cors', 'headers', 'secure', 'requestHeaders', 'accessLog'];
+  const rootApplicationFields = [
+    'directory',
+    'spaFallback',
+    'proxy',
+    'cors',
+    'headers',
+    'secure',
+    'requestHeaders',
+    'accessLog'
+  ];
   const suppliedRootField = rootApplicationFields.find(field => supplied[field] !== undefined);
   if (suppliedRootField) throw new Error(`${suppliedRootField} must be declared on a mount in static config`);
   const mounts = supplied.mounts === undefined ? [] : supplied.mounts;
@@ -279,13 +304,14 @@ function normalizeConfig() {
   }
   return {
     ...defaults,
-    open: supplied.open === undefined ? defaults.open : supplied.open,
+    open: process.env.OPEN_API_OVERVIEW ? (supplied.open || true) : supplied.open === undefined ? defaults.open : supplied.open,
     browser: supplied.browser === undefined ? defaults.browser : supplied.browser,
     configDir,
     watch: {
       ignore: Array.isArray(watch.ignore) ? watch.ignore : defaults.watch.ignore,
       delay: Number.isFinite(watch.delay) && watch.delay >= 0 ? watch.delay : defaults.watch.delay,
-      fullReload: watch.fullReload === true
+      fullReload: watch.fullReload === true,
+      depth: depthValue
     },
     injectTag: supplied.injectTag === 'head' ? 'head' : 'body',
     mounts: normalizedMounts,
@@ -327,11 +353,6 @@ function escapeHtml(value) {
   );
 }
 
-function isHiddenDirectoryEntry(entry) {
-  // POSIX dotfiles are the only portable hidden-file signal Node exposes.
-  return entry.name.startsWith('.') && entry.name !== '.' && entry.name !== '..';
-}
-
 function joinPublicPath(basePath, localPath) {
   if (basePath === '/') return localPath;
   return `${basePath}${localPath === '/' ? '/' : localPath}`.replace(/\/+/g, '/');
@@ -339,10 +360,11 @@ function joinPublicPath(basePath, localPath) {
 
 async function getDirectoryIndexData(directoryPath, requestPath, showHidden, basePath) {
   const entries = await fsPromises.readdir(directoryPath, { withFileTypes: true });
-  const visibleEntries = entries.filter(entry => showHidden || !isHiddenDirectoryEntry(entry));
+  const entriesWithHidden = entries.map(entry => ({ entry, hidden: isHiddenPath(path.join(directoryPath, entry.name)) }));
+  const visibleEntries = entriesWithHidden.filter(item => showHidden || !item.hidden);
   visibleEntries.sort((left, right) => {
-    if (left.isDirectory() !== right.isDirectory()) return left.isDirectory() ? -1 : 1;
-    return left.name.localeCompare(right.name);
+    if (left.entry.isDirectory() !== right.entry.isDirectory()) return left.entry.isDirectory() ? -1 : 1;
+    return left.entry.name.localeCompare(right.entry.name);
   });
   const decodedPath = decodeURIComponent(requestPath);
   const normalizedPath = decodedPath === '/' ? '/' : `/${decodedPath.replace(/^\/+|\/+$/g, '')}/`;
@@ -352,10 +374,10 @@ async function getDirectoryIndexData(directoryPath, requestPath, showHidden, bas
     parentPath,
     basePath,
     showHidden,
-    entries: visibleEntries.map(entry => ({
+    entries: visibleEntries.map(({ entry, hidden }) => ({
       name: entry.name,
       isDirectory: entry.isDirectory(),
-      isHidden: isHiddenDirectoryEntry(entry)
+      isHidden: hidden
     }))
   };
 }
@@ -476,7 +498,9 @@ function createStaticServer(config) {
 
   function applyApplicationOptions(application) {
     return (req, res, next) => {
-      Object.entries({ ...application.headers, ...cliHeaders }).forEach(([key, value]) => res.setHeader(key, String(value)));
+      Object.entries({ ...application.headers, ...cliHeaders }).forEach(([key, value]) =>
+        res.setHeader(key, String(value))
+      );
       if (application.cors) {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
@@ -549,7 +573,9 @@ function createStaticServer(config) {
       ? requestPath => {
           if (route.prefix === '/') return requestPath;
           if (requestPath === route.prefix) return '/';
-          return requestPath.startsWith(`${route.prefix}/`) ? requestPath.slice(route.prefix.length) || '/' : requestPath;
+          return requestPath.startsWith(`${route.prefix}/`)
+            ? requestPath.slice(route.prefix.length) || '/'
+            : requestPath;
         }
       : undefined;
     app.use(
@@ -658,7 +684,8 @@ function createStaticServer(config) {
     }
     if (root) {
       const rootRelative = path.relative(root, changedPath);
-      if (!rootRelative.startsWith('..') && !path.isAbsolute(rootRelative)) return `/${rootRelative.split(path.sep).join('/')}`;
+      if (!rootRelative.startsWith('..') && !path.isAbsolute(rootRelative))
+        return `/${rootRelative.split(path.sep).join('/')}`;
     }
     return '/';
   }
@@ -666,7 +693,10 @@ function createStaticServer(config) {
     const changes = pendingChanges;
     pendingChanges = [];
     const cssOnly = changes.length > 0 && changes.every(change => /\.css$/i.test(change));
-    const payload = JSON.stringify({ type: !config.watch.fullReload && cssOnly ? 'css' : 'reload', path: changes[0] || '/' });
+    const payload = JSON.stringify({
+      type: !config.watch.fullReload && cssOnly ? 'css' : 'reload',
+      path: changes[0] || '/'
+    });
     clients.forEach(client => client.write(`data: ${payload}\n\n`));
   }
   function scheduleReload(changedPath) {
@@ -683,6 +713,7 @@ function createStaticServer(config) {
     const watcher = chokidar.watch(targets, {
       ignoreInitial: true,
       ignored: config.watch.ignore,
+      depth: config.watch.depth,
       usePolling,
       interval: usePolling ? 250 : undefined,
       binaryInterval: usePolling ? 250 : undefined,
@@ -706,7 +737,14 @@ function createStaticServer(config) {
   }
 
   const server = config.https
-    ? https.createServer({ cert: readFileSync(config.https.cert), key: readFileSync(config.https.key), passphrase: config.https.passphrase }, app)
+    ? https.createServer(
+        {
+          cert: readFileSync(config.https.cert),
+          key: readFileSync(config.https.key),
+          passphrase: config.https.passphrase
+        },
+        app
+      )
     : http.createServer(app);
   server.on('close', () => clients.clear());
   return {
