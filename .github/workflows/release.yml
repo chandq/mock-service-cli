@@ -103,7 +103,6 @@ jobs:
       - name: Publish light and Ultra packages with provenance
         run: npm run publish:editions
 
-      - name: Sync Homebrew and Scoop manifests
-        env:
-          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: node scripts/publish-package-managers.js
+      # Homebrew/Scoop 清单同步已从本 job 拆出（避免 registry 复制延迟把发布流程标红）：
+      # release 成功后由 sync-package-managers workflow（workflow_run）自动执行，
+      # 也可在 Actions 页手动重跑。请勿在本文件重复添加同步步骤，以免双跑。

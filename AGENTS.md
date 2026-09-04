@@ -92,6 +92,10 @@ Use Tap and neighboring helpers. Prefer temporary directories and ephemeral port
 - Do not commit `node_modules`, `coverage`, `dist`, `release`, local env files, or incidental generated output.
 - Never run release/publish commands during routine implementation or testing.
 - Never amend, reset, or discard user changes.
+- Never hand-edit the version in `package.json` or generated `CHANGELOG.md`; release tooling owns them.
+- Changes pushed to `master` under `src/`, `bin/`, `scripts/`, `package.json`, or `package-lock.json` can trigger the automated release workflow. Treat publishing and tag creation as maintainer/CI operations.
+- Package-manager synchronization is a separate release workflow; do not modify external Homebrew/Scoop repositories from routine work.
+- Review `CONTRIBUTING.md` and `SECURITY.md` for community or vulnerability-reporting workflows when relevant.
 
 ## Definition Of Done
 

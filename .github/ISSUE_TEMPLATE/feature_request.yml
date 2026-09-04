@@ -1,0 +1,51 @@
+name: ✨ Feature request
+description: Suggest an idea or improvement for mock-service-cli
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! A clear motivation and a concrete proposal help a lot.
+        You are also welcome to implement it yourself — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do, and why is the current CLI/behavior not good enough? Keep the focus on the *problem*, not your proposed API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior/flag/feature you'd like. Include a concrete example of the expected CLI usage and output where possible.
+      placeholder: |
+        e.g. Add a `--cors` flag that appends permissive CORS headers to Mock/Static responses:
+        ```
+        mock-service-cli -p 8080 -d ./mock --cors
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Workarounds, other tools, or different designs you tried.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, or links that help explain the request.
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to help implement it?
+      options:
+        - Yes, I'd like to work on this
+        - No, just sharing the idea
+      description: If yes, comment on the issue and a maintainer will guide you through the contribution flow.

@@ -1,0 +1,80 @@
+name: 🐛 Bug report
+description: Report a problem or unexpected behavior so we can fix it
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in the details below.
+
+        > ⚠️ **Security issues**: do **not** file them here. Report privately via the
+        > **Security** tab → **Report a vulnerability** (see [SECURITY.md](../../SECURITY.md)).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version & edition
+      description: Output of `mock-service-cli --version` (it prints the edition too).
+      placeholder: e.g. mock-service-cli v4.8.0 (ultra)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - npm (global install)
+        - npx
+        - Homebrew
+        - Scoop
+        - Nix
+        - ran from source
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS / Node.js
+      description: OS and version, and `node --version` output.
+      placeholder: macOS 14.6 / Node v20.11.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug — what did you expect, and what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The command(s) you ran and the exact files/config involved (mock file, static dir, proxy config, flags, port…). A minimal reproduction is ideal.
+      placeholder: |
+        1. Created a mock dir with `mock/foo.js`:
+           ```js
+           module.exports = { ... };
+           ```
+        2. Ran: `mock-service-cli -p 8080 -d ./mock`
+        3. Requested `GET http://127.0.0.1:8080/foo`
+        4. Got a 500 / wrong body / …
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: Paste the terminal output or stack trace (scrub any secrets).
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else relevant — screenshots, related issue links, workarounds tried.
