@@ -140,7 +140,10 @@ async function waitForFileText(filePath) {
   let lastError;
   for (let attempt = 0; attempt < 50; attempt++) {
     try {
-      if (existsSync(filePath)) return readFileSync(filePath, 'utf8');
+      if (existsSync(filePath)) {
+        const content = readFileSync(filePath, 'utf8');
+        if (content) return content;
+      }
     } catch (error) {
       lastError = error;
     }
