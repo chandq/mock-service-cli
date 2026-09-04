@@ -21,7 +21,7 @@ const multer = require('multer');
 const { UAParser } = require('ua-parser-js');
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
-const { exec, execFile } = require('child_process');
+const { exec } = require('child_process');
 const {
   dateFormat,
   logger,
@@ -29,7 +29,8 @@ const {
   getServerUrls,
   hostAllowlistMiddleware,
   isHiddenPath,
-  normalizeRemoteAddress
+  normalizeRemoteAddress,
+  openPathInFileManager
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { ArchiveService } = require('./archiveService');
@@ -481,7 +482,7 @@ function init() {
   });
 
   // 在系统文件管理器中打开目录/文件 API
-  app.post('/__api/open-in-explorer', (req, res) => {
+  app.post('/__api/open-in-explorer', async (req, res) => {
     const filePath = normalizeExplorerInputPath(req.body.path || '/');
 
     let fullPath;
@@ -495,32 +496,16 @@ function init() {
       return res.status(404).json({ error: 'Path not found' });
     }
 
-    let command;
-    let args;
-    switch (process.platform) {
-      case 'darwin':
-        command = 'open';
-        args = [fullPath];
-        break;
-      case 'win32':
-        command = 'explorer.exe';
-        args = [fullPath];
-        break;
-      case 'linux':
-        command = 'xdg-open';
-        args = [fullPath];
-        break;
-      default:
+    // 不检查子进程退出码：explorer.exe（Windows）成功时也会立即以退出码 1 退出。
+    const result = await openPathInFileManager(fullPath);
+    if (!result.ok) {
+      if (result.unsupported) {
         return res.status(400).json({ error: 'Unsupported platform' });
-    }
-
-    execFile(command, args, error => {
-      if (error) {
-        console.error(colors.red(`Failed to open in explorer: ${error.message}`));
-        return res.status(500).json({ error: 'Failed to open in explorer' });
       }
-      res.json({ success: true, path: fullPath });
-    });
+      console.error(colors.red(`Failed to open in explorer: ${result.error.message}`));
+      return res.status(500).json({ error: 'Failed to open in explorer' });
+    }
+    res.json({ success: true, path: fullPath });
   });
 
   // 新建目录/文件 API

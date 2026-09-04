@@ -10,7 +10,7 @@ const colors = require('colors/safe');
 const path = require('path');
 const os = require('os');
 const net = require('net');
-const { spawnSync } = require('child_process');
+const { spawnSync, spawn } = require('child_process');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -114,6 +114,52 @@ function isHiddenPath(filePath) {
   if (process.platform === 'win32') return isWindowsHiddenByAttrib(filePath);
   // 非 Windows：任意路径段以点号开头（如隐藏目录下的内容）同样视为隐藏。
   return /(^|[\\/])\.[^\\/.]/.test(filePath);
+}
+
+/**
+ * 在系统文件管理器中打开/展示一个路径（Windows Explorer / macOS Finder / Linux xdg-open）。
+ * 仅在“进程能否成功启动”（'spawn' 事件）层面判定成功，不检查退出码：
+ * Windows 下 explorer.exe 会把请求交给已运行的 Explorer 实例后立即以退出码 1 退出，
+ * 即使打开成功也会被当成错误，因此非零退出码不能视为失败。
+ * @param {string} fullPath 要打开的绝对路径
+ * @param {{ platform?: string, spawn?: Function }} options 测试时可注入 platform / spawn
+ * @returns {Promise<{ ok: boolean, unsupported?: boolean, error?: Error, command?: string, args?: string[] }>}
+ */
+function openPathInFileManager(fullPath, options = {}) {
+  const platform = options.platform || process.platform;
+  const spawnFn = options.spawn || spawn;
+  let command;
+  let args;
+  switch (platform) {
+    case 'darwin':
+      command = 'open';
+      args = [fullPath];
+      break;
+    case 'win32':
+      command = 'explorer.exe';
+      args = [fullPath];
+      break;
+    case 'linux':
+      command = 'xdg-open';
+      args = [fullPath];
+      break;
+    default:
+      return Promise.resolve({ ok: false, unsupported: true, error: new Error('Unsupported platform') });
+  }
+  return new Promise(resolve => {
+    const child = spawnFn(command, args, { detached: true, stdio: 'ignore' });
+    let settled = false;
+    const done = result => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    child.once('error', error => done({ ok: false, unsupported: false, error }));
+    child.once('spawn', () => {
+      child.unref();
+      done({ ok: true, command, args });
+    });
+  });
 }
 // MockServer 支持的请求类型
 const SupportMethods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'PATCH', 'OPTIONS', 'COPY', 'LINK', 'UNLINK', 'PURGE'];
@@ -441,5 +487,6 @@ module.exports = {
   isAddressAllowed,
   getHostAllowlist,
   hostAllowlistMiddleware,
-  isHiddenPath
+  isHiddenPath,
+  openPathInFileManager
 };

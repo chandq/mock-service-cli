@@ -2,6 +2,7 @@ const test = require('tap').test;
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { EventEmitter } = require('events');
 const { spawnSync } = require('child_process');
 const {
   getLogger,
@@ -22,7 +23,8 @@ const {
   getServerUrls,
   parseHostAllowlist,
   isAddressAllowed,
-  isHiddenPath
+  isHiddenPath,
+  openPathInFileManager
 } = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
@@ -385,5 +387,119 @@ test('isHiddenPath honors the Windows hidden attribute', t => {
     spawnSync('attrib', ['-H', hiddenDir]);
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+  t.end();
+});
+
+function makeFakeChild() {
+  const child = new EventEmitter();
+  child.unref = () => {};
+  return child;
+}
+
+test('openPathInFileManager selects the platform opener and spawns detached', async t => {
+  t.plan(10);
+
+  const winChild = makeFakeChild();
+  let winSpawn;
+  const winPromise = openPathInFileManager('D:/demo', {
+    platform: 'win32',
+    spawn: (command, args, options) => {
+      winSpawn = { command, args, options };
+      return winChild;
+    }
+  });
+  winChild.emit('spawn');
+  const winResult = await winPromise;
+  t.equal(winSpawn.command, 'explorer.exe', 'win32 uses explorer.exe');
+  t.deepEqual(winSpawn.args, ['D:/demo'], 'win32 passes the folder path');
+  t.equal(winSpawn.options.detached, true, 'spawns detached');
+  t.equal(winSpawn.options.stdio, 'ignore', 'ignores stdio');
+  t.equal(winResult.ok, true, 'win32 resolves ok once the process is spawned');
+  t.equal(winResult.command, 'explorer.exe', 'win32 reports the command used');
+
+  const macChild = makeFakeChild();
+  let macSpawn;
+  const macPromise = openPathInFileManager('/Users/demo', {
+    platform: 'darwin',
+    spawn: (command, args) => {
+      macSpawn = { command, args };
+      return macChild;
+    }
+  });
+  macChild.emit('spawn');
+  const macResult = await macPromise;
+  t.equal(macSpawn.command, 'open', 'darwin uses open');
+  t.equal(macResult.ok, true, 'darwin resolves ok');
+
+  const linuxChild = makeFakeChild();
+  let linuxSpawn;
+  const linuxPromise = openPathInFileManager('/tmp/demo', {
+    platform: 'linux',
+    spawn: (command, args) => {
+      linuxSpawn = { command, args };
+      return linuxChild;
+    }
+  });
+  linuxChild.emit('spawn');
+  const linuxResult = await linuxPromise;
+  t.equal(linuxSpawn.command, 'xdg-open', 'linux uses xdg-open');
+  t.equal(linuxResult.ok, true, 'linux resolves ok');
+
+  t.end();
+});
+
+test('openPathInFileManager ignores a later non-zero exit on win32', async t => {
+  t.plan(2);
+
+  const child = makeFakeChild();
+  const promise = openPathInFileManager('D:/demo', {
+    platform: 'win32',
+    spawn: () => child
+  });
+  child.emit('spawn');
+  const spawned = await promise;
+  t.equal(spawned.ok, true, 'succeeds when explorer.exe starts');
+
+  // Windows explorer.exe hands the request to the already-running Explorer shell and
+  // then exits with code 1 even after opening the folder; that must not become a failure.
+  child.emit('exit', 1);
+  t.equal(spawned.ok, true, 'non-zero exit after spawn is not treated as failure');
+
+  t.end();
+});
+
+test('openPathInFileManager surfaces launch errors', async t => {
+  t.plan(3);
+
+  const child = makeFakeChild();
+  const promise = openPathInFileManager('/tmp/demo', {
+    platform: 'linux',
+    spawn: () => child
+  });
+  child.emit('error', new Error('ENOENT'));
+  const result = await promise;
+  t.equal(result.ok, false, 'fails when the opener cannot be launched');
+  t.equal(result.unsupported, false, 'not an unsupported-platform failure');
+  t.match(result.error.message, /ENOENT/, 'keeps the spawn error');
+
+  t.end();
+});
+
+test('openPathInFileManager rejects unsupported platforms without spawning', async t => {
+  t.plan(4);
+
+  let spawned = false;
+  const result = await openPathInFileManager('/x', {
+    platform: 'freebsd',
+    spawn: () => {
+      spawned = true;
+      return makeFakeChild();
+    }
+  });
+  t.equal(spawned, false, 'does not spawn on unsupported platforms');
+  t.equal(result.ok, false, 'unsupported platform is a failure');
+  t.equal(result.unsupported, true, 'marks the failure as unsupported platform');
+  t.equal(result.error.message, 'Unsupported platform', 'reports the platform error');
+
   t.end();
 });
