@@ -129,10 +129,17 @@ async function assertFileExplorerCli(t, entryFile) {
   try {
     const baseUrl = `http://127.0.0.1:${port}`;
     let data = await waitForExplorer(baseUrl, child, output);
-    t.ok(data.files.some(file => file.name === marker), `${entryFile} can start file explorer`);
+    t.ok(
+      data.files.some(file => file.name === marker),
+      `${entryFile} can start file explorer`
+    );
 
     const html = await fetch(baseUrl).then(response => response.text());
-    t.match(html, /favicon-file-explorer\.svg\?instance=/, `${entryFile} declares a cache-busted file explorer tab icon`);
+    t.match(
+      html,
+      /favicon-file-explorer\.svg\?instance=/,
+      `${entryFile} declares a cache-busted file explorer tab icon`
+    );
     const faviconResponse = await fetch(`${baseUrl}/favicon-file-explorer.svg`);
     t.equal(faviconResponse.status, 200, `${entryFile} serves the file explorer tab icon`);
     t.equal(faviconResponse.headers.get('cache-control'), 'no-store', `${entryFile} prevents stale favicon caching`);
@@ -155,7 +162,11 @@ async function assertFileExplorerCli(t, entryFile) {
 
     const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
     t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);
-    t.match(downloadResponse.headers.get('content-disposition'), /attachment/, `${entryFile} marks explicit downloads as attachments`);
+    t.match(
+      downloadResponse.headers.get('content-disposition'),
+      /attachment/,
+      `${entryFile} marks explicit downloads as attachments`
+    );
     t.same(
       Buffer.from(await downloadResponse.arrayBuffer()),
       readFileSync(path.join(tempDir, binaryMarker)),
@@ -207,7 +218,10 @@ async function assertFileExplorerCli(t, entryFile) {
     t.notOk(existsSync(path.join(tempDir, 'renamed-file.txt')), `${entryFile} can batch delete file`);
 
     data = await requestJson(`${baseUrl}/__api/list?path=%2F`);
-    t.notOk(data.files.some(file => file.name === 'new-folder'), `${entryFile} refresh data excludes deleted paths`);
+    t.notOk(
+      data.files.some(file => file.name === 'new-folder'),
+      `${entryFile} refresh data excludes deleted paths`
+    );
   } finally {
     stopCliProcess(child);
     rmSync(tempDir, { recursive: true, force: true });
@@ -266,24 +280,43 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
     const config = await requestJson(`${baseUrl}/__api/config`, { headers: authHeaders });
     t.equal(config.authEnabled, true, `${entryFile} reports that authentication is enabled`);
 
-    const firstUpload = await uploadFiles(baseUrl, [
-      { name: 'first.txt', content: 'first' },
-      { name: 'folder/second.txt', content: 'second' }
-    ], password);
+    const firstUpload = await uploadFiles(
+      baseUrl,
+      [
+        { name: 'first.txt', content: 'first' },
+        { name: 'folder/second.txt', content: 'second' }
+      ],
+      password
+    );
     t.equal(firstUpload.response.status, 200, `${entryFile} accepts authenticated multipart uploads`);
     t.equal(firstUpload.data.uploaded.length, 2, `${entryFile} reports uploaded files`);
-    t.equal(readFileSync(path.join(tempDir, 'folder', 'second.txt'), 'utf8'), 'second', `${entryFile} preserves upload folders`);
+    t.equal(
+      readFileSync(path.join(tempDir, 'folder', 'second.txt'), 'utf8'),
+      'second',
+      `${entryFile} preserves upload folders`
+    );
 
-    const partialUpload = await uploadFiles(baseUrl, [
-      { name: 'first.txt', content: 'replacement' },
-      { name: 'different.txt', content: 'different' }
-    ], password);
+    const partialUpload = await uploadFiles(
+      baseUrl,
+      [
+        { name: 'first.txt', content: 'replacement' },
+        { name: 'different.txt', content: 'different' }
+      ],
+      password
+    );
     t.equal(partialUpload.response.status, 207, `${entryFile} reports upload conflicts without rejecting other files`);
     t.equal(partialUpload.data.uploaded.length, 1, `${entryFile} uploads non-conflicting files`);
     t.equal(partialUpload.data.failed.length, 1, `${entryFile} reports conflicting files`);
-    t.equal(readFileSync(path.join(tempDir, 'first.txt'), 'utf8'), 'first', `${entryFile} never overwrites existing files`);
+    t.equal(
+      readFileSync(path.join(tempDir, 'first.txt'), 'utf8'),
+      'first',
+      `${entryFile} never overwrites existing files`
+    );
 
-    const hundredFiles = Array.from({ length: 100 }, (_, index) => ({ name: `bulk/file-${index}.txt`, content: String(index) }));
+    const hundredFiles = Array.from({ length: 100 }, (_, index) => ({
+      name: `bulk/file-${index}.txt`,
+      content: String(index)
+    }));
     const bulkUpload = await uploadFiles(baseUrl, hundredFiles, password);
     t.equal(bulkUpload.response.status, 200, `${entryFile} accepts a full 100-file upload batch`);
     t.equal(bulkUpload.data.uploaded.length, 100, `${entryFile} processes every file in a full upload batch`);

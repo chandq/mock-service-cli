@@ -20,7 +20,9 @@ const root = path.resolve(__dirname, '..');
 const dryRun = process.argv.includes('--dry-run');
 
 if (process.env.GITHUB_ACTIONS !== 'true' && !dryRun) {
-  throw new Error('Publishing to package-manager repositories is restricted to GitHub Actions (or pass --dry-run locally).');
+  throw new Error(
+    'Publishing to package-manager repositories is restricted to GitHub Actions (or pass --dry-run locally).'
+  );
 }
 
 const GITHUB_OWNER = 'chandq';
@@ -32,8 +34,7 @@ const LIGHT_NAME = ROOT_MANIFEST.name;
 const ULTRA_NAME = `${ROOT_MANIFEST.name}-ultra`;
 const VERSION = ROOT_MANIFEST.version;
 const HOMEPAGE = `https://github.com/${GITHUB_OWNER}/${APP_REPO}`;
-const EDITION_DESC =
-  'Local Mock/Static/SPA server, HTTP request proxy, API overview page and File explorer';
+const EDITION_DESC = 'Local Mock/Static/SPA server, HTTP request proxy, API overview page and File explorer';
 
 // Two npm editions share the same `mock-service-cli` binary. `mock-service-cli-ultra` adds the
 // RAR/7z/bzip2/xz archive support and cannot be installed side by side with the light edition.
@@ -125,9 +126,7 @@ async function resolveTarballSha256(packageName) {
       );
     }
     const backoff = Math.min(250 * 2 ** (attempt - 1), 5000);
-    console.log(
-      `Artifact ${packageName}@${VERSION} not ready yet (${outcome.reason}); retrying in ${backoff}ms.`
-    );
+    console.log(`Artifact ${packageName}@${VERSION} not ready yet (${outcome.reason}); retrying in ${backoff}ms.`);
     await sleep(backoff);
   }
 }
@@ -263,9 +262,7 @@ async function main() {
   const homebrewFiles = Object.fromEntries(
     Object.values(rendered).map(({ homebrew }) => [homebrew.fileName, homebrew.content])
   );
-  const scoopFiles = Object.fromEntries(
-    Object.values(rendered).map(({ scoop }) => [scoop.fileName, scoop.content])
-  );
+  const scoopFiles = Object.fromEntries(Object.values(rendered).map(({ scoop }) => [scoop.fileName, scoop.content]));
 
   if (dryRun) {
     console.log('\n--- dry run: generated files ---');

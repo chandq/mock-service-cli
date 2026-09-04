@@ -60,7 +60,8 @@ class ArchiveService {
     const totalSize = entries.reduce((total, entry) => total + entry.size, 0);
     const packedSize = Math.max(lstatSync(fullPath).size, 1);
     if (totalSize > MAX_ARCHIVE_SIZE) throw createArchiveError('Archive expands beyond 2GB limit', 413);
-    if (totalSize / packedSize > MAX_COMPRESSION_RATIO) throw createArchiveError('Archive compression ratio exceeds limit', 413);
+    if (totalSize / packedSize > MAX_COMPRESSION_RATIO)
+      throw createArchiveError('Archive compression ratio exceeds limit', 413);
   }
 
   startJob(type, payload) {
@@ -82,7 +83,8 @@ class ArchiveService {
       if (job.cancelled) return;
       job.status = 'running';
       try {
-        job.result = type === 'create' ? await this.createArchive(job, payload) : await this.extractArchive(job, payload);
+        job.result =
+          type === 'create' ? await this.createArchive(job, payload) : await this.extractArchive(job, payload);
         job.status = job.cancelled ? 'cancelled' : 'completed';
       } catch (error) {
         job.status = job.cancelled ? 'cancelled' : 'failed';
@@ -146,7 +148,9 @@ class ArchiveService {
     await new Promise((resolve, reject) => {
       const output = createWriteStream(outputPath, { flags: 'wx' });
       const archive =
-        format === 'zip' ? archiver('zip', { zlib: { level: 9 } }) : archiver('tar', { gzip: true, gzipOptions: { level: 9 } });
+        format === 'zip'
+          ? archiver('zip', { zlib: { level: 9 } })
+          : archiver('tar', { gzip: true, gzipOptions: { level: 9 } });
       job.archive = archive;
       output.on('close', resolve);
       output.on('error', reject);
@@ -193,7 +197,8 @@ class ArchiveService {
       const outputEntries = await fsPromises.readdir(tempOutput);
       if (!outputEntries.length) throw createArchiveError('Archive produced no files', 422);
       outputEntries.forEach(name => {
-        if (existsSync(path.join(destinationPath, name))) throw createArchiveError(`Destination already contains ${name}`, 409);
+        if (existsSync(path.join(destinationPath, name)))
+          throw createArchiveError(`Destination already contains ${name}`, 409);
       });
       for (const name of outputEntries) {
         renameSync(path.join(tempOutput, name), path.join(destinationPath, name));

@@ -469,7 +469,9 @@ function startServer() {
         const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
         const args = process.platform === 'win32' ? ['/c', 'start', '', webUrl] : [webUrl];
         const child = spawn(command, args, { detached: true, stdio: 'ignore' });
-        child.once('error', () => console.warn(colors.yellow(`Could not automatically open browser. Please visit: ${webUrl}`)));
+        child.once('error', () =>
+          console.warn(colors.yellow(`Could not automatically open browser. Please visit: ${webUrl}`))
+        );
         child.unref();
       }
       if (!isEmptyObj(proxyTable)) {

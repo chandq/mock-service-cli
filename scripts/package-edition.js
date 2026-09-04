@@ -42,10 +42,7 @@ function createManifest() {
   const manifest = {
     name: edition === 'light' ? rootManifest.name : `${rootManifest.name}-ultra`,
     version: rootManifest.version,
-    description:
-      edition === 'light'
-        ? rootManifest.description
-        : `${rootManifest.description} (Ultra archive formats)`,
+    description: edition === 'light' ? rootManifest.description : `${rootManifest.description} (Ultra archive formats)`,
     main: rootManifest.main,
     bin: rootManifest.bin,
     files: ['bin', 'dist', 'docs/static-server.config.example.json', 'README.md', 'LICENSE'],

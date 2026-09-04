@@ -115,7 +115,13 @@ function requestWithMethod(url, method) {
   return new Promise((resolve, reject) => {
     const requestUrl = new URL(url);
     const req = http.request(
-      { hostname: requestUrl.hostname, port: requestUrl.port, path: `${requestUrl.pathname}${requestUrl.search}`, method, agent: false },
+      {
+        hostname: requestUrl.hostname,
+        port: requestUrl.port,
+        path: `${requestUrl.pathname}${requestUrl.search}`,
+        method,
+        agent: false
+      },
       response => {
         let text = '';
         response.setEncoding('utf8');
@@ -262,166 +268,201 @@ test('static server development behaviors', async t => {
   });
 
   await t.test('injects live reload, applies config, serves mounts, fallback, and CSS events', async t => {
-  const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-'));
-  const mountRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-'));
-  const port = await getFreePort();
-  const output = { value: '' };
-  let child;
-  const upstream = http.createServer((req, res) => res.end(`proxied:${req.url}`));
-  const upstreamPort = await new Promise((resolve, reject) => {
-    upstream.once('error', reject);
-    upstream.listen(0, '127.0.0.1', () => resolve(upstream.address().port));
-  });
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-'));
+    const mountRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-mount-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+    const upstream = http.createServer((req, res) => res.end(`proxied:${req.url}`));
+    const upstreamPort = await new Promise((resolve, reject) => {
+      upstream.once('error', reject);
+      upstream.listen(0, '127.0.0.1', () => resolve(upstream.address().port));
+    });
 
-  try {
-    writeFileSync(path.join(staticRoot, 'index.html'), '<html><body><link rel="stylesheet" href="/site.css">home</body></html>');
-    writeFileSync(path.join(staticRoot, 'site.css'), 'body { color: black; }');
-    writeFileSync(path.join(mountRoot, 'asset.txt'), 'mounted');
-    writeFileSync(
-      path.join(staticRoot, 'static-server.json'),
-      JSON.stringify({
-        mounts: [
-          {
-            path: '/',
-            directory: '.',
-            cors: true,
-            headers: { 'X-Static-Config': 'enabled' },
-            spaFallback: '/index.html',
-            proxy: { '/api': { target: `http://127.0.0.1:${upstreamPort}`, rewrite: false } }
-          },
-          { path: '/vendor', directory: mountRoot }
+    try {
+      writeFileSync(
+        path.join(staticRoot, 'index.html'),
+        '<html><body><link rel="stylesheet" href="/site.css">home</body></html>'
+      );
+      writeFileSync(path.join(staticRoot, 'site.css'), 'body { color: black; }');
+      writeFileSync(path.join(mountRoot, 'asset.txt'), 'mounted');
+      writeFileSync(
+        path.join(staticRoot, 'static-server.json'),
+        JSON.stringify({
+          mounts: [
+            {
+              path: '/',
+              directory: '.',
+              cors: true,
+              headers: { 'X-Static-Config': 'enabled' },
+              spaFallback: '/index.html',
+              proxy: { '/api': { target: `http://127.0.0.1:${upstreamPort}`, rewrite: false } }
+            },
+            { path: '/vendor', directory: mountRoot }
+          ],
+          watch: { delay: 20, ignore: ['**/node_modules/**'] }
+        })
+      );
+
+      child = spawn(
+        process.execPath,
+        [
+          'src/bin/mock-service-cli',
+          '-p',
+          String(port),
+          '-s',
+          '-A',
+          'X-Static-Config=cli',
+          '--static-config',
+          path.join(staticRoot, 'static-server.json')
         ],
-        watch: { delay: 20, ignore: ['**/node_modules/**'] }
-      })
-    );
+        { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
 
-    child = spawn(
-      process.execPath,
-      [
-        'src/bin/mock-service-cli',
-        '-p',
-        String(port),
-        '-s',
-        '-A',
-        'X-Static-Config=cli',
-        '--static-config',
-        path.join(staticRoot, 'static-server.json')
-      ],
-      { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
-    );
-    child.stdout.on('data', chunk => {
-      output.value += chunk.toString();
-    });
-    child.stderr.on('data', chunk => {
-      output.value += chunk.toString();
-    });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const home = await waitForServer(`${baseUrl}/`, child, output);
+      const html = home.text;
+      t.match(html, /__mock-service-cli\/live-reload\.js/, 'injects live reload client into HTML');
+      t.match(html, /__mock-service-cli\/favicon\.svg/, 'injects the static server favicon when the page has none');
+      t.equal(
+        (await request(`${baseUrl}/__mock-service-cli/favicon.svg`)).status,
+        200,
+        'serves the static server favicon'
+      );
+      const reloadClient = (await request(`${baseUrl}/__mock-service-cli/live-reload.js`)).text;
+      t.match(reloadClient, /pagehide/, 'registers a navigation lifecycle handler');
+      t.match(reloadClient, /pageshow/, 'reconnects after a bfcache page restore');
+      t.match(reloadClient, /source\.close/, 'closes live reload connections on page navigation');
+      const reloadRuntime = executeReloadClient(reloadClient);
+      t.equal(reloadRuntime.sources.length, 1, 'opens a live reload connection in the browser client');
+      reloadRuntime.sources[0].onmessage({ data: JSON.stringify({ type: 'reload', path: '/index.html' }) });
+      t.equal(reloadRuntime.reloads(), 1, 'reloads the page after a server reload event');
+      reloadRuntime.listeners.pagehide();
+      reloadRuntime.listeners.pageshow();
+      t.equal(reloadRuntime.sources.length, 2, 'reopens the connection after bfcache restoration');
+      t.equal(home.headers['access-control-allow-origin'], '*', 'enables configured CORS');
+      t.equal(home.headers['x-static-config'], 'cli', 'CLI headers override configured headers');
+      t.equal((await request(`${baseUrl}/vendor/asset.txt`)).text, 'mounted', 'serves configured mounts');
+      t.equal(
+        (await request(`${baseUrl}/api/example`)).text,
+        'proxied:/api/example',
+        'forwards configured proxy routes'
+      );
+      t.match((await request(`${baseUrl}/missing-route`)).text, /home/, 'serves SPA fallback for missing paths');
 
-    const baseUrl = `http://127.0.0.1:${port}`;
-    const home = await waitForServer(`${baseUrl}/`, child, output);
-    const html = home.text;
-    t.match(html, /__mock-service-cli\/live-reload\.js/, 'injects live reload client into HTML');
-    t.match(html, /__mock-service-cli\/favicon\.svg/, 'injects the static server favicon when the page has none');
-    t.equal((await request(`${baseUrl}/__mock-service-cli/favicon.svg`)).status, 200, 'serves the static server favicon');
-    const reloadClient = (await request(`${baseUrl}/__mock-service-cli/live-reload.js`)).text;
-    t.match(reloadClient, /pagehide/, 'registers a navigation lifecycle handler');
-    t.match(reloadClient, /pageshow/, 'reconnects after a bfcache page restore');
-    t.match(reloadClient, /source\.close/, 'closes live reload connections on page navigation');
-    const reloadRuntime = executeReloadClient(reloadClient);
-    t.equal(reloadRuntime.sources.length, 1, 'opens a live reload connection in the browser client');
-    reloadRuntime.sources[0].onmessage({ data: JSON.stringify({ type: 'reload', path: '/index.html' }) });
-    t.equal(reloadRuntime.reloads(), 1, 'reloads the page after a server reload event');
-    reloadRuntime.listeners.pagehide();
-    reloadRuntime.listeners.pageshow();
-    t.equal(reloadRuntime.sources.length, 2, 'reopens the connection after bfcache restoration');
-    t.equal(home.headers['access-control-allow-origin'], '*', 'enables configured CORS');
-    t.equal(home.headers['x-static-config'], 'cli', 'CLI headers override configured headers');
-    t.equal((await request(`${baseUrl}/vendor/asset.txt`)).text, 'mounted', 'serves configured mounts');
-    t.equal((await request(`${baseUrl}/api/example`)).text, 'proxied:/api/example', 'forwards configured proxy routes');
-    t.match((await request(`${baseUrl}/missing-route`)).text, /home/, 'serves SPA fallback for missing paths');
-
-    const cssEvent = waitForSse(`${baseUrl}/__mock-service-cli/live-reload`, 'css');
-    await new Promise(resolve => setTimeout(resolve, 100));
-    appendFileSync(path.join(staticRoot, 'site.css'), '\nbody { color: red; }');
-    const payload = await cssEvent;
-    t.equal(payload.path, '/site.css', 'publishes a CSS-specific reload event');
-  } finally {
-    if (child) await stop(child);
-    await new Promise(resolve => upstream.close(resolve));
-    rmSync(staticRoot, { recursive: true, force: true });
-    rmSync(mountRoot, { recursive: true, force: true });
-  }
+      const cssEvent = waitForSse(`${baseUrl}/__mock-service-cli/live-reload`, 'css');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      appendFileSync(path.join(staticRoot, 'site.css'), '\nbody { color: red; }');
+      const payload = await cssEvent;
+      t.equal(payload.path, '/site.css', 'publishes a CSS-specific reload event');
+    } finally {
+      if (child) await stop(child);
+      await new Promise(resolve => upstream.close(resolve));
+      rmSync(staticRoot, { recursive: true, force: true });
+      rmSync(mountRoot, { recursive: true, force: true });
+    }
   });
 
   await t.test('browses directories by default and only serves an SPA entry when configured', async t => {
-  const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-index-'));
-  const port = await getFreePort();
-  const output = { value: '' };
-  let child;
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-index-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
 
-  try {
-    mkdirSync(path.join(staticRoot, 'nested'));
-    mkdirSync(path.join(staticRoot, '.git'));
-    writeFileSync(path.join(staticRoot, 'index.html'), '<html><body>AUTO_INDEX_MARKER</body></html>');
-    writeFileSync(path.join(staticRoot, 'nested', 'note.txt'), 'nested content');
-    writeFileSync(path.join(staticRoot, 'nested', 'preview.txt'), 'preview inline');
-    writeFileSync(path.join(staticRoot, 'nested', '.hidden-note'), 'hidden nested content');
-    writeFileSync(path.join(staticRoot, '.coveralls.yml'), 'service_name: coveralls');
-    writeFileSync(path.join(staticRoot, '.git', 'config'), '[core]\nrepositoryformatversion = 0\n');
-    writeFileSync(path.join(staticRoot, 'LICENSE'), 'license preview');
-    writeFileSync(path.join(staticRoot, '.editorconfig'), 'root = true');
-    writeFileSync(path.join(staticRoot, 'unknown-binary'), Buffer.from([0, 1, 2, 3]));
-    child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'], {
-      cwd: root,
-      detached: process.platform !== 'win32',
-      env: getCliEnv(),
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    child.stdout.on('data', chunk => {
-      output.value += chunk.toString();
-    });
-    child.stderr.on('data', chunk => {
-      output.value += chunk.toString();
-    });
+    try {
+      mkdirSync(path.join(staticRoot, 'nested'));
+      mkdirSync(path.join(staticRoot, '.git'));
+      writeFileSync(path.join(staticRoot, 'index.html'), '<html><body>AUTO_INDEX_MARKER</body></html>');
+      writeFileSync(path.join(staticRoot, 'nested', 'note.txt'), 'nested content');
+      writeFileSync(path.join(staticRoot, 'nested', 'preview.txt'), 'preview inline');
+      writeFileSync(path.join(staticRoot, 'nested', '.hidden-note'), 'hidden nested content');
+      writeFileSync(path.join(staticRoot, '.coveralls.yml'), 'service_name: coveralls');
+      writeFileSync(path.join(staticRoot, '.git', 'config'), '[core]\nrepositoryformatversion = 0\n');
+      writeFileSync(path.join(staticRoot, 'LICENSE'), 'license preview');
+      writeFileSync(path.join(staticRoot, '.editorconfig'), 'root = true');
+      writeFileSync(path.join(staticRoot, 'unknown-binary'), Buffer.from([0, 1, 2, 3]));
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
 
-    const baseUrl = `http://127.0.0.1:${port}`;
-    const rootHtml = (await waitForServer(`${baseUrl}/`, child, output)).text;
-    t.match(rootHtml, /目录索引/, 'shows a directory index at the root');
-    t.match(rootHtml, /__mock-service-cli\/favicon\.svg/, 'declares the static server favicon for directory pages');
-    t.match(rootHtml, /__mock-service-cli\/live-reload\.js/, 'injects live reload into directory indexes');
-    t.match(rootHtml, /href="\/nested\/"/, 'links subdirectories for navigation');
-    t.match(rootHtml, /显示隐藏项目/, 'offers a server-rendered hidden item toggle');
-    t.notMatch(rootHtml, /AUTO_INDEX_MARKER/, 'does not automatically serve index.html');
-    const rootWithHidden = await request(`${baseUrl}/?showHidden=1`);
-    t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows root hidden files when requested');
-    t.match(rootWithHidden.text, /href="\/\.git\/\?showHidden=1"/, 'preserves hidden visibility while navigating directories');
-    const nestedIndex = await request(`${baseUrl}/nested/`);
-    t.match(nestedIndex.text, /note\.txt/, 'shows a nested directory index');
-    t.equal(nestedIndex.headers['cache-control'], 'no-store', 'prevents old directory pages from being retained in browser cache');
-    t.match(nestedIndex.text, /路径导航/, 'renders path navigation');
-    t.match(nestedIndex.text, /href="\/"/, 'links the root from path navigation');
-    t.notMatch(nestedIndex.text, /history\.pushState/, 'uses ordinary browser navigation for directories');
-    t.notMatch(nestedIndex.text, /\.hidden-note/, 'hides nested dotfiles by default');
-    const nestedWithHidden = await request(`${baseUrl}/nested/?showHidden=1`);
-    t.match(nestedWithHidden.text, /\.hidden-note/, 'shows nested hidden files when requested');
-    t.match(nestedWithHidden.text, 'href="/?showHidden=1"', 'builds valid root breadcrumbs with hidden state');
-    t.notMatch(nestedWithHidden.text, /href="\/\/nested/, 'does not create malformed breadcrumb paths');
-    t.match((await request(`${baseUrl}/index.html`)).text, /AUTO_INDEX_MARKER/, 'serves index.html only when explicitly requested');
-    t.equal((await request(`${baseUrl}/.coveralls.yml`)).text, 'service_name: coveralls', 'serves files beginning with a dot');
-    const preview = await request(`${baseUrl}/nested/preview.txt`);
-    t.equal(preview.headers['content-disposition'], 'inline', 'marks browser-previewable files as inline');
-    t.equal(preview.text, 'preview inline', 'serves previewable files directly');
-    const license = await request(`${baseUrl}/LICENSE`);
-    t.match(license.headers['content-type'], /^text\/plain/, 'serves extensionless LICENSE files as text');
-    t.equal(license.text, 'license preview', 'renders LICENSE content inline');
-    t.match((await request(`${baseUrl}/.editorconfig`)).headers['content-type'], /^text\/plain/, 'serves editor config files as text');
-    const gitConfig = await request(`${baseUrl}/.git/config`);
-    t.match(gitConfig.headers['content-type'], /^text\/plain/, 'detects extensionless Git config as text');
-    t.match(gitConfig.text, /repositoryformatversion/, 'renders Git config inline');
-    t.notMatch(String((await request(`${baseUrl}/unknown-binary`)).headers['content-type']), /^text\/plain/, 'does not mislabel binary data as text');
-  } finally {
-    if (child) await stop(child);
-    rmSync(staticRoot, { recursive: true, force: true });
-  }
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const rootHtml = (await waitForServer(`${baseUrl}/`, child, output)).text;
+      t.match(rootHtml, /目录索引/, 'shows a directory index at the root');
+      t.match(rootHtml, /__mock-service-cli\/favicon\.svg/, 'declares the static server favicon for directory pages');
+      t.match(rootHtml, /__mock-service-cli\/live-reload\.js/, 'injects live reload into directory indexes');
+      t.match(rootHtml, /href="\/nested\/"/, 'links subdirectories for navigation');
+      t.match(rootHtml, /显示隐藏项目/, 'offers a server-rendered hidden item toggle');
+      t.notMatch(rootHtml, /AUTO_INDEX_MARKER/, 'does not automatically serve index.html');
+      const rootWithHidden = await request(`${baseUrl}/?showHidden=1`);
+      t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows root hidden files when requested');
+      t.match(
+        rootWithHidden.text,
+        /href="\/\.git\/\?showHidden=1"/,
+        'preserves hidden visibility while navigating directories'
+      );
+      const nestedIndex = await request(`${baseUrl}/nested/`);
+      t.match(nestedIndex.text, /note\.txt/, 'shows a nested directory index');
+      t.equal(
+        nestedIndex.headers['cache-control'],
+        'no-store',
+        'prevents old directory pages from being retained in browser cache'
+      );
+      t.match(nestedIndex.text, /路径导航/, 'renders path navigation');
+      t.match(nestedIndex.text, /href="\/"/, 'links the root from path navigation');
+      t.notMatch(nestedIndex.text, /history\.pushState/, 'uses ordinary browser navigation for directories');
+      t.notMatch(nestedIndex.text, /\.hidden-note/, 'hides nested dotfiles by default');
+      const nestedWithHidden = await request(`${baseUrl}/nested/?showHidden=1`);
+      t.match(nestedWithHidden.text, /\.hidden-note/, 'shows nested hidden files when requested');
+      t.match(nestedWithHidden.text, 'href="/?showHidden=1"', 'builds valid root breadcrumbs with hidden state');
+      t.notMatch(nestedWithHidden.text, /href="\/\/nested/, 'does not create malformed breadcrumb paths');
+      t.match(
+        (await request(`${baseUrl}/index.html`)).text,
+        /AUTO_INDEX_MARKER/,
+        'serves index.html only when explicitly requested'
+      );
+      t.equal(
+        (await request(`${baseUrl}/.coveralls.yml`)).text,
+        'service_name: coveralls',
+        'serves files beginning with a dot'
+      );
+      const preview = await request(`${baseUrl}/nested/preview.txt`);
+      t.equal(preview.headers['content-disposition'], 'inline', 'marks browser-previewable files as inline');
+      t.equal(preview.text, 'preview inline', 'serves previewable files directly');
+      const license = await request(`${baseUrl}/LICENSE`);
+      t.match(license.headers['content-type'], /^text\/plain/, 'serves extensionless LICENSE files as text');
+      t.equal(license.text, 'license preview', 'renders LICENSE content inline');
+      t.match(
+        (await request(`${baseUrl}/.editorconfig`)).headers['content-type'],
+        /^text\/plain/,
+        'serves editor config files as text'
+      );
+      const gitConfig = await request(`${baseUrl}/.git/config`);
+      t.match(gitConfig.headers['content-type'], /^text\/plain/, 'detects extensionless Git config as text');
+      t.match(gitConfig.text, /repositoryformatversion/, 'renders Git config inline');
+      t.notMatch(
+        String((await request(`${baseUrl}/unknown-binary`)).headers['content-type']),
+        /^text\/plain/,
+        'does not mislabel binary data as text'
+      );
+    } finally {
+      if (child) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
   });
 
   await t.test('isolates mount applications and applies full-path proxy rules', async t => {
@@ -499,12 +540,16 @@ test('static server development behaviors', async t => {
         })
       );
 
-      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', '--static-config', configPath, '-p', String(port)], {
-        cwd: root,
-        detached: process.platform !== 'win32',
-        env: getCliEnv(),
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      child = spawn(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', '--static-config', configPath, '-p', String(port)],
+        {
+          cwd: root,
+          detached: process.platform !== 'win32',
+          env: getCliEnv(),
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      );
       child.stdout.on('data', chunk => {
         output.value += chunk.toString();
       });
@@ -529,15 +574,35 @@ test('static server development behaviors', async t => {
       const nestedDocsIndex = await request(`${baseUrl}/docs/nested/`);
       t.match(nestedDocsIndex.text, /guide\.txt/, 'non-SPA mount serves its own directory index');
       t.match(nestedDocsIndex.text, /href="\/docs\/"/, 'mount directory breadcrumbs retain the mount base path');
-      t.equal((await request(`${baseUrl}/docs/missing`)).status, 404, 'non-SPA mount does not fall through to root fallback');
+      t.equal(
+        (await request(`${baseUrl}/docs/missing`)).status,
+        404,
+        'non-SPA mount does not fall through to root fallback'
+      );
       const ordersProxyResponse = await request(`${baseUrl}/api/orders/items?source=test`);
       t.equal(ordersProxyResponse.text, 'orders:/items?source=test', 'longest proxy route rewrites its full prefix');
-      t.equal(ordersProxyResponse.headers['x-upstream-application'], 'orders-application', 'forwards mount request headers to its proxy');
-      t.equal(ordersProxyResponse.headers['x-upstream-route'], 'orders-route', 'forwards route request headers to its proxy');
+      t.equal(
+        ordersProxyResponse.headers['x-upstream-application'],
+        'orders-application',
+        'forwards mount request headers to its proxy'
+      );
+      t.equal(
+        ordersProxyResponse.headers['x-upstream-route'],
+        'orders-route',
+        'forwards route request headers to its proxy'
+      );
       const rootProxyResponse = await request(`${baseUrl}/api/orders2`);
       t.equal(rootProxyResponse.text, 'root:/api/orders2', 'proxy matching observes path boundaries');
-      t.equal(rootProxyResponse.headers['x-upstream-application'], 'root-application', 'forwards root request headers to its proxy');
-      t.equal(rootProxyResponse.headers['x-upstream-route'], 'root-route', 'forwards root route request headers to its proxy');
+      t.equal(
+        rootProxyResponse.headers['x-upstream-application'],
+        'root-application',
+        'forwards root request headers to its proxy'
+      );
+      t.equal(
+        rootProxyResponse.headers['x-upstream-route'],
+        'root-route',
+        'forwards root route request headers to its proxy'
+      );
       const ansiColorPattern = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
       const plainOutput = output.value.replace(ansiColorPattern, '');
       t.match(plainOutput, /Static application proxy routes/, 'prints the static application proxy summary');
@@ -547,7 +612,11 @@ test('static server development behaviors', async t => {
       const rootSuccessLog = await waitForFileText(path.join(configDirectory, 'logs', 'root-success.jsonl'));
       t.match(rootSuccessLog, /"application":"\/"/, 'writes successful root SPA requests to the configured file');
       const ordersSuccessLog = await waitForFileText(path.join(configDirectory, 'logs', 'orders-success.jsonl'));
-      t.match(ordersSuccessLog, /"application":"\/orders"/, 'writes successful mount SPA requests to the configured file');
+      t.match(
+        ordersSuccessLog,
+        /"application":"\/orders"/,
+        'writes successful mount SPA requests to the configured file'
+      );
       const ordersFailureLog = await waitForFileText(path.join(configDirectory, 'logs', 'orders-failure.jsonl'));
       t.match(ordersFailureLog, /"method":"POST".*"status":404/, 'writes failed SPA requests to the configured file');
 
@@ -576,7 +645,11 @@ test('static server development behaviors', async t => {
         encoding: 'utf8'
       });
       t.equal(topLevelApplication.status, 1, 'rejects top-level application fields');
-      t.match(topLevelApplication.stderr, /directory must be declared on a mount/, 'reports the mounts-only configuration rule');
+      t.match(
+        topLevelApplication.stderr,
+        /directory must be declared on a mount/,
+        'reports the mounts-only configuration rule'
+      );
 
       const nestedMountConfigPath = path.join(configDirectory, 'nested-mounts.json');
       writeFileSync(
@@ -652,7 +725,11 @@ test('static server development behaviors', async t => {
         output.value += chunk.toString();
       });
       const baseUrl = `http://127.0.0.1:${port}`;
-      t.match((await waitForServer(`${baseUrl}/any/client/route`, child, output)).text, /CLI_SPA/, 'uses CLI SPA fallback for missing routes');
+      t.match(
+        (await waitForServer(`${baseUrl}/any/client/route`, child, output)).text,
+        /CLI_SPA/,
+        'uses CLI SPA fallback for missing routes'
+      );
     } finally {
       if (child) await stop(child);
       rmSync(staticRoot, { recursive: true, force: true });
@@ -683,12 +760,16 @@ test('static server development behaviors', async t => {
           ]
         })
       );
-      child = spawn(process.execPath, ['src/bin/mock-service-cli', '--static-config', configPath, '-p', String(port), '-s'], {
-        cwd: root,
-        detached: process.platform !== 'win32',
-        env: getCliEnv(),
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      child = spawn(
+        process.execPath,
+        ['src/bin/mock-service-cli', '--static-config', configPath, '-p', String(port), '-s'],
+        {
+          cwd: root,
+          detached: process.platform !== 'win32',
+          env: getCliEnv(),
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      );
       child.stdout.on('data', chunk => {
         output.value += chunk.toString();
       });
@@ -702,8 +783,16 @@ test('static server development behaviors', async t => {
       const staticIndex = await request(`${baseUrl}/static/`);
       t.match(staticIndex.text, /目录索引/, 'keeps non-SPA mounts in directory-index mode');
       t.notMatch(staticIndex.text, /SECOND_STATIC/, 'does not infer a fallback from index.html');
-      t.match((await request(`${baseUrl}/static/index.html`)).text, /SECOND_STATIC/, 'serves a non-SPA HTML file only when explicitly requested');
-      t.match((await request(`${baseUrl}/spa/client/route`)).text, /MOUNT_SPA/, 'serves an SPA mount beside the root static application');
+      t.match(
+        (await request(`${baseUrl}/static/index.html`)).text,
+        /SECOND_STATIC/,
+        'serves a non-SPA HTML file only when explicitly requested'
+      );
+      t.match(
+        (await request(`${baseUrl}/spa/client/route`)).text,
+        /MOUNT_SPA/,
+        'serves an SPA mount beside the root static application'
+      );
     } finally {
       if (child) await stop(child);
       rmSync(configDirectory, { recursive: true, force: true });

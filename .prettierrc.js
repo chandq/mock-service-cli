@@ -3,6 +3,8 @@ module.exports = {
   arrowParens: 'avoid', // 箭头函数只有一个参数时不使用小括号
   // es6: true,
   tabWidth: 2,
+  // 是否使用制表符
+  useTabs: false,
   semi: true,
   singleQuote: true,
   printWidth: 120

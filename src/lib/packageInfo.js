@@ -2,10 +2,7 @@ const { readFileSync } = require('fs');
 const path = require('path');
 
 function getPackageVersion() {
-  const packagePaths = [
-    path.resolve(__dirname, '../package.json'),
-    path.resolve(__dirname, '../../package.json')
-  ];
+  const packagePaths = [path.resolve(__dirname, '../package.json'), path.resolve(__dirname, '../../package.json')];
 
   for (const packagePath of packagePaths) {
     try {

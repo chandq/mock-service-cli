@@ -81,7 +81,9 @@ async function listZip(filePath) {
       zipFile.readEntry();
     });
     zipFile.once('end', () => finish(resolve, entries));
-    zipFile.once('error', error => finish(reject, createArchiveError(`Unable to read ZIP archive: ${error.message}`, 422)));
+    zipFile.once('error', error =>
+      finish(reject, createArchiveError(`Unable to read ZIP archive: ${error.message}`, 422))
+    );
     zipFile.readEntry();
   });
 }
@@ -185,7 +187,9 @@ async function extractZip(job, sourcePath, targetPath) {
       }
     });
     zipFile.once('end', () => finish(resolve));
-    zipFile.once('error', error => finish(reject, createArchiveError(`Unable to extract ZIP archive: ${error.message}`, 422)));
+    zipFile.once('error', error =>
+      finish(reject, createArchiveError(`Unable to extract ZIP archive: ${error.message}`, 422))
+    );
     zipFile.readEntry();
   });
 }
@@ -209,7 +213,9 @@ async function extractTar(job, sourcePath, targetPath) {
     };
     const fail = error => {
       streams.forEach(stream => stream.destroy());
-      const archiveError = error.statusCode ? error : createArchiveError(`Unable to extract TAR archive: ${error.message}`, 422);
+      const archiveError = error.statusCode
+        ? error
+        : createArchiveError(`Unable to extract TAR archive: ${error.message}`, 422);
       finish(reject, archiveError);
     };
 

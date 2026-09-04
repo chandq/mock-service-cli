@@ -212,7 +212,10 @@ function normalizeConfig() {
     return {
       ...defaults,
       open: process.env.OPEN_API_OVERVIEW ? true : defaults.open,
-      watch: { ...defaults.watch, depth: process.env.WATCH_DEPTH === undefined ? undefined : Number(process.env.WATCH_DEPTH) },
+      watch: {
+        ...defaults.watch,
+        depth: process.env.WATCH_DEPTH === undefined ? undefined : Number(process.env.WATCH_DEPTH)
+      },
       configDir: process.cwd(),
       mounts: [
         {
@@ -304,7 +307,11 @@ function normalizeConfig() {
   }
   return {
     ...defaults,
-    open: process.env.OPEN_API_OVERVIEW ? (supplied.open || true) : supplied.open === undefined ? defaults.open : supplied.open,
+    open: process.env.OPEN_API_OVERVIEW
+      ? supplied.open || true
+      : supplied.open === undefined
+        ? defaults.open
+        : supplied.open,
     browser: supplied.browser === undefined ? defaults.browser : supplied.browser,
     configDir,
     watch: {
@@ -360,7 +367,10 @@ function joinPublicPath(basePath, localPath) {
 
 async function getDirectoryIndexData(directoryPath, requestPath, showHidden, basePath) {
   const entries = await fsPromises.readdir(directoryPath, { withFileTypes: true });
-  const entriesWithHidden = entries.map(entry => ({ entry, hidden: isHiddenPath(path.join(directoryPath, entry.name)) }));
+  const entriesWithHidden = entries.map(entry => ({
+    entry,
+    hidden: isHiddenPath(path.join(directoryPath, entry.name))
+  }));
   const visibleEntries = entriesWithHidden.filter(item => showHidden || !item.hidden);
   visibleEntries.sort((left, right) => {
     if (left.entry.isDirectory() !== right.entry.isDirectory()) return left.entry.isDirectory() ? -1 : 1;

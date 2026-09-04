@@ -46,10 +46,7 @@ function getEdition() {
 }
 
 function writeRuntimeWrapper(fileName, moduleName) {
-  writeFileSync(
-    path.join(distDir, `${fileName}.js`),
-    `module.exports = require('./runtime').load('${moduleName}');\n`
-  );
+  writeFileSync(path.join(distDir, `${fileName}.js`), `module.exports = require('./runtime').load('${moduleName}');\n`);
 }
 
 async function build() {
@@ -58,24 +55,26 @@ async function build() {
   rmSync(distDir, { recursive: true, force: true });
   mkdirSync(distDir, { recursive: true });
 
-  const result = await esbuild.build(Object.assign({}, commonOptions, {
-    entryPoints: [path.join(root, 'src/runtime.js')],
-    outfile: path.join(distDir, 'runtime.js'),
-    metafile: true,
-    plugins: [
-      {
-        name: 'archive-edition-provider',
-        setup(buildOptions) {
-          buildOptions.onResolve({ filter: /^\.\/archiveProvider$/ }, args => {
-            if (args.importer === path.join(srcLibDir, 'archiveService.js')) {
-              return { path: archiveProviderPath };
-            }
-            return null;
-          });
+  const result = await esbuild.build(
+    Object.assign({}, commonOptions, {
+      entryPoints: [path.join(root, 'src/runtime.js')],
+      outfile: path.join(distDir, 'runtime.js'),
+      metafile: true,
+      plugins: [
+        {
+          name: 'archive-edition-provider',
+          setup(buildOptions) {
+            buildOptions.onResolve({ filter: /^\.\/archiveProvider$/ }, args => {
+              if (args.importer === path.join(srcLibDir, 'archiveService.js')) {
+                return { path: archiveProviderPath };
+              }
+              return null;
+            });
+          }
         }
-      }
-    ]
-  }));
+      ]
+    })
+  );
 
   Object.keys(wrappers).forEach(fileName => {
     writeRuntimeWrapper(fileName, wrappers[fileName]);
@@ -86,7 +85,10 @@ async function build() {
   copyFileSync(path.join(srcLibDir, 'file-explorer-login.html'), path.join(distDir, 'file-explorer-login.html'));
   copyFileSync(path.join(srcLibDir, 'favicon-api-overview.svg'), path.join(distDir, 'favicon-api-overview.svg'));
   copyFileSync(path.join(srcLibDir, 'favicon-file-explorer.svg'), path.join(distDir, 'favicon-file-explorer.svg'));
-  copyFileSync(path.join(srcLibDir, 'favicon-file-explorer-login.svg'), path.join(distDir, 'favicon-file-explorer-login.svg'));
+  copyFileSync(
+    path.join(srcLibDir, 'favicon-file-explorer-login.svg'),
+    path.join(distDir, 'favicon-file-explorer-login.svg')
+  );
   copyFileSync(path.join(srcLibDir, 'favicon-static-server.svg'), path.join(distDir, 'favicon-static-server.svg'));
   writeFileSync(path.join(distDir, 'meta.json'), JSON.stringify(result.metafile, null, 2));
   writeFileSync(path.join(distDir, 'edition.json'), JSON.stringify({ edition }));

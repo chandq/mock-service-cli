@@ -54,13 +54,21 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     });
     await waitForJob(service, tarJob.id);
     t.ok(existsSync(path.join(root, 'bundle-tar.tar.gz')), 'creates a TAR.GZ archive');
-    t.equal((await service.listArchive('/bundle-tar.tar.gz')).entries[0].path, 'source/hello.txt', 'previews TAR.GZ entries');
+    t.equal(
+      (await service.listArchive('/bundle-tar.tar.gz')).entries[0].path,
+      'source/hello.txt',
+      'previews TAR.GZ entries'
+    );
 
-    t.same(lightArchiveProvider.capabilities, {
-      edition: 'light',
-      createFormats: ['zip', 'tar.gz'],
-      readExtensions: ['tar.gz', 'tgz', 'zip', 'tar']
-    }, 'light provider advertises only lightweight formats');
+    t.same(
+      lightArchiveProvider.capabilities,
+      {
+        edition: 'light',
+        createFormats: ['zip', 'tar.gz'],
+        readExtensions: ['tar.gz', 'tgz', 'zip', 'tar']
+      },
+      'light provider advertises only lightweight formats'
+    );
     const lightZipEntries = await lightArchiveProvider.listEntries(path.join(root, 'bundle.zip'));
     t.equal(lightZipEntries[0].path, 'source/hello.txt', 'light provider previews ZIP archives');
     t.equal(
@@ -71,11 +79,7 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     const lightOutput = path.join(root, 'light-output');
     mkdirSync(lightOutput);
     const lightJob = { progress: { processedEntries: 0, totalEntries: 1 } };
-    await lightArchiveProvider.extract(
-      lightJob,
-      path.join(root, 'bundle.zip'),
-      lightOutput
-    );
+    await lightArchiveProvider.extract(lightJob, path.join(root, 'bundle.zip'), lightOutput);
     t.equal(
       readFileSync(path.join(lightOutput, 'source', 'hello.txt'), 'utf8'),
       'hello archive',
@@ -83,13 +87,25 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     );
 
     const conflictJob = service.startJob('extract', { path: '/bundle.zip', destinationPath: '/' });
-    await t.rejects(waitForJob(service, conflictJob.id), /Destination already contains source/, 'refuses extraction conflicts');
-    t.equal(readFileSync(path.join(root, 'source', 'hello.txt'), 'utf8'), 'hello archive', 'does not overwrite existing files');
+    await t.rejects(
+      waitForJob(service, conflictJob.id),
+      /Destination already contains source/,
+      'refuses extraction conflicts'
+    );
+    t.equal(
+      readFileSync(path.join(root, 'source', 'hello.txt'), 'utf8'),
+      'hello archive',
+      'does not overwrite existing files'
+    );
 
     rmSync(path.join(root, 'source'), { recursive: true, force: true });
     const extractJob = service.startJob('extract', { path: '/bundle.zip', destinationPath: '/' });
     await waitForJob(service, extractJob.id);
-    t.equal(readFileSync(path.join(root, 'source', 'hello.txt'), 'utf8'), 'hello archive', 'extracts the archive after conflict removal');
+    t.equal(
+      readFileSync(path.join(root, 'source', 'hello.txt'), 'utf8'),
+      'hello archive',
+      'extracts the archive after conflict removal'
+    );
 
     const cancelledJob = service.startJob('create', {
       sources: ['/source'],

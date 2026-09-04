@@ -17,7 +17,13 @@ function publishPackage(directory, tag, publishOptions) {
   const packageManifest = JSON.parse(readFileSync(packagePath, 'utf8'));
   const versionLookup = spawnSync(
     'npm',
-    ['view', `${packageManifest.name}@${packageManifest.version}`, 'version', '--registry', 'https://registry.npmjs.org'],
+    [
+      'view',
+      `${packageManifest.name}@${packageManifest.version}`,
+      'version',
+      '--registry',
+      'https://registry.npmjs.org'
+    ],
     { cwd: root, encoding: 'utf8' }
   );
   if (versionLookup.status === 0 && versionLookup.stdout.trim() === packageManifest.version) {
