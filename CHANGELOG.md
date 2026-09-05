@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.9.1](https://github.com/chandq/mock-service-cli/compare/v4.9.0...v4.9.1) (2026-09-05)
+
+
+### Bug Fixes
+
+*  get all hidden content by powershell to improve perf ([77bb0cb](https://github.com/chandq/mock-service-cli/commit/77bb0cb34e7e7c18bf221650f652191cb0e1b30d))
+* increase modal pop-up window width ([a0d48b6](https://github.com/chandq/mock-service-cli/commit/a0d48b6ff5faf62069d38d6393911cbd859ed757))
+* **static-server:** survive EBUSY watcher errors ([76ee2ce](https://github.com/chandq/mock-service-cli/commit/76ee2ce0344cb0f5998593628064173788d5951a))
+
 ## [4.9.0](https://github.com/chandq/mock-service-cli/compare/v4.8.0...v4.9.0) (2026-09-04)
 
 
