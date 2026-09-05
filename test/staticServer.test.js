@@ -804,4 +804,85 @@ test('static server development behaviors', async t => {
       rmSync(spaDirectory, { recursive: true, force: true });
     }
   });
+
+  await t.test('disables live reload while serving static files with --no-watch', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-no-watch-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(staticRoot, 'index.html'), '<html><head></head><body>NO_WATCH</body></html>');
+      child = spawn(
+        process.execPath,
+        [
+          'src/bin/mock-service-cli',
+          '-R',
+          staticRoot,
+          '--no-watch',
+          '--watch-interval',
+          '300',
+          '-p',
+          String(port),
+          '-s'
+        ],
+        { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const home = await waitForServer(`${baseUrl}/index.html`, child, output);
+      t.match(home.text, /NO_WATCH/, 'still serves the static HTML file');
+      t.notMatch(home.text, /__mock-service-cli\/live-reload\.js/, 'does not inject live reload when watching is off');
+      const rootIndex = await request(`${baseUrl}/`);
+      t.match(rootIndex.text, /目录索引/, 'keeps serving directory indexes');
+      t.notMatch(rootIndex.text, /live-reload\.js/, 'directory indexes skip the reload client too');
+    } finally {
+      if (child) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('validates watch configuration and interval inputs', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-watch-validation-'));
+
+    try {
+      const badIntervalConfig = path.join(staticRoot, 'bad-interval.json');
+      writeFileSync(badIntervalConfig, JSON.stringify({ mounts: [{ directory: staticRoot }], watch: { interval: 0 } }));
+      const badInterval = spawnSync(process.execPath, ['src/lib/staticServer.js'], {
+        cwd: root,
+        env: { ...getCliEnv(), ARGV: '{}', STATIC_CONFIG: badIntervalConfig, PORT: '0' },
+        encoding: 'utf8'
+      });
+      t.equal(badInterval.status, 1, 'rejects a non-positive watch.interval');
+      t.match(badInterval.stderr, /watch\.interval must be a positive integer/, 'reports the interval error');
+
+      const badEnabledConfig = path.join(staticRoot, 'bad-enabled.json');
+      writeFileSync(
+        badEnabledConfig,
+        JSON.stringify({ mounts: [{ directory: staticRoot }], watch: { enabled: 'yes' } })
+      );
+      const badEnabled = spawnSync(process.execPath, ['src/lib/staticServer.js'], {
+        cwd: root,
+        env: { ...getCliEnv(), ARGV: '{}', STATIC_CONFIG: badEnabledConfig, PORT: '0' },
+        encoding: 'utf8'
+      });
+      t.equal(badEnabled.status, 1, 'rejects a non-boolean watch.enabled');
+      t.match(badEnabled.stderr, /watch\.enabled must be boolean/, 'reports the enabled error');
+
+      const badCliInterval = spawnSync(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', staticRoot, '--watch-interval', 'abc', '-s'],
+        { cwd: root, env: getCliEnv(), encoding: 'utf8' }
+      );
+      t.equal(badCliInterval.status, 1, 'rejects a non-integer --watch-interval');
+      t.match(badCliInterval.stderr, /positive integer/, 'reports the CLI interval error');
+    } finally {
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
 });

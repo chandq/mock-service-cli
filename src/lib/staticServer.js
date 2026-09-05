@@ -190,11 +190,31 @@ function validateMountPaths(mounts) {
   });
 }
 
+// A watcher can fail to watch one path (e.g. a file locked by another process on
+// Windows) without breaking the whole watcher. chokidar keeps scanning and still
+// emits 'ready', so these transient lock/permission errors must not stop the server.
+function isTransientWatchError(error) {
+  const code = error && error.code;
+  return ['EBUSY', 'EPERM', 'EACCES', 'ENOENT', 'ENOTDIR'].includes(code);
+}
+
+function readWatchEnabledEnv() {
+  if (process.env.WATCH_ENABLED === undefined) return undefined;
+  return process.env.WATCH_ENABLED === 'true' || process.env.WATCH_ENABLED === '1';
+}
+
 function normalizeConfig() {
   const defaults = {
     open: false,
     browser: 'default',
-    watch: { ignore: ['**/node_modules/**', '**/.git/**'], delay: 100, fullReload: false, depth: undefined },
+    watch: {
+      enabled: true,
+      ignore: ['**/node_modules/**', '**/.git/**'],
+      delay: 100,
+      fullReload: false,
+      depth: undefined,
+      interval: 250
+    },
     injectTag: 'body',
     https: false
   };
@@ -202,6 +222,12 @@ function normalizeConfig() {
     const cliDepth = Number(process.env.WATCH_DEPTH);
     if (!Number.isInteger(cliDepth) || cliDepth < 0) throw new Error('watch.depth must be a non-negative integer');
   }
+  if (process.env.WATCH_INTERVAL !== undefined) {
+    const cliInterval = Number(process.env.WATCH_INTERVAL);
+    if (!Number.isInteger(cliInterval) || cliInterval < 1) throw new Error('watch.interval must be a positive integer');
+  }
+  const cliWatchEnabled = readWatchEnabledEnv();
+  const cliWatchInterval = process.env.WATCH_INTERVAL === undefined ? undefined : Number(process.env.WATCH_INTERVAL);
   const cliDirectory = process.env.STATIC_DIRECTORY ? path.resolve(process.env.STATIC_DIRECTORY) : null;
   if (process.env.STATIC_CONFIG && argv['spa-fallback'] !== undefined) {
     throw new Error('--spa-fallback cannot be used with --static-config');
@@ -221,6 +247,8 @@ function normalizeConfig() {
       open: process.env.OPEN_API_OVERVIEW ? true : defaults.open,
       watch: {
         ...defaults.watch,
+        enabled: cliWatchEnabled === undefined ? defaults.watch.enabled : cliWatchEnabled,
+        interval: cliWatchInterval === undefined ? defaults.watch.interval : cliWatchInterval,
         depth: process.env.WATCH_DEPTH === undefined ? undefined : Number(process.env.WATCH_DEPTH)
       },
       configDir: process.cwd(),
@@ -251,10 +279,28 @@ function normalizeConfig() {
 
   const configDir = path.dirname(configPath);
   const watch = isPlainObject(supplied.watch) ? supplied.watch : {};
+  if (watch.enabled !== undefined && typeof watch.enabled !== 'boolean') {
+    throw new Error('watch.enabled must be boolean');
+  }
+  if (watch.interval !== undefined && (!Number.isInteger(watch.interval) || watch.interval < 1)) {
+    throw new Error('watch.interval must be a positive integer');
+  }
   const depthValue = process.env.WATCH_DEPTH !== undefined ? Number(process.env.WATCH_DEPTH) : watch.depth;
   if (depthValue !== undefined && (!Number.isInteger(depthValue) || depthValue < 0)) {
     throw new Error('watch.depth must be a non-negative integer');
   }
+  const enabledValue =
+    cliWatchEnabled === undefined
+      ? watch.enabled === undefined
+        ? defaults.watch.enabled
+        : watch.enabled
+      : cliWatchEnabled;
+  const intervalValue =
+    cliWatchInterval === undefined
+      ? watch.interval === undefined
+        ? defaults.watch.interval
+        : watch.interval
+      : cliWatchInterval;
   if (process.env.PROXY_OPTIONS) throw new Error('--proxy-options/--rewrite cannot be used with --static-config');
   const rootApplicationFields = [
     'directory',
@@ -322,10 +368,12 @@ function normalizeConfig() {
     browser: supplied.browser === undefined ? defaults.browser : supplied.browser,
     configDir,
     watch: {
+      enabled: enabledValue,
       ignore: Array.isArray(watch.ignore) ? watch.ignore : defaults.watch.ignore,
       delay: Number.isFinite(watch.delay) && watch.delay >= 0 ? watch.delay : defaults.watch.delay,
       fullReload: watch.fullReload === true,
-      depth: depthValue
+      depth: depthValue,
+      interval: intervalValue
     },
     injectTag: supplied.injectTag === 'head' ? 'head' : 'body',
     mounts: normalizedMounts,
@@ -467,6 +515,8 @@ function injectLiveReload(html, config) {
     const headIndex = html.toLowerCase().lastIndexOf('</head>');
     html = headIndex === -1 ? `${favicon}${html}` : `${html.slice(0, headIndex)}${favicon}${html.slice(headIndex)}`;
   }
+  // The favicon stays even when watching is off; only the reload client is skipped.
+  if (config.watch.enabled === false) return html;
   const script = `<script src="${LIVE_RELOAD_CLIENT_PATH}" data-mock-service-cli-live-reload="true"></script>`;
   const closingTag = config.injectTag === 'head' ? '</head>' : '</body>';
   const index = html.toLowerCase().lastIndexOf(closingTag);
@@ -729,17 +779,19 @@ function createStaticServer(config) {
   }
   function startWatchers() {
     const targets = [...new Set(applications.map(application => application.directory).filter(Boolean))];
-    if (targets.length === 0) return Promise.resolve();
+    if (config.watch.enabled === false || targets.length === 0) return Promise.resolve();
     // Node 24's Windows fs.watch backend can abort the process for some short
-    // temporary paths. Polling is limited to that runtime combination.
+    // temporary paths. Polling is limited to that runtime combination, and its
+    // interval is configurable for large trees.
     const usePolling = process.platform === 'win32' && Number.parseInt(process.versions.node, 10) >= 24;
+    const pollInterval = usePolling ? config.watch.interval : undefined;
     const watcher = chokidar.watch(targets, {
       ignoreInitial: true,
       ignored: config.watch.ignore,
       depth: config.watch.depth,
       usePolling,
-      interval: usePolling ? 250 : undefined,
-      binaryInterval: usePolling ? 250 : undefined,
+      interval: pollInterval,
+      binaryInterval: pollInterval,
       awaitWriteFinish: { stabilityThreshold: Math.max(config.watch.delay, 50), pollInterval: 20 }
     });
     watcher.on('all', (event, changedPath) => {
@@ -753,6 +805,13 @@ function createStaticServer(config) {
         resolve();
       });
       watcher.on('error', error => {
+        // Transient lock/permission errors (Windows EBUSY, editors, antivirus) hit
+        // individual paths and chokidar still emits 'ready'; only a real watcher
+        // startup failure before 'ready' is fatal.
+        if (isTransientWatchError(error)) {
+          log.info(colors.yellow(`static-server watcher: ${error.message}`));
+          return;
+        }
         log.info(colors.red(`static-server watcher failed: ${error.message}`));
         if (!ready) reject(error);
       });

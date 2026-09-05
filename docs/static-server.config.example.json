@@ -2,10 +2,12 @@
   "open": false,
   "browser": "default",
   "watch": {
+    "enabled": true,
     "ignore": ["**/node_modules/**", "**/.git/**"],
     "delay": 100,
     "fullReload": false,
-    "depth": 3
+    "depth": 3,
+    "interval": 250
   },
   "injectTag": "body",
   "mounts": [
