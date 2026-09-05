@@ -28,7 +28,7 @@ const {
   getServerHost,
   getServerUrls,
   hostAllowlistMiddleware,
-  isHiddenPath,
+  getDirectoryHiddenNames,
   normalizeRemoteAddress,
   openPathInFileManager
 } = require('./utils');
@@ -383,6 +383,11 @@ function init() {
         return res.status(400).json({ error: 'Not a directory' });
       }
       const files = await fsPromises.readdir(fullPath, { withFileTypes: true });
+      // 批量读取隐藏状态：Windows 大目录下逐文件 attrib 会长时间阻塞。
+      const hiddenNames = await getDirectoryHiddenNames(
+        fullPath,
+        files.map(file => file.name)
+      );
       const result = await Promise.all(
         files.map(async file => {
           const filePath = path.join(fullPath, file.name);
@@ -407,7 +412,7 @@ function init() {
             size: hasError ? 0 : fileStats.size,
             mtime: hasError ? new Date() : fileStats.mtime,
             birthtime: hasError ? new Date() : fileStats.birthtime,
-            isHidden: isHiddenPath(filePath),
+            isHidden: hiddenNames.has(file.name),
             error: hasError ? 'Cannot access file' : null
           };
         })

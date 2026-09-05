@@ -10,7 +10,7 @@ const colors = require('colors/safe');
 const path = require('path');
 const os = require('os');
 const net = require('net');
-const { spawnSync, spawn } = require('child_process');
+const { spawnSync, spawn, execFile } = require('child_process');
 // const JSONStream = require('JSONStream');
 /**
  * @description: 输出和错误输出写入不同文件
@@ -107,13 +107,123 @@ function isWindowsHiddenByAttrib(filePath) {
   return attributes.includes('H');
 }
 
-function isHiddenPath(filePath) {
-  if (typeof filePath !== 'string' || !filePath) return false;
+// 纯命名层面的隐藏判定（不访问文件系统属性）。与 isHiddenPath 的命名分支保持一致。
+function isHiddenByNaming(filePath, platform) {
   const name = path.basename(filePath);
   if (name.startsWith('.') && name !== '.' && name !== '..') return true;
-  if (process.platform === 'win32') return isWindowsHiddenByAttrib(filePath);
   // 非 Windows：任意路径段以点号开头（如隐藏目录下的内容）同样视为隐藏。
-  return /(^|[\\/])\.[^\\/.]/.test(filePath);
+  return platform !== 'win32' && /(^|[\\/])\.[^\\/.]/.test(filePath);
+}
+
+function isHiddenPath(filePath) {
+  if (typeof filePath !== 'string' || !filePath) return false;
+  if (isHiddenByNaming(filePath, process.platform)) return true;
+  if (process.platform === 'win32') return isWindowsHiddenByAttrib(filePath);
+  return false;
+}
+
+// 目录列表的隐藏属性批量判定。逐文件 spawnSync attrib 在文件很多的目录下会按顺序
+// 阻塞数秒（实测每次约 10-20ms），因此 Windows 下改用“每次调用一个子进程”的方式读取
+// 整个目录的 Hidden 属性。PowerShell 为 Windows 自带；不可用时回退到逐文件 attrib。
+const WINDOWS_HIDDEN_BULK_MIN = 8;
+const WINDOWS_HIDDEN_CACHE_TTL = 5000;
+const windowsHiddenInFlight = new Map();
+const windowsHiddenCache = new Map();
+
+function buildHiddenListingCommand(directory) {
+  // 路径内单引号用 PS 约定（两个单引号转义）即可，反引号/变量符在单引号内都是字面量。
+  const escaped = String(directory).replace(/'/g, "''");
+  return (
+    '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;' +
+    `$d='${escaped}';` +
+    'Get-ChildItem -LiteralPath $d -Force | ForEach-Object { $_.Name + [char]9 + [int](($_.Attributes -band [System.IO.FileAttributes]::Hidden) -ne 0) }'
+  );
+}
+
+function parseHiddenListingOutput(output) {
+  // 每行 "名称\t1/0"；Windows 文件名不允许包含制表符或换行。
+  const hidden = new Set();
+  for (const line of String(output || '').split(/\r?\n/)) {
+    if (!line) continue;
+    const separator = line.indexOf('\t');
+    if (separator <= 0) continue;
+    if (line.slice(separator + 1) === '1') hidden.add(line.slice(0, separator));
+  }
+  return hidden;
+}
+
+function runWindowsHiddenListing(directory, execFileFn) {
+  return new Promise((resolve, reject) => {
+    execFileFn(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', buildHiddenListingCommand(directory)],
+      { encoding: 'utf8', windowsHide: true, timeout: 15000, maxBuffer: 64 * 1024 * 1024 },
+      (error, stdout) => (error ? reject(error) : resolve(String(stdout || '')))
+    );
+  });
+}
+
+async function getWindowsOsHiddenNames(directory, options) {
+  const cache = options.cache === false ? false : true;
+  if (cache) {
+    const cached = windowsHiddenCache.get(directory);
+    if (cached && cached.expires > Date.now()) return cached.names;
+    const inFlight = windowsHiddenInFlight.get(directory);
+    if (inFlight) return inFlight;
+  }
+  const execFileFn = options.execFile || execFile;
+  const promise = runWindowsHiddenListing(directory, execFileFn)
+    .then(output => {
+      const names = parseHiddenListingOutput(output);
+      if (cache) windowsHiddenCache.set(directory, { names, expires: Date.now() + WINDOWS_HIDDEN_CACHE_TTL });
+      return names;
+    })
+    .finally(() => {
+      windowsHiddenInFlight.delete(directory);
+    });
+  if (cache) windowsHiddenInFlight.set(directory, promise);
+  return promise;
+}
+
+/**
+ * 批量返回 `directory` 直接子项中“应视为隐藏”的名称集合（点号命名 + Windows 隐藏属性）。
+ * 逐文件调用 attrib 在文件很多的目录下会长时间阻塞事件循环，Windows 大目录改用单次
+ * PowerShell 调用读取整个目录的 Hidden 属性；不可用时回退到旧行为。
+ * @param {string} directory 已存在的目录绝对路径
+ * @param {string[]} names 直接子项名称（readdir 返回的 entry.name）
+ * @param {{platform?: string, execFile?: Function, cache?: boolean}} [options] 测试注入点
+ */
+async function getDirectoryHiddenNames(directory, names, options = {}) {
+  const platform = options.platform || process.platform;
+  const hidden = new Set();
+  const candidates = [];
+  for (const name of names) {
+    if (typeof name !== 'string' || !name) continue;
+    const childPath = path.join(directory, name);
+    if (isHiddenByNaming(childPath, platform)) hidden.add(name);
+    else candidates.push({ name, childPath });
+  }
+  if (candidates.length === 0 || platform !== 'win32') return hidden;
+  if (candidates.length <= WINDOWS_HIDDEN_BULK_MIN) {
+    for (const { name, childPath } of candidates) {
+      if (isWindowsHiddenByAttrib(childPath)) hidden.add(name);
+    }
+    return hidden;
+  }
+  let osHidden;
+  try {
+    osHidden = await getWindowsOsHiddenNames(directory, options);
+  } catch (error) {
+    osHidden = null;
+  }
+  if (osHidden) {
+    osHidden.forEach(name => hidden.add(name));
+    return hidden;
+  }
+  for (const { name, childPath } of candidates) {
+    if (isWindowsHiddenByAttrib(childPath)) hidden.add(name);
+  }
+  return hidden;
 }
 
 /**
@@ -488,5 +598,6 @@ module.exports = {
   getHostAllowlist,
   hostAllowlistMiddleware,
   isHiddenPath,
+  getDirectoryHiddenNames,
   openPathInFileManager
 };

@@ -9,7 +9,14 @@ const chokidar = require('chokidar');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
-const { dateFormat, logger, getServerHost, getServerUrls, hostAllowlistMiddleware, isHiddenPath } = require('./utils');
+const {
+  dateFormat,
+  logger,
+  getServerHost,
+  getServerUrls,
+  hostAllowlistMiddleware,
+  getDirectoryHiddenNames
+} = require('./utils');
 
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
@@ -367,9 +374,15 @@ function joinPublicPath(basePath, localPath) {
 
 async function getDirectoryIndexData(directoryPath, requestPath, showHidden, basePath) {
   const entries = await fsPromises.readdir(directoryPath, { withFileTypes: true });
+  // Windows 下逐文件 spawnSync attrib 会随文件数线性阻塞（每个约 10-20ms）；
+  // 这里批量读取隐藏状态，避免大目录目录页请求被拖慢。
+  const hiddenNames = await getDirectoryHiddenNames(
+    directoryPath,
+    entries.map(entry => entry.name)
+  );
   const entriesWithHidden = entries.map(entry => ({
     entry,
-    hidden: isHiddenPath(path.join(directoryPath, entry.name))
+    hidden: hiddenNames.has(entry.name)
   }));
   const visibleEntries = entriesWithHidden.filter(item => showHidden || !item.hidden);
   visibleEntries.sort((left, right) => {

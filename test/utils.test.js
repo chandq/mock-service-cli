@@ -24,6 +24,7 @@ const {
   parseHostAllowlist,
   isAddressAllowed,
   isHiddenPath,
+  getDirectoryHiddenNames,
   openPathInFileManager
 } = require('../src/lib/utils');
 
@@ -387,6 +388,117 @@ test('isHiddenPath honors the Windows hidden attribute', t => {
     spawnSync('attrib', ['-H', hiddenDir]);
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+  t.end();
+});
+
+test('getDirectoryHiddenNames never spawns outside win32 and follows naming rules', async t => {
+  t.plan(4);
+
+  const directory = path.join(os.tmpdir(), 'mock-service-cli-hidden-names');
+  let execCalls = 0;
+  const hidden = await getDirectoryHiddenNames(directory, ['.secret', 'plain.txt', '.dir', 'photo.jpg'], {
+    platform: 'linux',
+    cache: false,
+    execFile: () => {
+      execCalls += 1;
+    }
+  });
+
+  t.equal(execCalls, 0, 'does not spawn a child process on non-Windows platforms');
+  t.ok(hidden.has('.secret'), 'dotfile basename is hidden');
+  t.ok(hidden.has('.dir'), 'dot directory basename is hidden');
+  t.notOk(hidden.has('photo.jpg'), 'plain file is visible');
+
+  t.end();
+});
+
+test('getDirectoryHiddenNames keeps per-entry attrib for small win32 directories', async t => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-small-'));
+  const plainFile = path.join(tempDir, 'plain.txt');
+  const secretFile = path.join(tempDir, 'secret.txt');
+  fs.writeFileSync(plainFile, 'x');
+  fs.writeFileSync(secretFile, 'x');
+  if (process.platform === 'win32') spawnSync('attrib', ['+H', secretFile]);
+
+  let execCalls = 0;
+  const hidden = await getDirectoryHiddenNames(tempDir, ['.config', 'plain.txt', 'secret.txt'], {
+    platform: 'win32',
+    cache: false,
+    execFile: () => {
+      execCalls += 1;
+    }
+  });
+
+  try {
+    t.equal(execCalls, 0, 'does not batch small directories through PowerShell');
+    t.ok(hidden.has('.config'), 'dotfile basename is hidden');
+    t.notOk(hidden.has('plain.txt'), 'normal file is visible');
+    if (process.platform === 'win32') {
+      t.ok(hidden.has('secret.txt'), 'Windows hidden attribute is honored');
+    } else {
+      t.pass('skips Windows hidden attribute assertion off win32');
+    }
+  } finally {
+    if (process.platform === 'win32') spawnSync('attrib', ['-H', secretFile]);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  t.end();
+});
+
+test('getDirectoryHiddenNames batches large win32 directories through one PowerShell call', async t => {
+  t.plan(6);
+
+  const directory = path.join(os.tmpdir(), 'mock-service-cli-hidden-bulk');
+  const names = [];
+  for (let index = 0; index < 10; index += 1) names.push(`photo${index}.jpg`);
+  names.push('秘密.bin', '普通.txt', '.config');
+
+  let captured;
+  const hidden = await getDirectoryHiddenNames(directory, names, {
+    platform: 'win32',
+    cache: false,
+    execFile: (command, args, options, callback) => {
+      captured = { command, args };
+      const output = ['photo1.jpg\t0', 'photo3.jpg\t1', '秘密.bin\t1', '普通.txt\t0'].join('\r\n');
+      callback(null, output);
+    }
+  });
+
+  t.equal(captured.command, 'powershell.exe', 'uses PowerShell to read hidden attributes');
+  t.match(captured.args.join(' '), /Get-ChildItem/, 'lists children with attributes');
+  t.ok(hidden.has('.config'), 'dotfile basename is hidden');
+  t.ok(hidden.has('photo3.jpg'), 'hidden ASCII file is detected');
+  t.ok(hidden.has('秘密.bin'), 'hidden non-ASCII file is detected');
+  t.notOk(hidden.has('photo1.jpg'), 'visible file stays visible');
+
+  t.end();
+});
+
+test('getDirectoryHiddenNames falls back to per-entry attrib when PowerShell fails', async t => {
+  t.plan(3);
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-fallback-'));
+  const names = [];
+  for (let index = 0; index < 10; index += 1) {
+    const name = `file${index}.txt`;
+    fs.writeFileSync(path.join(tempDir, name), 'x');
+    names.push(name);
+  }
+
+  const hidden = await getDirectoryHiddenNames(tempDir, [...names, '.secret'], {
+    platform: 'win32',
+    cache: false,
+    execFile: (command, args, options, callback) => {
+      callback(new Error('ENOENT'));
+    }
+  });
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+
+  t.notOk(hidden.has('file0.txt'), 'falls back without throwing for visible files');
+  t.ok(hidden.has('.secret'), 'dotfile basename stays hidden');
+  t.equal(hidden.size, 1, 'no OS-hidden files are reported when the bulk read fails');
+
   t.end();
 });
 
