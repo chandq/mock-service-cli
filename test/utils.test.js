@@ -412,36 +412,33 @@ test('getDirectoryHiddenNames never spawns outside win32 and follows naming rule
   t.end();
 });
 
-test('getDirectoryHiddenNames keeps per-entry attrib for small win32 directories', async t => {
+test('getDirectoryHiddenNames checks small win32 dirs with async per-entry attrib, not PowerShell', async t => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-small-'));
-  const plainFile = path.join(tempDir, 'plain.txt');
-  const secretFile = path.join(tempDir, 'secret.txt');
-  fs.writeFileSync(plainFile, 'x');
-  fs.writeFileSync(secretFile, 'x');
-  if (process.platform === 'win32') spawnSync('attrib', ['+H', secretFile]);
 
   let execCalls = 0;
+  let attribCalls = 0;
   const hidden = await getDirectoryHiddenNames(tempDir, ['.config', 'plain.txt', 'secret.txt'], {
     platform: 'win32',
     cache: false,
     execFile: () => {
       execCalls += 1;
+    },
+    attribExecFile: (command, args, options, callback) => {
+      attribCalls += 1;
+      const filePath = args[0];
+      const isHidden = path.basename(filePath) === 'secret.txt';
+      callback(null, (isHidden ? 'A  H  ' : 'A     ') + `C:\\tmp\\${path.basename(filePath)}`);
     }
   });
 
-  try {
-    t.equal(execCalls, 0, 'does not batch small directories through PowerShell');
-    t.ok(hidden.has('.config'), 'dotfile basename is hidden');
-    t.notOk(hidden.has('plain.txt'), 'normal file is visible');
-    if (process.platform === 'win32') {
-      t.ok(hidden.has('secret.txt'), 'Windows hidden attribute is honored');
-    } else {
-      t.pass('skips Windows hidden attribute assertion off win32');
-    }
-  } finally {
-    if (process.platform === 'win32') spawnSync('attrib', ['-H', secretFile]);
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
+  fs.rmSync(tempDir, { recursive: true, force: true });
+
+  t.equal(execCalls, 0, 'does not batch small directories through PowerShell');
+  t.equal(attribCalls, 2, 'checks each non-dot candidate with a per-entry attrib');
+  t.ok(hidden.has('.config'), 'dotfile basename is hidden');
+  t.notOk(hidden.has('plain.txt'), 'normal file is visible');
+  t.ok(hidden.has('secret.txt'), 'candidate with the hidden attribute is detected');
+
   t.end();
 });
 
@@ -499,6 +496,58 @@ test('getDirectoryHiddenNames falls back to per-entry attrib when PowerShell fai
   t.ok(hidden.has('.secret'), 'dotfile basename stays hidden');
   t.equal(hidden.size, 1, 'no OS-hidden files are reported when the bulk read fails');
 
+  t.end();
+});
+
+test('getDirectoryHiddenNames skips OS attribute detection when osHidden is false', async t => {
+  t.plan(4);
+
+  const directory = path.join(os.tmpdir(), 'mock-service-cli-hidden-skip-os');
+  const names = [];
+  for (let index = 0; index < 10; index += 1) names.push(`photo${index}.jpg`);
+  names.push('秘密.bin', '.config');
+
+  let execCalls = 0;
+  const hidden = await getDirectoryHiddenNames(directory, names, {
+    platform: 'win32',
+    cache: false,
+    osHidden: false,
+    execFile: () => {
+      execCalls += 1;
+    }
+  });
+
+  t.equal(execCalls, 0, 'never spawns PowerShell or attrib when osHidden is false');
+  t.ok(hidden.has('.config'), 'dotfile basename is hidden');
+  t.notOk(hidden.has('photo0.jpg'), 'plain file is visible without OS-attribute detection');
+  t.notOk(hidden.has('秘密.bin'), 'OS-hidden files are treated as visible when osHidden is false');
+
+  t.end();
+});
+
+test('getDirectoryHiddenNames caches per-entry attrib results within the TTL', async t => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-attrib-cache-'));
+  const names = ['plain.txt', 'secret.txt'];
+  let attribCalls = 0;
+  const options = {
+    platform: 'win32',
+    cache: true,
+    attribExecFile: (command, args, options, callback) => {
+      attribCalls += 1;
+      const isHidden = path.basename(args[0]) === 'secret.txt';
+      callback(null, (isHidden ? 'A  H  ' : 'A     ') + `C:\\tmp\\${path.basename(args[0])}`);
+    }
+  };
+
+  const first = await getDirectoryHiddenNames(tempDir, names, options);
+  t.equal(attribCalls, 2, 'first listing checks each candidate once');
+  t.ok(first.has('secret.txt'), 'hidden candidate is detected on the first listing');
+
+  const second = await getDirectoryHiddenNames(tempDir, names, options);
+  t.equal(attribCalls, 2, 'second listing within the TTL reuses cached attrib results');
+  t.ok(second.has('secret.txt'), 'hidden candidate stays hidden on the second listing');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
   t.end();
 });
 

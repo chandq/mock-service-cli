@@ -92,6 +92,15 @@ function logger(isSilent = false) {
 // 隐藏文件检测：Unix/macOS 遵循“点号文件名”约定；Windows 的隐藏是文件系统属性。
 // Windows 统一通过 `attrib` 读取隐藏属性（无原生编译依赖、各版本 Windows 均自带），
 // 保证隐藏文件/目录在 static 与 file explorer 界面不会作为普通内容展示。
+function parseAttribHidden(stdout) {
+  // attrib 输出形如 "A  H  D:\path\file"，路径之前的字段是属性标志，包含 H 即为隐藏。
+  const line = String(stdout || '').split(/\r?\n/)[0] || '';
+  const pathStart = line.search(/[A-Za-z]:[\\/]|\\\\/);
+  const attributes = (pathStart === -1 ? line : line.slice(0, pathStart)).toUpperCase();
+  return attributes.includes('H');
+}
+
+// 同步版逐文件 attrib 判定，仅供 isHiddenPath 等非列表热路径使用。
 function isWindowsHiddenByAttrib(filePath) {
   let result;
   try {
@@ -100,11 +109,41 @@ function isWindowsHiddenByAttrib(filePath) {
     return false;
   }
   if (result.error || result.status !== 0) return false;
-  // attrib 输出形如 "A  H  D:\path\file"，路径之前的字段是属性标志，包含 H 即为隐藏。
-  const line = String(result.stdout || '').split(/\r?\n/)[0] || '';
-  const pathStart = line.search(/[A-Za-z]:[\\/]|\\\\/);
-  const attributes = (pathStart === -1 ? line : line.slice(0, pathStart)).toUpperCase();
-  return attributes.includes('H');
+  return parseAttribHidden(result.stdout);
+}
+
+// 列表路径的逐文件 attrib 判定改用异步 execFile + 短缓存：每个 spawnSync 实测约 10-20ms，
+// 在请求热路径上同步执行会阻塞事件循环；异步化后同一路径 5s 内不再重复 spawn，重复列表零开销。
+const WINDOWS_ATTRIB_CACHE_TTL = 5000;
+const windowsAttribCache = new Map();
+const windowsAttribInFlight = new Map();
+
+function isWindowsHiddenByAttribAsync(filePath, options) {
+  const cache = options.cache !== false;
+  if (cache) {
+    const cached = windowsAttribCache.get(filePath);
+    if (cached && cached.expires > Date.now()) return Promise.resolve(cached.hidden);
+    const inFlight = windowsAttribInFlight.get(filePath);
+    if (inFlight) return inFlight;
+  }
+  // attribExecFile 是测试注入点；缺省用真实 execFile，attrib 缺失（如非 Windows）时视为可见。
+  const execFileFn = options.attribExecFile || execFile;
+  const promise = new Promise(resolve => {
+    execFileFn(
+      'attrib',
+      [filePath],
+      { encoding: 'utf8', windowsHide: true, timeout: 5000 },
+      (error, stdout) => resolve(!error && parseAttribHidden(stdout))
+    );
+  }).then(hidden => {
+    if (cache) windowsAttribCache.set(filePath, { hidden, expires: Date.now() + WINDOWS_ATTRIB_CACHE_TTL });
+    return hidden;
+  });
+  promise.finally(() => {
+    windowsAttribInFlight.delete(filePath);
+  });
+  if (cache) windowsAttribInFlight.set(filePath, promise);
+  return promise;
 }
 
 // 纯命名层面的隐藏判定（不访问文件系统属性）。与 isHiddenPath 的命名分支保持一致。
@@ -122,9 +161,9 @@ function isHiddenPath(filePath) {
   return false;
 }
 
-// 目录列表的隐藏属性批量判定。逐文件 spawnSync attrib 在文件很多的目录下会按顺序
-// 阻塞数秒（实测每次约 10-20ms），因此 Windows 下改用“每次调用一个子进程”的方式读取
-// 整个目录的 Hidden 属性。PowerShell 为 Windows 自带；不可用时回退到逐文件 attrib。
+// 目录列表的 Windows 隐藏属性判定：小目录并发逐文件 `attrib`（异步 execFile + 5s 缓存），
+// 大目录改为单次 PowerShell 调用读取整个目录的 Hidden 属性，避免多次 spawn 开销。
+// PowerShell 为 Windows 自带；不可用时回退到逐文件 attrib。
 const WINDOWS_HIDDEN_BULK_MIN = 8;
 const WINDOWS_HIDDEN_CACHE_TTL = 5000;
 const windowsHiddenInFlight = new Map();
@@ -187,11 +226,13 @@ async function getWindowsOsHiddenNames(directory, options) {
 
 /**
  * 批量返回 `directory` 直接子项中“应视为隐藏”的名称集合（点号命名 + Windows 隐藏属性）。
- * 逐文件调用 attrib 在文件很多的目录下会长时间阻塞事件循环，Windows 大目录改用单次
- * PowerShell 调用读取整个目录的 Hidden 属性；不可用时回退到旧行为。
+ * Windows 小目录并发逐文件 `attrib`（异步 execFile，带 5s 路径缓存），大目录用单次
+ * PowerShell 调用读取整个目录的 Hidden 属性；两者都不可用时按“可见”处理，不在请求
+ * 热路径上做同步 spawn。通过 `osHidden: false` 可整体跳过 Windows 隐藏属性判定
+ * （`--no-os-hidden` → `OS_HIDDEN_ENABLED=false`），此时仅按点号命名判定。
  * @param {string} directory 已存在的目录绝对路径
  * @param {string[]} names 直接子项名称（readdir 返回的 entry.name）
- * @param {{platform?: string, execFile?: Function, cache?: boolean}} [options] 测试注入点
+ * @param {{platform?: string, execFile?: Function, attribExecFile?: Function, cache?: boolean, osHidden?: boolean}} [options] 测试注入点
  */
 async function getDirectoryHiddenNames(directory, names, options = {}) {
   const platform = options.platform || process.platform;
@@ -203,11 +244,15 @@ async function getDirectoryHiddenNames(directory, names, options = {}) {
     if (isHiddenByNaming(childPath, platform)) hidden.add(name);
     else candidates.push({ name, childPath });
   }
-  if (candidates.length === 0 || platform !== 'win32') return hidden;
+  // osHidden 默认开启；显式 false 时跳过 attrib/PowerShell 分支，避免个别属性误判与 spawn 开销。
+  if (candidates.length === 0 || platform !== 'win32' || options.osHidden === false) return hidden;
   if (candidates.length <= WINDOWS_HIDDEN_BULK_MIN) {
-    for (const { name, childPath } of candidates) {
-      if (isWindowsHiddenByAttrib(childPath)) hidden.add(name);
-    }
+    const results = await Promise.all(
+      candidates.map(({ childPath }) => isWindowsHiddenByAttribAsync(childPath, options))
+    );
+    results.forEach((isHidden, index) => {
+      if (isHidden) hidden.add(candidates[index].name);
+    });
     return hidden;
   }
   let osHidden;
@@ -220,9 +265,12 @@ async function getDirectoryHiddenNames(directory, names, options = {}) {
     osHidden.forEach(name => hidden.add(name));
     return hidden;
   }
-  for (const { name, childPath } of candidates) {
-    if (isWindowsHiddenByAttrib(childPath)) hidden.add(name);
-  }
+  const results = await Promise.all(
+    candidates.map(({ childPath }) => isWindowsHiddenByAttribAsync(childPath, options))
+  );
+  results.forEach((isHidden, index) => {
+    if (isHidden) hidden.add(candidates[index].name);
+  });
   return hidden;
 }
 

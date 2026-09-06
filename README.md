@@ -97,6 +97,7 @@ npx mock-service-cli [options] [path]
 | `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数）                        | 无限   |
 | `--watch-interval <n>`     | 设置静态服务器轮询间隔（毫秒；仅 Windows Node 24+ 轮询模式生效）  | 250    |
 | `--no-watch`               | 关闭静态服务器的文件监听与 live-reload（纯静态托管大目录）        | false  |
+| `--no-os-hidden`           | 跳过 Windows 系统隐藏属性判定（attrib/PowerShell）     | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
 | `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
 | `--auth <password>`        | 为文件浏览器启用密码认证（仅可搭配 `--explorer`）                 | -      |
@@ -190,6 +191,10 @@ mock-service-cli -e ./ --host
 # 仅向白名单 IP 暴露服务
 mock-service-cli -e ./ --host ./allowed-ips.txt
 ```
+
+静态服务器目录索引与文件浏览器默认把点号命名文件、以及（Windows 上）带系统隐藏属性的文件视为隐藏项。
+传入 `--no-os-hidden` 可跳过系统隐藏属性判定、仅按点号命名判定（利于规避个别属性误判与探测开销），
+对静态服务器目录索引与文件浏览器同时生效。
 
 默认情况下，Mock、SPA、Static 和 File Explorer 服务只监听 `127.0.0.1`。
 `--host` 会使这些服务监听所有 IPv4 网卡，请仅在可信网络中使用。传入白名单文件时，服务仍监听全部 IPv4 网卡，

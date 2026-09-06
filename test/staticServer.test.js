@@ -847,6 +847,39 @@ test('static server development behaviors', async t => {
     }
   });
 
+  await t.test('serves directory indexes with --no-os-hidden', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-no-os-hidden-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(staticRoot, 'plain.txt'), 'plain');
+      writeFileSync(path.join(staticRoot, '.secret'), 'secret');
+      child = spawn(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', staticRoot, '--no-os-hidden', '-p', String(port), '-s'],
+        { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      await waitForServer(`${baseUrl}/plain.txt`, child, output);
+      const rootIndex = await request(`${baseUrl}/`);
+      t.equal(rootIndex.status, 200, 'serves the directory index with --no-os-hidden');
+      t.match(rootIndex.text, /目录索引/, 'renders the directory index');
+      t.match(rootIndex.text, /plain\.txt/, 'lists a plain file');
+      t.notMatch(rootIndex.text, /\.secret/, 'dotfile names stay hidden by the naming rule');
+    } finally {
+      if (child) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
+
   await t.test('validates watch configuration and interval inputs', async t => {
     const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-watch-validation-'));
 

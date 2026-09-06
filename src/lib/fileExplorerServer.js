@@ -46,6 +46,8 @@ const port = argv.p || argv.port;
 const isEditMode = process.env.EXPLORER_EDIT === 'true';
 const explorerPassword = process.env.EXPLORER_AUTH || '';
 const isAuthEnabled = Boolean(explorerPassword);
+// `--no-os-hidden` → OS_HIDDEN_ENABLED=false：跳过 Windows 隐藏属性判定，仅按点号命名判隐藏。
+const osHiddenEnabled = process.env.OS_HIDDEN_ENABLED !== 'false' && process.env.OS_HIDDEN_ENABLED !== '0';
 const visitorKeys = new Set();
 let httpServer = null;
 let shuttingDown = false;
@@ -386,7 +388,8 @@ function init() {
       // 批量读取隐藏状态：Windows 大目录下逐文件 attrib 会长时间阻塞。
       const hiddenNames = await getDirectoryHiddenNames(
         fullPath,
-        files.map(file => file.name)
+        files.map(file => file.name),
+        { osHidden: osHiddenEnabled }
       );
       const result = await Promise.all(
         files.map(async file => {
