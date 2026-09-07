@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.9.2](https://github.com/chandq/mock-service-cli/compare/v4.9.1...v4.9.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* add --no-os-hidden and make Windows hidden detection async+cached ([799ab96](https://github.com/chandq/mock-service-cli/commit/799ab965b88b64e53b2e6a02abd829538e8fda0e))
+
 ### [4.9.1](https://github.com/chandq/mock-service-cli/compare/v4.9.0...v4.9.1) (2026-09-05)
 
 
