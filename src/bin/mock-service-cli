@@ -7,6 +7,7 @@ const { existsSync } = require('fs-extra');
 const argv = require('minimist')(process.argv.slice(2));
 const { logger, parseHostAllowlist } = require('../lib/utils');
 const { getPackageVersion } = require('../lib/packageInfo');
+const { shouldWaitForConsoleChildShutdown, createManagedConsoleInput } = require('../lib/processShutdown');
 const spawn = require('child_process').spawn;
 const node = process.execPath;
 
@@ -163,6 +164,8 @@ var explorerDir = argv.e || argv.explorer;
 var log = null;
 let managedServerProcess = null;
 let managedServerShutdown = false;
+let managedServerShutdownTimer = null;
+const MANAGED_SERVER_SHUTDOWN_TIMEOUT = 5000;
 
 if (!argv.s && !argv.silent) {
   log = logger(false);
@@ -327,24 +330,57 @@ function startManagedServer(fileName) {
   managedServerProcess = spawn(node, [resolveServerEntry(fileName)], {
     stdio: 'inherit'
   });
+  let managedConsoleInput = null;
+  const closeManagedConsoleInput = () => {
+    if (!managedConsoleInput) return;
+    managedConsoleInput.close();
+    managedConsoleInput = null;
+  };
+  const exitWithManagedServer = (code, signal) => {
+    closeManagedConsoleInput();
+    process.exit(signal ? 1 : code || 0);
+  };
 
   const shutdown = signal => {
     if (managedServerShutdown) return;
     managedServerShutdown = true;
-    managedServerProcess.kill(signal);
+    closeManagedConsoleInput();
+
+    if (!shouldWaitForConsoleChildShutdown(process.platform, fileName, signal)) {
+      managedServerProcess.kill(signal);
+      return;
+    }
+
+    // Windows broadcasts Ctrl+C to the parent and child processes attached to
+    // the console. Sending SIGINT again races that native console event.
+    if (managedServerProcess.exitCode !== null || managedServerProcess.signalCode !== null) {
+      exitWithManagedServer(managedServerProcess.exitCode, managedServerProcess.signalCode);
+      return;
+    }
+    managedServerShutdownTimer = setTimeout(() => {
+      if (managedServerProcess.exitCode === null) managedServerProcess.kill('SIGTERM');
+    }, MANAGED_SERVER_SHUTDOWN_TIMEOUT);
   };
 
   process.once('SIGINT', () => shutdown('SIGINT'));
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   managedServerProcess.once('exit', (code, signal) => {
-    if (managedServerShutdown) {
-      process.exit(signal ? 1 : code || 0);
-    }
+    clearTimeout(managedServerShutdownTimer);
+    closeManagedConsoleInput();
+    if (managedServerShutdown) exitWithManagedServer(code, signal);
   });
 
   managedServerProcess.once('error', error => {
+    closeManagedConsoleInput();
     console.error(colors.red(`Unable to start ${fileName}: ${error.message}`));
     process.exit(1);
+  });
+
+  managedConsoleInput = createManagedConsoleInput({
+    platform: process.platform,
+    serverName: fileName,
+    input: process.stdin,
+    output: process.stdout
   });
 }
 

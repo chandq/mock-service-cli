@@ -9,6 +9,7 @@ const chokidar = require('chokidar');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const colors = require('colors/safe');
 const portfinder = require('portfinder');
+const { shouldExitImmediatelyOnShutdown } = require('./processShutdown');
 const {
   dateFormat,
   logger,
@@ -858,29 +859,21 @@ function startServer() {
   const instance = createStaticServer(config);
   const port = Number.parseInt(process.env.PORT, 10);
   let shuttingDown = false;
-  const shutdown = () => {
+  const shutdown = signal => {
     if (shuttingDown) return;
     shuttingDown = true;
+    if (shouldExitImmediatelyOnShutdown(process.platform, signal)) {
+      // Windows releases sockets and watcher handles when the process exits.
+      log.info(colors.red('static-server process stopped.'));
+      process.exit();
+    }
     instance.close().finally(() => {
       log.info(colors.red('static-server process stopped.'));
       process.exit();
     });
   };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
-
-  // On Windows, readline receives Ctrl+C from the console input stream;
-  // forward it so the normal process-level shutdown handler runs.
-  if (process.platform === 'win32') {
-    require('readline')
-      .createInterface({
-        input: process.stdin,
-        output: process.stdout
-      })
-      .on('SIGINT', function () {
-        process.emit('SIGINT');
-      });
-  }
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
 
   // Do not report the server as ready until the watcher has completed its
   // initial scan. Otherwise a save immediately after startup can be missed.
@@ -917,7 +910,7 @@ function startServer() {
     })
     .catch(error => {
       console.error(colors.red(`static-server watcher failed: ${error.message}`));
-      shutdown();
+      shutdown('SIGTERM');
     });
 }
 

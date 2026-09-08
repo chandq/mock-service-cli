@@ -34,6 +34,7 @@ const {
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { ArchiveService } = require('./archiveService');
+const { shouldExitImmediatelyOnShutdown } = require('./processShutdown');
 
 const app = express();
 const log = logger(process.env.SILENT);
@@ -780,27 +781,18 @@ function closeServer(server) {
   });
 }
 
-function shutdown() {
+function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
+  if (shouldExitImmediatelyOnShutdown(process.platform, signal)) {
+    // The parent CLI restores the Windows console before the child exits.
+    log.info(colors.red('file-explorer-server process stopped.'));
+    process.exit();
+  }
   closeServer(httpServer).finally(() => {
     log.info(colors.red('file-explorer-server process stopped.'));
     process.exit();
   });
 }
-
-if (process.platform === 'win32') {
-  // On Windows, readline receives Ctrl+C from the console input stream;
-  // forward it so the normal process-level shutdown handler runs.
-  require('readline')
-    .createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-    .on('SIGINT', function () {
-      process.emit('SIGINT');
-    });
-}
-
-process.once('SIGINT', shutdown);
-process.once('SIGTERM', shutdown);
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));

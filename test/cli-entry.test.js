@@ -71,6 +71,44 @@ function stopCliProcess(child) {
   }
 }
 
+function stopParent(child) {
+  return new Promise(resolve => {
+    let settled = false;
+    let forceKillTimer;
+    const finish = forced => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(forceKillTimer);
+      resolve({ forced });
+    };
+    child.once('exit', () => finish(false));
+    child.kill('SIGINT');
+    forceKillTimer = setTimeout(() => {
+      const forced = child.exitCode === null;
+      if (forced) child.kill('SIGKILL');
+      finish(forced);
+    }, 1000);
+  });
+}
+
+async function waitForPortRelease(port) {
+  let lastError;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', () => server.close(resolve));
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  }
+  throw lastError || new Error(`Port ${port} was not released`);
+}
+
 function getCliEnv() {
   const env = { ...process.env };
 
@@ -102,6 +140,27 @@ function startExplorer(entryFile, tempDir, port, editMode, authPassword) {
     output.value += chunk.toString();
   });
   return { child, output };
+}
+
+async function assertExplorerParentShutdown(t, entryFile) {
+  if (process.platform === 'win32') {
+    t.skip('child.kill(SIGINT) does not generate a Windows console Ctrl+C event');
+    return;
+  }
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-explorer-shutdown-'));
+  const port = await getFreePort();
+  const { child, output } = startExplorer(entryFile, tempDir, port, false);
+
+  try {
+    await waitForExplorer(`http://127.0.0.1:${port}`, child, output);
+    const result = await stopParent(child);
+    t.notOk(result.forced, `${entryFile} exits gracefully after Ctrl+C`);
+    await waitForPortRelease(port);
+    t.pass(`${entryFile} releases the explorer port after Ctrl+C`);
+  } finally {
+    if (child.exitCode === null) stopCliProcess(child);
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 async function uploadFiles(baseUrl, files, password) {
@@ -335,6 +394,7 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
 
 if (!isCoverageMode()) {
   test('source cli can start file explorer server directly', async t => {
+    await assertExplorerParentShutdown(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertReadOnlyFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertAuthenticatedExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));

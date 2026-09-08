@@ -64,17 +64,18 @@ function stopParent(child) {
   return new Promise(resolve => {
     let settled = false;
     let forceKillTimer;
-    const finish = () => {
+    const finish = forced => {
       if (settled) return;
       settled = true;
       clearTimeout(forceKillTimer);
-      resolve();
+      resolve({ forced });
     };
-    child.once('exit', finish);
+    child.once('exit', () => finish(false));
     child.kill('SIGINT');
     forceKillTimer = setTimeout(() => {
-      if (child.exitCode === null) child.kill('SIGKILL');
-      finish();
+      const forced = child.exitCode === null;
+      if (forced) child.kill('SIGKILL');
+      finish(forced);
     }, 1000);
   });
 }
@@ -241,6 +242,10 @@ function executeReloadClient(script) {
 
 test('static server development behaviors', async t => {
   await t.test('releases the port when the CLI parent receives SIGINT', async t => {
+    if (process.platform === 'win32') {
+      t.skip('child.kill(SIGINT) does not generate a Windows console Ctrl+C event');
+      return;
+    }
     const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-shutdown-'));
     const port = await getFreePort();
     const output = { value: '' };
@@ -261,7 +266,8 @@ test('static server development behaviors', async t => {
       });
 
       await waitForServer(`http://127.0.0.1:${port}/`, child, output);
-      await stopParent(child);
+      const result = await stopParent(child);
+      t.notOk(result.forced, 'CLI exits gracefully without a forced kill');
       await waitForPortRelease(port);
       t.pass('CLI shutdown also stops the static server child');
     } finally {
