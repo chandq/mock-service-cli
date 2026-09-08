@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.9.3](https://github.com/chandq/mock-service-cli/compare/v4.9.2...v4.9.3) (2026-09-08)
+
+
+### Bug Fixes
+
+* can not exit by ctrl+c  under windows os ([4e37e2b](https://github.com/chandq/mock-service-cli/commit/4e37e2bb64775690c5125e4ee2789f2fe165d9a6))
+
 ### [4.9.2](https://github.com/chandq/mock-service-cli/compare/v4.9.1...v4.9.2) (2026-09-07)
 
 
