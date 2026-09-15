@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.10.0](https://github.com/chandq/mock-service-cli/compare/v4.9.3...v4.10.0) (2026-09-15)
+
+
+### Features
+
+* invert watch/os-hidden flags to opt-in ([91b88b0](https://github.com/chandq/mock-service-cli/commit/91b88b04e2c8fa489eae6f83b8edebb2b128f2e9))
+
 ### [4.9.3](https://github.com/chandq/mock-service-cli/compare/v4.9.2...v4.9.3) (2026-09-08)
 
 
