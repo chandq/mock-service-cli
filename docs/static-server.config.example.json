@@ -2,7 +2,7 @@
   "open": false,
   "browser": "default",
   "watch": {
-    "enabled": true,
+    "enabled": false,
     "ignore": ["**/node_modules/**", "**/.git/**"],
     "delay": 100,
     "fullReload": false,

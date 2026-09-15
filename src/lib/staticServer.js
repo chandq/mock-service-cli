@@ -21,8 +21,8 @@ const {
 
 const log = logger(process.env.SILENT);
 const argv = JSON.parse(process.env.ARGV);
-// `--no-os-hidden` → OS_HIDDEN_ENABLED=false：跳过 Windows 隐藏属性判定，仅按点号命名判隐藏。
-const osHiddenEnabled = process.env.OS_HIDDEN_ENABLED !== 'false' && process.env.OS_HIDDEN_ENABLED !== '0';
+// 默认跳过 Windows 隐藏属性判定，仅按点号命名判隐藏；`--windows-hidden` → OS_HIDDEN_ENABLED=true 时才读取。
+const osHiddenEnabled = process.env.OS_HIDDEN_ENABLED === 'true' || process.env.OS_HIDDEN_ENABLED === '1';
 const LIVE_RELOAD_PATH = '/__mock-service-cli/live-reload';
 const LIVE_RELOAD_CLIENT_PATH = '/__mock-service-cli/live-reload.js';
 const STATIC_FAVICON_PATH = '/__mock-service-cli/favicon.svg';
@@ -211,7 +211,7 @@ function normalizeConfig() {
     open: false,
     browser: 'default',
     watch: {
-      enabled: true,
+      enabled: false,
       ignore: ['**/node_modules/**', '**/.git/**'],
       delay: 100,
       fullReload: false,

@@ -228,8 +228,9 @@ async function getWindowsOsHiddenNames(directory, options) {
  * 批量返回 `directory` 直接子项中“应视为隐藏”的名称集合（点号命名 + Windows 隐藏属性）。
  * Windows 小目录并发逐文件 `attrib`（异步 execFile，带 5s 路径缓存），大目录用单次
  * PowerShell 调用读取整个目录的 Hidden 属性；两者都不可用时按“可见”处理，不在请求
- * 热路径上做同步 spawn。通过 `osHidden: false` 可整体跳过 Windows 隐藏属性判定
- * （`--no-os-hidden` → `OS_HIDDEN_ENABLED=false`），此时仅按点号命名判定。
+ * 热路径上做同步 spawn。默认 `osHidden: false` 整体跳过 Windows 隐藏属性判定，此时仅
+ * 按点号命名判定；`--windows-hidden` → `OS_HIDDEN_ENABLED=true` 时调用方才传入
+ * `osHidden: true` 启用属性判定。
  * @param {string} directory 已存在的目录绝对路径
  * @param {string[]} names 直接子项名称（readdir 返回的 entry.name）
  * @param {{platform?: string, execFile?: Function, attribExecFile?: Function, cache?: boolean, osHidden?: boolean}} [options] 测试注入点
@@ -244,7 +245,7 @@ async function getDirectoryHiddenNames(directory, names, options = {}) {
     if (isHiddenByNaming(childPath, platform)) hidden.add(name);
     else candidates.push({ name, childPath });
   }
-  // osHidden 默认开启；显式 false 时跳过 attrib/PowerShell 分支，避免个别属性误判与 spawn 开销。
+  // 调用方默认传 osHidden: false 跳过 attrib/PowerShell 分支，避免个别属性误判与 spawn 开销。
   if (candidates.length === 0 || platform !== 'win32' || options.osHidden === false) return hidden;
   if (candidates.length <= WINDOWS_HIDDEN_BULK_MIN) {
     const results = await Promise.all(

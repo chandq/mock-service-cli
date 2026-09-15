@@ -94,10 +94,10 @@ npx mock-service-cli [options] [path]
 | `--spa-fallback <path>`    | 单目录模式显式启用 SPA 回退                                       | -      |
 | `--static-config <file>`   | 使用自包含 JSON 配置启动静态服务器                                | -      |
 | `-w` 或 `--open`           | 自动打开可用的 Web 页面或 API 概览页                              | false  |
-| `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数）                        | 无限   |
-| `--watch-interval <n>`     | 设置静态服务器轮询间隔（毫秒；仅 Windows Node 24+ 轮询模式生效）  | 250    |
-| `--no-watch`               | 关闭静态服务器的文件监听与 live-reload（纯静态托管大目录）        | false  |
-| `--no-os-hidden`           | 跳过 Windows 系统隐藏属性判定（attrib/PowerShell）     | false  |
+| `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数，需配合 `--watch`）      | 无限   |
+| `--watch-interval <n>`     | 轮询间隔（毫秒；仅 Windows Node 24+，需配合 `--watch`）           | 250    |
+| `--watch`                  | 开启静态服务器的文件监听与 live-reload（默认关闭）                | false  |
+| `--windows-hidden`         | 读取 Windows 系统隐藏属性（attrib/PowerShell）判定隐藏项          | false  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
 | `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
 | `--auth <password>`        | 为文件浏览器启用密码认证（仅可搭配 `--explorer`）                 | -      |
@@ -135,10 +135,10 @@ mock-service-cli -R --static-config ./static-server.json
 mock-service-cli --static-config ./static-server.json
 ```
 
-静态服务器会监听资源变化并向 HTML 页面注入热更新客户端：CSS 文件更新时替换样式表，其余变更刷新页面。
+静态服务器默认**不监听**资源变化；传入 `--watch` 才监听并注入热更新客户端：CSS 文件更新时替换样式表，其余变更刷新页面。
 默认不打开浏览器；使用 `-w/--open` 可自动打开静态服务器页面。也可在配置中设置 `"open": true` 或提供页面路径。完整配置字段和示例见
 [`docs/static-server.config.example.json`](./docs/static-server.config.example.json)：支持忽略规则、SPA 回退、挂载目录、代理、HTTPS、CORS、响应头和自定义浏览器命令。
-`watch.enabled` 默认 `true`，设为 `false` 可完全关闭文件监听与 live-reload（纯静态托管大目录时不注入热更新脚本、不启动 watcher）。`watch.depth` 可限制 chokidar 递归监听层数；未设置时为无限深度，大目录建议显式设置有限值。Windows Node 24+ 使用轮询监听，`watch.interval`（默认 250ms）可放宽轮询周期以降低大目录开销。命令行 `--watch-depth <n>`、`--watch-interval <n>`、`--no-watch` 优先于配置文件。
+`watch.enabled` 默认 `false`，设为 `true` 或传入 `--watch` 可启用；`watch.depth` 限制 chokidar 递归层数（默认无限，大目录建议设有限值），`watch.interval` 为 Windows Node 24+ 轮询周期（默认 250ms）。命令行 `--watch`、`--watch-depth <n>`、`--watch-interval <n>` 优先于配置文件。
 配置文件只在顶层保留服务器级字段。所有应用都放在 `mounts` 中，并可独立设置 `directory`、`spaFallback`、`proxy`、`cors`、`headers`、`requestHeaders` 和 `secure`。mount 未设置 `path` 时默认挂载到 `/`；`directory` 可省略，但该应用必须配置至少一条代理。代理键使用完整公开路径，例如 `/api/app`。
 `headers` 是发送给客户端的响应头。`requestHeaders` 是发送给该应用全部代理上游的请求头；也可放在单个 `proxy` 规则中，覆盖或追加 mount 级请求头。代理规则使用 `{ "target": "http://...", "rewrite": true }`；`rewrite` 为 true 时只移除匹配的完整代理前缀并保留剩余路径和 query string。应用级 `secure` 控制其代理 HTTPS 目标的证书校验，默认 `false`。配置模式不接受 `--proxy-options`、`--rewrite` 或 `--spa-fallback`。
 未设置 `spaFallback` 时，应用目录会显示可点击的目录索引；可直接访问其中的 HTML 文件。mount 未命中的路由不会继续进入其他应用的 SPA fallback。
@@ -192,9 +192,7 @@ mock-service-cli -e ./ --host
 mock-service-cli -e ./ --host ./allowed-ips.txt
 ```
 
-静态服务器目录索引与文件浏览器默认把点号命名文件、以及（Windows 上）带系统隐藏属性的文件视为隐藏项。
-传入 `--no-os-hidden` 可跳过系统隐藏属性判定、仅按点号命名判定（利于规避个别属性误判与探测开销），
-对静态服务器目录索引与文件浏览器同时生效。
+静态服务器目录索引与文件浏览器默认只按点号命名判定隐藏项；传入 `--windows-hidden` 才会额外读取 Windows 系统隐藏属性。
 
 默认情况下，Mock、SPA、Static 和 File Explorer 服务只监听 `127.0.0.1`。
 `--host` 会使这些服务监听所有 IPv4 网卡，请仅在可信网络中使用。传入白名单文件时，服务仍监听全部 IPv4 网卡，

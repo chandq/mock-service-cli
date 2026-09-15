@@ -359,37 +359,34 @@ test('isHiddenPath treats dotfile basenames as hidden on every platform', t => {
   t.end();
 });
 
-test('isHiddenPath honors the Windows hidden attribute', t => {
-  if (process.platform !== 'win32') {
-    t.skip('Windows hidden attribute only applies on win32');
+// Windows 隐藏属性只存在于 win32：非 Windows 平台不注册该用例，避免产生 pending。
+if (process.platform === 'win32') {
+  test('isHiddenPath honors the Windows hidden attribute', t => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-'));
+    const plainFile = path.join(tempDir, 'plain.txt');
+    const hiddenFile = path.join(tempDir, 'secret.txt');
+    const plainDir = path.join(tempDir, 'plain-dir');
+    const hiddenDir = path.join(tempDir, 'secret-dir');
+    fs.writeFileSync(plainFile, 'x');
+    fs.writeFileSync(hiddenFile, 'x');
+    fs.mkdirSync(plainDir);
+    fs.mkdirSync(hiddenDir);
+    spawnSync('attrib', ['+H', hiddenFile]);
+    spawnSync('attrib', ['+H', hiddenDir]);
+
+    try {
+      t.equal(isHiddenPath(plainFile), false, 'normal file is visible');
+      t.equal(isHiddenPath(hiddenFile), true, 'file with hidden attribute is hidden');
+      t.equal(isHiddenPath(plainDir), false, 'normal directory is visible');
+      t.equal(isHiddenPath(hiddenDir), true, 'directory with hidden attribute is hidden');
+    } finally {
+      spawnSync('attrib', ['-H', hiddenFile]);
+      spawnSync('attrib', ['-H', hiddenDir]);
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
     t.end();
-    return;
-  }
-
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-hidden-'));
-  const plainFile = path.join(tempDir, 'plain.txt');
-  const hiddenFile = path.join(tempDir, 'secret.txt');
-  const plainDir = path.join(tempDir, 'plain-dir');
-  const hiddenDir = path.join(tempDir, 'secret-dir');
-  fs.writeFileSync(plainFile, 'x');
-  fs.writeFileSync(hiddenFile, 'x');
-  fs.mkdirSync(plainDir);
-  fs.mkdirSync(hiddenDir);
-  spawnSync('attrib', ['+H', hiddenFile]);
-  spawnSync('attrib', ['+H', hiddenDir]);
-
-  try {
-    t.equal(isHiddenPath(plainFile), false, 'normal file is visible');
-    t.equal(isHiddenPath(hiddenFile), true, 'file with hidden attribute is hidden');
-    t.equal(isHiddenPath(plainDir), false, 'normal directory is visible');
-    t.equal(isHiddenPath(hiddenDir), true, 'directory with hidden attribute is hidden');
-  } finally {
-    spawnSync('attrib', ['-H', hiddenFile]);
-    spawnSync('attrib', ['-H', hiddenDir]);
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
-  t.end();
-});
+  });
+}
 
 test('getDirectoryHiddenNames never spawns outside win32 and follows naming rules', async t => {
   t.plan(4);

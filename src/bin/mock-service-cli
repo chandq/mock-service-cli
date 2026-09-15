@@ -46,8 +46,8 @@ if (argv.h || argv.help) {
       '  -R --static-server   Specify static resource file directory when enabled static server.',
       '  --watch-depth <n>    Limit static server watch recursion depth (non-negative integer).',
       '  --watch-interval <n> Static server polling interval in milliseconds (Windows Node 24+ only).',
-      '  --no-watch           Disable static server file watching and live reload.',
-      '  --no-os-hidden       Skip Windows OS hidden-attribute detection (dotfile names still hidden).',
+      '  --watch              Enable static server file watching and live reload (off by default).',
+      '  --windows-hidden     Read Windows OS hidden attributes for the index/explorer (off by default).',
       '  --spa-fallback <path>  Enable SPA fallback for -R mode using a root-relative HTML path.',
       '  --static-config <file>  Self-contained static server configuration for root apps, mounts, proxy and fallback.',
       '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
@@ -113,11 +113,11 @@ if (argv['watch-interval'] !== undefined) {
   }
   process.env.WATCH_INTERVAL = String(watchInterval);
 }
-if (argv.watch === false || argv['no-watch'] === true) {
-  process.env.WATCH_ENABLED = 'false';
+if (argv.watch === true) {
+  process.env.WATCH_ENABLED = 'true';
 }
-if (argv['os-hidden'] === false) {
-  process.env.OS_HIDDEN_ENABLED = 'false';
+if (argv['windows-hidden'] === true) {
+  process.env.OS_HIDDEN_ENABLED = 'true';
 }
 if (argv['static-config'] && typeof staticDirectoryArg === 'string') {
   console.error('--static-config cannot be combined with -R <directory>');

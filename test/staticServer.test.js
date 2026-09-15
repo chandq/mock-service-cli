@@ -309,7 +309,7 @@ test('static server development behaviors', async t => {
             },
             { path: '/vendor', directory: mountRoot }
           ],
-          watch: { delay: 20, ignore: ['**/node_modules/**'] }
+          watch: { enabled: true, delay: 20, ignore: ['**/node_modules/**'] }
         })
       );
 
@@ -396,12 +396,16 @@ test('static server development behaviors', async t => {
       writeFileSync(path.join(staticRoot, 'LICENSE'), 'license preview');
       writeFileSync(path.join(staticRoot, '.editorconfig'), 'root = true');
       writeFileSync(path.join(staticRoot, 'unknown-binary'), Buffer.from([0, 1, 2, 3]));
-      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'], {
-        cwd: root,
-        detached: process.platform !== 'win32',
-        env: getCliEnv(),
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      child = spawn(
+        process.execPath,
+        ['src/bin/mock-service-cli', '-R', staticRoot, '--watch', '-p', String(port), '-s'],
+        {
+          cwd: root,
+          detached: process.platform !== 'win32',
+          env: getCliEnv(),
+          stdio: ['ignore', 'pipe', 'pipe']
+        }
+      );
       child.stdout.on('data', chunk => {
         output.value += chunk.toString();
       });
@@ -811,29 +815,20 @@ test('static server development behaviors', async t => {
     }
   });
 
-  await t.test('disables live reload while serving static files with --no-watch', async t => {
-    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-no-watch-'));
+  await t.test('does not inject live reload by default', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-default-no-watch-'));
     const port = await getFreePort();
     const output = { value: '' };
     let child;
 
     try {
       writeFileSync(path.join(staticRoot, 'index.html'), '<html><head></head><body>NO_WATCH</body></html>');
-      child = spawn(
-        process.execPath,
-        [
-          'src/bin/mock-service-cli',
-          '-R',
-          staticRoot,
-          '--no-watch',
-          '--watch-interval',
-          '300',
-          '-p',
-          String(port),
-          '-s'
-        ],
-        { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
-      );
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
       child.stdout.on('data', chunk => {
         output.value += chunk.toString();
       });
@@ -843,7 +838,7 @@ test('static server development behaviors', async t => {
       const baseUrl = `http://127.0.0.1:${port}`;
       const home = await waitForServer(`${baseUrl}/index.html`, child, output);
       t.match(home.text, /NO_WATCH/, 'still serves the static HTML file');
-      t.notMatch(home.text, /__mock-service-cli\/live-reload\.js/, 'does not inject live reload when watching is off');
+      t.notMatch(home.text, /__mock-service-cli\/live-reload\.js/, 'does not inject live reload by default');
       const rootIndex = await request(`${baseUrl}/`);
       t.match(rootIndex.text, /目录索引/, 'keeps serving directory indexes');
       t.notMatch(rootIndex.text, /live-reload\.js/, 'directory indexes skip the reload client too');
@@ -853,8 +848,40 @@ test('static server development behaviors', async t => {
     }
   });
 
-  await t.test('serves directory indexes with --no-os-hidden', async t => {
-    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-no-os-hidden-'));
+  await t.test('injects live reload with --watch', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-watch-'));
+    const port = await getFreePort();
+    const output = { value: '' };
+    let child;
+
+    try {
+      writeFileSync(path.join(staticRoot, 'index.html'), '<html><head></head><body>WATCH_ON</body></html>');
+      child = spawn(process.execPath, ['src/bin/mock-service-cli', '-R', staticRoot, '--watch', '-p', String(port), '-s'], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env: getCliEnv(),
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      child.stdout.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      child.stderr.on('data', chunk => {
+        output.value += chunk.toString();
+      });
+      const baseUrl = `http://127.0.0.1:${port}`;
+      const home = await waitForServer(`${baseUrl}/index.html`, child, output);
+      t.match(home.text, /WATCH_ON/, 'serves the static HTML file');
+      t.match(home.text, /__mock-service-cli\/live-reload\.js/, 'injects live reload into HTML when --watch is set');
+      const rootIndex = await request(`${baseUrl}/`);
+      t.match(rootIndex.text, /__mock-service-cli\/live-reload\.js/, 'injects live reload into directory indexes too');
+    } finally {
+      if (child) await stop(child);
+      rmSync(staticRoot, { recursive: true, force: true });
+    }
+  });
+
+  await t.test('serves directory indexes without OS hidden detection by default', async t => {
+    const staticRoot = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-static-default-hidden-'));
     const port = await getFreePort();
     const output = { value: '' };
     let child;
@@ -864,7 +891,7 @@ test('static server development behaviors', async t => {
       writeFileSync(path.join(staticRoot, '.secret'), 'secret');
       child = spawn(
         process.execPath,
-        ['src/bin/mock-service-cli', '-R', staticRoot, '--no-os-hidden', '-p', String(port), '-s'],
+        ['src/bin/mock-service-cli', '-R', staticRoot, '-p', String(port), '-s'],
         { cwd: root, detached: process.platform !== 'win32', env: getCliEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
       );
       child.stdout.on('data', chunk => {
@@ -876,7 +903,7 @@ test('static server development behaviors', async t => {
       const baseUrl = `http://127.0.0.1:${port}`;
       await waitForServer(`${baseUrl}/plain.txt`, child, output);
       const rootIndex = await request(`${baseUrl}/`);
-      t.equal(rootIndex.status, 200, 'serves the directory index with --no-os-hidden');
+      t.equal(rootIndex.status, 200, 'serves the directory index by default');
       t.match(rootIndex.text, /目录索引/, 'renders the directory index');
       t.match(rootIndex.text, /plain\.txt/, 'lists a plain file');
       t.notMatch(rootIndex.text, /\.secret/, 'dotfile names stay hidden by the naming rule');
