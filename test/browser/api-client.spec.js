@@ -45,7 +45,7 @@ test('send, save, restore tabs and inspect JSON tree', async ({ page }) => {
   await page.getByRole('button', { name: '发送 ↗', exact: true }).click();
   await expect(page.locator('#metrics')).toContainText('200');
   await expect(page.locator('#response-content')).toContainText('Hello API Client');
-  await page.getByRole('button', { name: /保存 ⌘ S/ }).click();
+  await page.locator('#save').click();
   await expect(page.locator('#save-state')).toHaveText('已保存到项目');
   await page.getByLabel('响应格式').selectOption('tree');
   await expect(page.locator('#response-content')).toContainText('count: 42');
@@ -115,6 +115,48 @@ test('cancel and safely display untrusted response HTML', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: '.cache/api-client-mobile.png', fullPage: true });
 });
+test('editor highlights JSON/XML and supports formatting, search, undo and folding', async ({ page }) => {
+  await page.locator('#request-panels').getByRole('button', { name: 'Body', exact: true }).click();
+  await page.getByLabel('正文类型').selectOption('json');
+  const content = page.locator('.cm-content');
+  await content.fill('{"name":"demo","count":42,"active":true}');
+  await expect(content.locator('.syntax-key').first()).toHaveText('"name"');
+  await expect(content.locator('.syntax-string')).toHaveText('"demo"');
+  await expect(content.locator('.syntax-number')).toHaveText('42');
+  for (const theme of ['light', 'dark']) {
+    await page.getByLabel('主题').selectOption(theme);
+    const colors = await content.evaluate(node => [
+      getComputedStyle(node).color,
+      getComputedStyle(node.querySelector('.syntax-key')).color
+    ]);
+    expect(colors[0]).not.toBe(colors[1]);
+  }
+  await page.getByRole('button', { name: '格式化 JSON', exact: true }).click();
+  await expect(content.locator('.cm-line')).toHaveCount(5);
+  await content.click();
+  const modifier = await page.evaluate(() => (/Mac/.test(navigator.platform) ? 'Meta' : 'Control'));
+  await page.keyboard.press(`${modifier}+z`);
+  await expect(content.locator('.cm-line')).toHaveCount(1);
+  await page.keyboard.press(`${modifier}+Shift+z`);
+  await expect(content.locator('.cm-line')).toHaveCount(5);
+  await page.locator('.cm-foldGutter .cm-gutterElement').filter({ hasText: '⌄' }).first().click();
+  await expect(page.locator('.cm-foldPlaceholder')).toBeVisible();
+  await page.locator('.cm-foldPlaceholder').click();
+  await content.click();
+  await page.keyboard.press(`${modifier}+f`);
+  await expect(page.locator('.cm-search')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.cm-search')).toBeHidden();
+  await page.getByLabel('正文类型').selectOption('xml');
+  await content.fill('<user id="42">demo</user>');
+  await expect(content.locator('.syntax-key').first()).toHaveText('user');
+  await expect(content.locator('.syntax-string')).toHaveText('"42"');
+  await page.locator('#shortcuts').click();
+  await expect(page.locator('#modal')).toContainText('发送当前请求');
+  await expect(page.locator('#modal')).toContainText('正文内查找');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#modal')).not.toBeVisible();
+});
 test('keyboard shortcuts focus search and send; CodeMirror loads on demand', async ({ page }) => {
   await page.keyboard.press('Control+k');
   await expect(page.locator('#search')).toBeFocused();
@@ -126,6 +168,18 @@ test('keyboard shortcuts focus search and send; CodeMirror loads on demand', asy
   await page.locator('.cm-content').fill('{"hello":true}');
   await page.keyboard.press('Control+Enter');
   await expect(page.locator('#metrics')).toContainText('200');
+  await expect(page.locator('#response-content .syntax-key').first()).toContainText('message');
+  await page.keyboard.press('Control+s');
+  await expect
+    .poll(
+      async () =>
+        (await page.locator('#modal').isVisible()) ||
+        (await page.locator('#save-state').textContent()) === '已保存到项目'
+    )
+    .toBe(true);
+  if (await page.locator('#modal').isVisible())
+    await page.locator('#modal-actions').getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.locator('#save-state')).toHaveText('已保存到项目');
   await expect(page.locator('#cancel')).toBeHidden();
   const sent = page.waitForRequest(req => req.url().endsWith('/executions') && req.method() === 'POST');
   await page.keyboard.press('Meta+Enter');

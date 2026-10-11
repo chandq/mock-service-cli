@@ -11,7 +11,9 @@ self.onmessage = event => {
   const { id, action, value, path = [], query = '', start = 0, count = 200 } = event.data;
   try {
     let result;
-    if (action === 'load') {
+    if (action === 'format') {
+      result = JSON.stringify(JSON.parse(value), null, 2);
+    } else if (action === 'load') {
       raw = value;
       parsed = undefined;
       try {
@@ -36,6 +38,7 @@ self.onmessage = event => {
           ? rows.slice(start, start + count)
           : all.slice(start, start + count).map((line, i) => ({ number: start + i + 1, text: line.slice(0, 20000) }))
       };
+      if (parsed !== undefined) for (const row of result.rows) row.parts = jsonParts(row.text);
     } else if (action === 'tree') {
       const node = at(path);
       if (node === null || typeof node !== 'object')
@@ -63,3 +66,19 @@ self.onmessage = event => {
     self.postMessage({ id, error: error.message });
   }
 };
+
+function jsonParts(line) {
+  const parts = [];
+  const tokens = /("(?:\\.|[^"\\])*")(\s*:)?|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b/g;
+  let start = 0;
+  for (const match of line.matchAll(tokens)) {
+    if (match.index > start) parts.push({ kind: 'punctuation', text: line.slice(start, match.index) });
+    parts.push({
+      kind: match[1] ? (match[2] ? 'key' : 'string') : /^[\d-]/.test(match[0]) ? 'number' : 'keyword',
+      text: match[0]
+    });
+    start = match.index + match[0].length;
+  }
+  if (start < line.length) parts.push({ kind: 'punctuation', text: line.slice(start) });
+  return parts;
+}

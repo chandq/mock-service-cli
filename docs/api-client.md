@@ -17,6 +17,22 @@ mock-service-cli --api-client ./api-tests --host ./allowlist.txt --auth 'passwor
 
 ## 请求调试
 
+请求 Body 选择 JSON 或 XML 后启用语法高亮、括号匹配、行号和代码折叠；Text 保持纯文本。JSON 提供格式化按钮，响应 JSON 也使用按类型区分的配色。高亮随浅色/深色主题切换。
+
+点击顶部“快捷键”可随时查看操作说明。快捷键在工作台页面获得焦点时生效；弹窗打开时暂停发送、保存和请求搜索快捷键。
+
+| 操作 | Windows / Linux | macOS | 范围 |
+| --- | --- | --- | --- |
+| 发送当前请求 | Ctrl + Enter | ⌘ + Enter | 工作台 |
+| 保存当前请求 | Ctrl + S | ⌘ + S | 工作台 |
+| 聚焦左侧请求搜索 | Ctrl + K | ⌘ + K | 工作台 |
+| 查找 / 替换正文 | Ctrl + F | ⌘ + F | 先点击正文编辑器 |
+| 撤销 / 重做 | Ctrl + Z / Ctrl + Shift + Z | ⌘ + Z / ⌘ + Shift + Z | 正文编辑器 |
+| 缩进 / 取消缩进 | Tab / Shift + Tab | Tab / Shift + Tab | 正文编辑器 |
+| 离开正文编辑器 | 先 Escape，再 Tab | 先 Escape，再 Tab | 正文编辑器 |
+
+行号旁的折叠箭头可收起或展开 JSON/XML 块。JSON 格式化也支持撤销。编辑器加载失败时会显示提示，并保留普通文本框供继续编辑。
+
 左侧组织集合、文件夹及历史，中间编辑请求，右侧查看响应。集合或文件夹旁的 `···` 提供新建、改名、复制、移动、排序及删除操作。请求标签页保留未保存标记；保存使用 `Ctrl/Cmd+S`，发送使用 `Ctrl/Cmd+Enter`，搜索使用 `Ctrl/Cmd+K`。
 
 支持 GET、POST、PUT、PATCH、DELETE、HEAD、OPTIONS。URL 和 Params 双向编辑，参数及请求头支持同名重复项、停用和批量粘贴。`Host`、连接控制、代理认证和正文长度等传输头由执行器管理。

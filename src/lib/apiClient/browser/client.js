@@ -257,6 +257,7 @@
           {
             className: tab.id === state.active ? 'active' : '',
             role: 'tab',
+            title: `${tab.request.method} ${tab.request.name}${tab.dirty ? '（未保存）' : ''}`,
             'aria-selected': String(tab.id === state.active),
             onclick: () => {
               state.active = tab.id;
@@ -273,6 +274,7 @@
             className: 'tab-close',
             role: 'button',
             'aria-label': `关闭 ${tab.request.name}`,
+            title: `关闭 ${tab.request.name}`,
             tabindex: '0',
             text: '×',
             onclick: event => {
@@ -290,6 +292,7 @@
         return node;
       })
     );
+    $('#tabs .active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function closeTab(tab) {
     if (tab.dirty && !confirm('此请求尚未保存，确定关闭？')) return;
@@ -998,7 +1001,26 @@
           }
         });
         host.append(textarea);
-        content.append(host);
+        const tools = el('div', { className: 'toolbar' });
+        if (req.body.type === 'json')
+          tools.append(
+            button('格式化 JSON', () =>
+              guard(async () => {
+                const before = req.body.text || '';
+                const formatted = await work('format', { value: before });
+                if (!host.isConnected || req.body.text !== before) return;
+                if (editor) editor.replaceText(formatted);
+                else {
+                  textarea.value = formatted;
+                  req.body.text = formatted;
+                  mark();
+                }
+              })
+            )
+          );
+        tools.append(button('查找 / 替换', () => editor?.search()));
+        const hint = el('p', { className: 'hint', text: '正在加载正文编辑器…' });
+        content.append(tools, host, hint);
         loadEditor()
           .then(() => {
             if (!host.isConnected || !window.createApiEditor) return;
@@ -1010,10 +1032,14 @@
                 req.body.text = value;
                 mark();
               },
-              req.body.type === 'json'
+              req.body.type
             );
+            hint.textContent = `${req.body.type === 'text' ? '纯文本' : req.body.type.toUpperCase() + ' 语法高亮'} · 行号与折叠 · Tab 缩进 · Ctrl / ⌘ + F 查找`;
           })
-          .catch(() => {});
+          .catch(() => {
+            hint.textContent = '编辑器加载失败，当前使用普通文本框；请重新构建服务并刷新页面。';
+            editorPromise = null;
+          });
       }
     } else if (state.panel === 'auth') content.append(authForm(req.auth, mark));
     else if (state.panel === 'tests') renderRules(content, req);
@@ -1398,7 +1424,9 @@
           'div',
           { className: 'response-line', style: `position:absolute;top:${(start + i) * 21}px` },
           el('span', { className: 'line-number', text: row.number }),
-          row.text
+          ...(row.parts
+            ? row.parts.map(part => el('span', { className: `syntax-${part.kind}`, text: part.text }))
+            : [row.text])
         )
       )
     );
@@ -2008,6 +2036,33 @@
         location.assign('/');
       });
     $('#modal-close').onclick = closeModal;
+    const modifier = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
+    $('#save kbd').textContent = `${modifier} S`;
+    $('#search').placeholder = `搜索请求…  ${modifier} K`;
+    $('#shortcuts').onclick = () =>
+      modal('快捷键', [
+        el('p', {
+          className: 'hint',
+          text: '页面获得焦点后可用；Mac 使用 ⌘，Windows / Linux 使用 Ctrl。打开弹窗时暂停工作台快捷键。'
+        }),
+        ...[
+          ['发送当前请求', `${modifier} + Enter`],
+          ['保存当前请求到项目', `${modifier} + S`],
+          ['聚焦左侧请求搜索', `${modifier} + K`],
+          ['正文内查找 / 替换（先点击编辑器）', `${modifier} + F`],
+          ['正文撤销 / 重做', `${modifier} + Z / ${modifier} + Shift + Z`],
+          ['正文缩进 / 取消缩进', 'Tab / Shift + Tab'],
+          ['离开正文编辑器', '先按 Escape，再按 Tab'],
+          ['关闭弹窗或正文查找栏', 'Escape']
+        ].map(([label, keys]) =>
+          el(
+            'div',
+            { className: 'result-card' },
+            el('strong', { text: label }),
+            el('div', {}, el('kbd', { text: keys }))
+          )
+        )
+      ]);
     document.addEventListener(
       'keydown',
       event => {
