@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API Client · Mock Service</title>
+    <link rel="stylesheet" href="/client.css" />
+    <script src="/client.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="API Client 首页"
+        ><span class="logo">m<span>↗</span></span
+        ><span>API Client <small>MOCK SERVICE</small></span></a
+      >
+      <div class="workspace-badge" id="workspace">本地工作区</div>
+      <div class="spacer"></div>
+      <button id="import">↓ 导入</button><button id="cookies">Cookies</button
+      ><select id="environment" aria-label="当前环境">
+        <option value="">无环境</option></select
+      ><button id="environments">环境管理</button
+      ><select id="theme" aria-label="主题">
+        <option value="system">跟随系统</option>
+        <option value="light">浅色</option>
+        <option value="dark">深色</option></select
+      ><button id="logout" title="清除当前会话与凭据">退出</button>
+    </header>
+    <main class="layout" id="layout">
+      <aside class="sidebar">
+        <div class="sidebar-heading">
+          <strong>工作区</strong><button id="new-collection" title="新建集合">＋ 集合</button>
+        </div>
+        <div class="search-wrap">
+          <input id="search" type="search" placeholder="搜索请求…  ⌘ K" aria-label="搜索请求" />
+        </div>
+        <div class="segment">
+          <button id="show-collections" class="active">集合</button><button id="show-history">历史</button>
+        </div>
+        <div id="tree" class="tree" role="tree" aria-label="请求列表"></div>
+        <div class="sidebar-footer"><span class="status-dot"></span> 本地优先 · 配置保存到项目</div>
+      </aside>
+      <div
+        class="splitter"
+        id="left-split"
+        role="separator"
+        aria-label="调整侧栏宽度"
+        aria-orientation="vertical"
+        tabindex="0"
+      ></div>
+      <section class="request-pane">
+        <div class="tabs" id="tabs" role="tablist" aria-label="已打开请求"></div>
+        <div class="request-heading">
+          <div>
+            <span class="eyebrow">REQUEST</span><input id="request-name" aria-label="请求名称" value="新请求" />
+          </div>
+          <button id="save">保存 <kbd>⌘ S</kbd></button><button id="export">导出</button
+          ><button id="new-request" title="新建请求">＋</button>
+        </div>
+        <div class="url-bar">
+          <select id="method" aria-label="HTTP 方法">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+            <option>HEAD</option>
+            <option>OPTIONS</option></select
+          ><input id="url" aria-label="请求 URL" placeholder="https://api.example.com/users" /><button
+            id="send"
+            class="primary"
+          >
+            发送 ↗</button
+          ><button id="cancel" hidden>取消</button>
+        </div>
+        <div id="url-preview" class="url-preview"></div>
+        <nav class="panel-tabs" id="request-panels" aria-label="请求配置">
+          <button data-panel="query" class="active">Params</button><button data-panel="headers">Headers</button
+          ><button data-panel="body">Body</button><button data-panel="auth">Auth</button
+          ><button data-panel="tests">Tests</button><button data-panel="settings">设置</button>
+        </nav>
+        <div id="request-content" class="request-content"></div>
+        <div class="request-footer"><span id="save-state">未保存的请求</span><span>⌘ / Ctrl + Enter 发送</span></div>
+      </section>
+      <div
+        class="splitter"
+        id="right-split"
+        role="separator"
+        aria-label="调整响应宽度"
+        aria-orientation="vertical"
+        tabindex="0"
+      ></div>
+      <section class="response-pane">
+        <div class="response-heading">
+          <div>
+            <span class="eyebrow">RESPONSE</span>
+            <h2>响应结果</h2>
+          </div>
+          <div class="spacer"></div>
+          <button id="run">▷ 运行集合</button>
+        </div>
+        <div class="response-metrics" id="metrics"><span class="muted">准备就绪</span></div>
+        <nav class="panel-tabs" id="response-panels" aria-label="响应内容">
+          <button data-view="body" class="active">Body</button><button data-view="headers">Headers</button
+          ><button data-view="request">请求详情</button><button data-view="tests">Tests</button>
+        </nav>
+        <div class="response-tools">
+          <select id="response-format" aria-label="响应格式">
+            <option value="pretty">格式化</option>
+            <option value="tree">JSON 树</option>
+            <option value="raw">原文</option></select
+          ><input id="response-search" placeholder="搜索响应…" aria-label="搜索响应" /><button id="response-copy">
+            复制</button
+          ><button id="response-download">下载</button>
+        </div>
+        <div id="response-content" class="response-content">
+          <div class="empty-state">
+            <div class="empty-symbol">↗</div>
+            <h3>从一个请求开始</h3>
+            <p>输入接口地址，或导入已有集合。<br />响应、请求详情与断言结果将在这里呈现。</p>
+            <span class="shortcut">Ctrl / ⌘ + Enter</span>
+          </div>
+        </div>
+        <div class="response-footer" id="response-footer">HTTP 工作台 · 数据保存在本地</div>
+      </section>
+    </main>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="modal">
+      <div class="modal-head">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" aria-label="关闭对话框">×</button>
+      </div>
+      <div id="modal-body"></div>
+      <div id="modal-actions"></div>
+    </dialog>
+  </body>
+</html>

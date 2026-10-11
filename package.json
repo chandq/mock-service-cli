@@ -1,7 +1,7 @@
 {
   "name": "mock-service-cli",
   "version": "4.10.0",
-  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page, File explorer",
+  "description": "🦅 Local Mock/Static/SPA server, Http?s request proxy, API overview page, File explorer, API client",
   "main": "./dist/mockServer.js",
   "bin": {
     "mock-service-cli": "bin/mock-service-cli"
@@ -32,13 +32,17 @@
     "release:prefix": "standard-version --prerelease alpha",
     "release:patch": "standard-version --release-as patch && git push --follow-tags origin master",
     "release:minor": "standard-version --release-as minor && git push --follow-tags origin master",
-    "release:major": "standard-version --release-as major && git push --follow-tags origin master"
+    "release:major": "standard-version --release-as major && git push --follow-tags origin master",
+    "test:browser": "playwright test",
+    "test:api-client": "tap --no-coverage test/apiClient*.test.js"
   },
   "files": [
     "bin",
     "dist/*.js",
     "dist/*.html",
-    "docs/static-server.config.example.json"
+    "docs/static-server.config.example.json",
+    "dist/api-client",
+    "docs/api-client.md"
   ],
   "engines": {
     "node": ">=18"
@@ -56,6 +60,7 @@
     "File explorer",
     "File browser",
     "File manager",
+    "API client",
     "express"
   ],
   "repository": {
@@ -72,11 +77,18 @@
     "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.48.2",
     "7zip-bin": "^5.2.0",
     "colors": "^1.4.0",
+    "content-disposition": "^0.5.4",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.5",
     "express": "^4.22.2",
@@ -86,6 +98,7 @@
     "husky": "^4.3.8",
     "lint-staged": "^10.2.2",
     "lodash": "^4.18.1",
+    "mime-types": "^2.1.35",
     "minimist": "^1.2.6",
     "mockjs": "^0.1.10",
     "node-unrar-js": "^2.0.2",
@@ -95,6 +108,8 @@
     "standard-version": "^8.0.0",
     "tap": "^15.0.10",
     "tar-stream": "^3.2.0",
+    "tough-cookie": "^5.1.2",
+    "yaml": "^2.9.1",
     "yauzl": "^2.10.0"
   },
   "tap": {

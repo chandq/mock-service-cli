@@ -36,3 +36,9 @@ stdout.log
 
 # mock
 /mock
+
+# Local API Client data and browser test artifacts
+/.mock-service-client/
+/.cache/
+/test-results/
+/playwright-report/

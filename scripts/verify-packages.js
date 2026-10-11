@@ -42,6 +42,19 @@ Object.entries(editions).forEach(([edition, expectations]) => {
   const packed = packListing(directory);
   const packedNames = packed.files.map(file => file.path);
   if (!packedNames.includes('dist/runtime.js')) fail(`${edition} package is missing dist/runtime.js`);
+  for (const asset of [
+    'apiClientServer.js',
+    'assertionWorker.js',
+    'api-client/index.html',
+    'api-client/client.js',
+    'api-client/client.css',
+    'api-client/editor.js',
+    'api-client/worker.js',
+    'api-client/login.html',
+    'api-client/login.js'
+  ]) {
+    if (!packedNames.includes(`dist/${asset}`)) fail(`${edition} package is missing ${asset}`);
+  }
   const runtime = readFileSync(path.join(directory, 'dist/runtime.js'), 'utf8');
   (expectations.forbidden || []).forEach(name => {
     if (runtime.includes(name)) fail(`${edition} runtime still references ${name}`);

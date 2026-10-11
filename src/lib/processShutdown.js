@@ -1,4 +1,4 @@
-const WINDOWS_CONSOLE_SERVERS = new Set(['staticServer', 'fileExplorerServer']);
+const WINDOWS_CONSOLE_SERVERS = new Set(['staticServer', 'fileExplorerServer', 'apiClientServer']);
 
 function shouldWaitForConsoleChildShutdown(platform, serverName, signal) {
   // Windows sends Ctrl+C to every process sharing the console.

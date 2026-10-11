@@ -1,4 +1,5 @@
 const moduleLoaders = {
+  apiClientServer: () => require('./lib/apiClientServer'),
   cli: () => require('./bin/mock-service-cli'),
   mockServer: () => require('./lib/mockServer'),
   staticServer: () => require('./lib/staticServer'),

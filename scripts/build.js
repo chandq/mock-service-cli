@@ -8,6 +8,7 @@ const srcLibDir = path.join(root, 'src/lib');
 const editions = new Set(['light', 'ultra']);
 
 const wrappers = {
+  apiClientServer: 'apiClientServer',
   cli: 'cli',
   mockServer: 'mockServer',
   staticServer: 'staticServer',
@@ -78,6 +79,30 @@ async function build() {
 
   Object.keys(wrappers).forEach(fileName => {
     writeRuntimeWrapper(fileName, wrappers[fileName]);
+  });
+
+  await esbuild.build({
+    entryPoints: [path.join(srcLibDir, 'apiClient/assertionWorker.js')],
+    outfile: path.join(distDir, 'assertionWorker.js'),
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node18'
+  });
+
+  const clientAssets = path.join(distDir, 'api-client');
+  mkdirSync(clientAssets, { recursive: true });
+  for (const filename of ['index.html', 'login.html', 'login.js', 'client.js', 'client.css', 'worker.js']) {
+    copyFileSync(path.join(srcLibDir, 'apiClient/browser', filename), path.join(clientAssets, filename));
+  }
+  await esbuild.build({
+    entryPoints: [path.join(srcLibDir, 'apiClient/browser/editor.js')],
+    outfile: path.join(clientAssets, 'editor.js'),
+    bundle: true,
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2020',
+    minify: true
   });
 
   copyFileSync(path.join(srcLibDir, 'api-overview.html'), path.join(distDir, 'api-overview.html'));

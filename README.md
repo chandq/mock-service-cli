@@ -5,7 +5,7 @@
 
 # 🦅 mock-service-cli
 
-一个基于 Node.js 和 Express 的轻量级 Mock 套件命令行工具，提供本地开发调试所需的各种服务器功能。
+一个基于 Node.js 和 Express 的轻量级 终端服务 套件命令行工具，提供本地开发调试所需的各种服务器功能。
 
 ## ✨ 核心功能
 
@@ -15,6 +15,7 @@
 - **HTTP Proxy** - 本地接口代理服务
 - **API Overview** - 现代化的 API 概览页面
 - **File Explorer** - 现代化的文件浏览器
+- **API Client** - 现代化的 API 客户端
 
 ## 🚀 特性
 
@@ -25,7 +26,7 @@
 - 🔄 支持热更新（Mock 文件改动后自动重启）
 - 📁 支持文件浏览器，可预览各种文件类型
 - 💾 支持保存接口响应数据
-- 🔗 支持 HTTP 请求代理
+- 🔗 支持终端打开 HTTP 请求客户端
 
 ## 📦 安装
 
@@ -71,37 +72,38 @@ npx mock-service-cli [options] [path]
 
 ## 🛠️ 命令行选项
 
-| 选项                       | 描述                                                              | 默认值 |
-| -------------------------- | ----------------------------------------------------------------- | ------ |
-| `-h` 或 `--help`           | 显示帮助信息                                                      | -      |
-| `-p` 或 `--port`           | Mock 服务器端口                                                   | 8090   |
-| `-d`                       | 指定 mock 目录                                                    | ./mock |
-| `-f`                       | 指定单个 mock 文件                                                | -      |
-| `-s` 或 `--silent`         | 抑制日志输出                                                      | -      |
-| `-v` 或 `--version`        | 显示版本信息                                                      | -      |
-| `-S` 或 `--socket-server`  | 启动 socket 服务器，用于保存 API 响应数据                         | false  |
-| `-a` 或 `--api-stat`       | 打印 API URL 和文件路径信息                                       | false  |
-| `-t` 或 `--track`          | 记录操作信息到文件                                                | false  |
-| `-o` 或 `--cors-origin`    | 配置 CORS 允许的源，多个源用逗号分隔                              | \*     |
-| `-O` 或 `--proxy-options`  | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数       | -      |
-| `-r` 或 `--rewrite`        | rewrite http or https request url prefix of proxy, default false. | false  |
-| `-H` 或 `--cors-headers`   | 配置 CORS 头信息                                                  | \*     |
-| `-A` 或 `--append-headers` | 添加响应头信息，多个头用逗号分隔                                  | -      |
-| `-D` 或 `--web-dir`        | 启用 Web 服务器，指定 web 目录（SPA 应用）                        | -      |
-| `-P` 或 `--web-port`       | Web 服务器端口                                                    | 9090   |
-| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                                     | -      |
-| `-R` 或 `--static-server`  | 启用单目录静态服务器，指定静态资源目录                            | -      |
-| `--spa-fallback <path>`    | 单目录模式显式启用 SPA 回退                                       | -      |
-| `--static-config <file>`   | 使用自包含 JSON 配置启动静态服务器                                | -      |
-| `-w` 或 `--open`           | 自动打开可用的 Web 页面或 API 概览页                              | false  |
-| `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数，需配合 `--watch`）      | 无限   |
-| `--watch-interval <n>`     | 轮询间隔（毫秒；仅 Windows Node 24+，需配合 `--watch`）           | 250    |
-| `--watch`                  | 开启静态服务器的文件监听与 live-reload（默认关闭）                | false  |
-| `--windows-hidden`         | 读取 Windows 系统隐藏属性（attrib/PowerShell）判定隐藏项          | false  |
-| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./     |
-| `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false  |
-| `--auth <password>`        | 为文件浏览器启用密码认证（仅可搭配 `--explorer`）                 | -      |
-| `--host [allowlist-file]`  | 暴露全部 IPv4 网卡；传入文件时仅允许白名单 IP 访问                | false  |
+| 选项                       | 描述                                                              | 默认值                 |
+| -------------------------- | ----------------------------------------------------------------- | ---------------------- |
+| `-h` 或 `--help`           | 显示帮助信息                                                      | -                      |
+| `-p` 或 `--port`           | Mock 服务器端口                                                   | 8090                   |
+| `-d`                       | 指定 mock 目录                                                    | ./mock                 |
+| `-f`                       | 指定单个 mock 文件                                                | -                      |
+| `-s` 或 `--silent`         | 抑制日志输出                                                      | -                      |
+| `-v` 或 `--version`        | 显示版本信息                                                      | -                      |
+| `-S` 或 `--socket-server`  | 启动 socket 服务器，用于保存 API 响应数据                         | false                  |
+| `-a` 或 `--api-stat`       | 打印 API URL 和文件路径信息                                       | false                  |
+| `-t` 或 `--track`          | 记录操作信息到文件                                                | false                  |
+| `-o` 或 `--cors-origin`    | 配置 CORS 允许的源，多个源用逗号分隔                              | \*                     |
+| `-O` 或 `--proxy-options`  | 配置 HTTP 请求代理选项，支持 js 文件、json 文件或命令行参数       | -                      |
+| `-r` 或 `--rewrite`        | rewrite http or https request url prefix of proxy, default false. | false                  |
+| `-H` 或 `--cors-headers`   | 配置 CORS 头信息                                                  | \*                     |
+| `-A` 或 `--append-headers` | 添加响应头信息，多个头用逗号分隔                                  | -                      |
+| `-D` 或 `--web-dir`        | 启用 Web 服务器，指定 web 目录（SPA 应用）                        | -                      |
+| `-P` 或 `--web-port`       | Web 服务器端口                                                    | 9090                   |
+| `-b` 或 `--web-baseurl`    | 指定 SPA Web 服务器的公共路径                                     | -                      |
+| `-R` 或 `--static-server`  | 启用单目录静态服务器，指定静态资源目录                            | -                      |
+| `--spa-fallback <path>`    | 单目录模式显式启用 SPA 回退                                       | -                      |
+| `--static-config <file>`   | 使用自包含 JSON 配置启动静态服务器                                | -                      |
+| `-w` 或 `--open`           | 自动打开可用的 Web 页面或 API 概览页                              | false                  |
+| `--watch-depth <n>`        | 限制静态服务器文件监听递归深度（非负整数，需配合 `--watch`）      | 无限                   |
+| `--watch-interval <n>`     | 轮询间隔（毫秒；仅 Windows Node 24+，需配合 `--watch`）           | 250                    |
+| `--watch`                  | 开启静态服务器的文件监听与 live-reload（默认关闭）                | false                  |
+| `--windows-hidden`         | 读取 Windows 系统隐藏属性（attrib/PowerShell）判定隐藏项          | false                  |
+| `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./                     |
+| `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false                  |
+| `--api-client [dir]`       | 启用独立 HTTP 接口工作台，指定项目工作区目录                      | ./.mock-service-client |
+| `--auth <password>`        | 为文件浏览器或 API Client 启用密码认证                            | -                      |
+| `--host [allowlist-file]`  | 暴露全部 IPv4 网卡；传入文件时仅允许白名单 IP 访问                | false                  |
 
 ## 📖 使用示例
 
@@ -250,6 +252,19 @@ module.exports = {
   })
 };
 ```
+
+## API Client 接口工作台
+
+```bash
+mock-service-cli --api-client --open
+mock-service-cli --api-client ./api-tests --port 8090
+```
+
+独立的本地 HTTP 调试页面，支持集合/文件夹、环境和 Secret 变量、Basic/Bearer/API Key、Cookie、文件上传、响应查看、声明式断言和集合执行。可导入 cURL、Postman v2.1、OpenAPI 3.0/3.1，导出原生 JSON 与 cURL。集合与环境保存为项目 JSON 文件，界面提供深浅主题、多标签页和快捷键。
+
+默认工作区为 `./.mock-service-client`，首次保存才创建。默认仅本机访问；`--host` 控制局域网访问和 IP 白名单，`--auth` 启用密码认证，两者可单独使用或组合使用。此模式与 Mock、静态服务和文件浏览器等模式互斥，需要同时运行时请分别启动并使用不同端口。
+
+完整用法、凭据保存、导入兼容性及资源限制见 [API Client 文档](docs/api-client.md)。
 
 ## 🎨 API 概览页面
 

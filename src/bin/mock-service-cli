@@ -20,7 +20,7 @@ if (argv.h || argv.help) {
       '',
       'PS: Mock File仅支持commonjs规范的js、cjs文件，不支持ES Module',
       'options:',
-      '  -p --port            Mock server port to use. If 0, look for open port. [8090]',
+      '  -p --port            Starting port for a free port search. API Client: 0 uses a system-assigned port. [8090]',
       '  -d                   Specify mock directory, default [./mock] directory,',
       '                       Also watch js files changes and support hot reload',
       '  -f --file            Specify the input data source, support javascript ',
@@ -52,7 +52,8 @@ if (argv.h || argv.help) {
       '  --static-config <file>  Self-contained static server configuration for root apps, mounts, proxy and fallback.',
       '  --host [file]        Bind all web services to all IPv4 interfaces, or restrict them with an IP allowlist file.',
       '  --edit               Enable file create, rename, and delete operations in file explorer.',
-      '  --auth <password>    Require a password for file explorer access.',
+      '  --auth <password>    Require a password for file explorer or API Client.',
+      '  --api-client [dir]   Start the HTTP API workbench. Default workspace: ./.mock-service-client',
       '',
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
@@ -61,6 +62,67 @@ if (argv.h || argv.help) {
     ].join('\n')
   );
   process.exit();
+}
+
+const apiClientArg = argv['api-client'];
+const apiClientEnabled = apiClientArg !== undefined && apiClientArg !== false;
+if (apiClientEnabled) {
+  if (apiClientArg !== true && (typeof apiClientArg !== 'string' || !apiClientArg)) {
+    console.error('--api-client requires an optional workspace directory');
+    process.exit(1);
+  }
+  const conflicts = [
+    'e',
+    'explorer',
+    'd',
+    'f',
+    'file',
+    'D',
+    'web-dir',
+    'R',
+    'static-server',
+    'static-config',
+    'S',
+    'socket-server',
+    'O',
+    'proxy-options',
+    'r',
+    'rewrite',
+    'edit',
+    'P',
+    'web-port',
+    'b',
+    'web-baseurl',
+    'spa-fallback',
+    'watch',
+    'watch-depth',
+    'watch-interval',
+    'a',
+    'api-stat',
+    't',
+    'track',
+    'o',
+    'cors-origin',
+    'H',
+    'cors-headers',
+    'A',
+    'append-headers'
+  ];
+  const conflict = conflicts.find(key => argv[key] !== undefined && argv[key] !== false);
+  if (conflict) {
+    console.error(`--api-client cannot be combined with ${conflict.length === 1 ? '-' : '--'}${conflict}`);
+    process.exit(1);
+  }
+  const requestedPort = argv.p ?? argv.port ?? 8090;
+  if (
+    typeof requestedPort === 'boolean' ||
+    !Number.isInteger(Number(requestedPort)) ||
+    Number(requestedPort) < 0 ||
+    Number(requestedPort) > 65535
+  ) {
+    console.error('--port requires an integer from 0 to 65535');
+    process.exit(1);
+  }
 }
 
 if (argv.host !== undefined && typeof argv.host !== 'boolean' && typeof argv.host !== 'string') {
@@ -78,8 +140,8 @@ if (argv.auth !== undefined && (typeof argv.auth !== 'string' || !argv.auth)) {
   process.exit(1);
 }
 
-if (argv.auth && !(argv.e || argv.explorer)) {
-  console.error('--auth can only be used with --explorer');
+if (argv.auth && !(argv.e || argv.explorer || argv['api-client'])) {
+  console.error('--auth can only be used with --explorer or --api-client');
   process.exit(1);
 }
 
@@ -226,7 +288,14 @@ if (hostAllowlist.length > 0) {
   process.env.HOST_ALLOWLIST = JSON.stringify(hostAllowlist);
 }
 process.env.EXPLORER_EDIT = argv.edit === true ? 'true' : 'false';
-if (explorerAuthPassword) {
+if (apiClientEnabled) {
+  process.env.API_CLIENT_DIRECTORY = resolve(
+    process.cwd(),
+    apiClientArg === true ? '.mock-service-client' : apiClientArg
+  );
+  process.env.API_CLIENT_AUTH = explorerAuthPassword || '';
+}
+if (explorerAuthPassword && !apiClientEnabled) {
   process.env.EXPLORER_AUTH = explorerAuthPassword;
 }
 // injectEnvVariable('PROXY_OPTIONS', argv.O || argv['proxy-options']);
@@ -258,7 +327,23 @@ if (proxyArg) {
   process.env.PROXY_OPTIONS = JSON.stringify(proxyTable);
 }
 // whether to start Web server or not
-if (argv.D || argv['web-dir']) {
+if (apiClientEnabled) {
+  const requestedPort = Number(argv.p ?? argv.port ?? 8090);
+  if (requestedPort === 0) {
+    process.env.PORT = '0';
+    initServe();
+  } else {
+    portfinder.getPort({ port: requestedPort, host: process.env.SERVER_HOST }, (error, availablePort) => {
+      if (error) {
+        console.error(`API Client 启动失败：无法从端口 ${requestedPort} 开始找到可用端口，请尝试 --port 0。`);
+        process.exitCode = 1;
+        return;
+      }
+      process.env.PORT = String(availablePort);
+      initServe();
+    });
+  }
+} else if (argv.D || argv['web-dir']) {
   // 解析SPA应用参数：SPA Web目录
   process.env.WEB_ROOT = resolve(process.cwd(), argv.D || argv['web-dir']);
   if (!existsSync(process.env.WEB_ROOT)) {
@@ -367,7 +452,7 @@ function startManagedServer(fileName) {
   managedServerProcess.once('exit', (code, signal) => {
     clearTimeout(managedServerShutdownTimer);
     closeManagedConsoleInput();
-    if (managedServerShutdown) exitWithManagedServer(code, signal);
+    if (managedServerShutdown || apiClientEnabled) exitWithManagedServer(code, signal);
   });
 
   managedServerProcess.once('error', error => {
@@ -402,7 +487,9 @@ function startFileExplorerServer() {
  * 初始化服务
  */
 function initServe() {
-  if (explorerDir) {
+  if (apiClientEnabled) {
+    startManagedServer('apiClientServer');
+  } else if (explorerDir) {
     // 文件浏览器：指定目录
     process.env.EXPLORER_DIRECTORY = resolve(process.cwd(), explorerDir);
     if (!existsSync(process.env.EXPLORER_DIRECTORY)) {

@@ -45,7 +45,7 @@ function createManifest() {
     description: edition === 'light' ? rootManifest.description : `${rootManifest.description} (Ultra archive formats)`,
     main: rootManifest.main,
     bin: rootManifest.bin,
-    files: ['bin', 'dist', 'docs/static-server.config.example.json', 'README.md', 'LICENSE'],
+    files: ['bin', 'dist', 'docs/static-server.config.example.json', 'docs/api-client.md', 'README.md', 'LICENSE'],
     engines: rootManifest.engines,
     author: rootManifest.author,
     keywords: edition === 'light' ? rootManifest.keywords : [...rootManifest.keywords, 'archive', '7z', 'rar'],
@@ -61,6 +61,6 @@ function createManifest() {
 buildEdition();
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
-['bin', 'dist', 'README.md', 'LICENSE', 'docs/static-server.config.example.json'].forEach(copy);
+['bin', 'dist', 'README.md', 'LICENSE', 'docs/static-server.config.example.json', 'docs/api-client.md'].forEach(copy);
 writeFileSync(path.join(outputDir, 'package.json'), `${JSON.stringify(createManifest(), null, 2)}\n`);
 console.log(`Prepared ${edition} package in ${path.relative(root, outputDir)}`);

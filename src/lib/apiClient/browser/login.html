@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>登录 · API Client</title>
+    <link rel="stylesheet" href="/client.css" />
+    <script src="/login.js" defer></script>
+  </head>
+  <body class="login-page">
+    <form id="login-form" class="login-card">
+      <span class="logo">m↗</span>
+      <h1>API Client</h1>
+      <p>输入启动服务时设置的密码，进入接口工作台。</p>
+      <label>访问密码<input id="password" type="password" autocomplete="current-password" required autofocus /></label
+      ><button class="primary" type="submit">进入工作台 →</button>
+      <p id="error" role="alert"></p>
+    </form>
+  </body>
+</html>
