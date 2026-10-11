@@ -5,7 +5,50 @@ const os = require('os');
 const http = require('http');
 const { spawn, spawnSync } = require('child_process');
 const crypto = require('crypto');
+const portfinder = require('portfinder');
 const { createClientServer } = require('../src/lib/apiClient/server');
+
+function closeTestServer(server) {
+  return new Promise(resolve => {
+    server.close(resolve);
+    // Node 18 does not close idle keep-alive connections in server.close().
+    server.closeAllConnections();
+  });
+}
+
+test('test server cleanup closes keep-alive connections without waiting for their timeout', async t => {
+  const server = http.createServer((req, res) => res.end('ok'));
+  server.keepAliveTimeout = 60000;
+  const agent = new http.Agent({ keepAlive: true });
+  t.teardown(() => agent.destroy());
+  t.teardown(() => closeTestServer(server));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise((resolve, reject) => {
+    http
+      .get(`http://127.0.0.1:${server.address().port}`, { agent }, response => {
+        response.resume();
+        response.once('end', resolve);
+        response.once('error', reject);
+      })
+      .once('error', reject);
+  });
+  t.ok(
+    Object.values(agent.freeSockets).some(sockets => sockets.length),
+    'client retains an idle connection'
+  );
+  let timer;
+  try {
+    await Promise.race([
+      closeTestServer(server),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('test server cleanup waited for keep-alive timeout')), 1000);
+      })
+    ]);
+    t.notOk(server.listening, 'server closed while the client agent remained alive');
+  } finally {
+    clearTimeout(timer);
+  }
+});
 
 async function session(base, password) {
   let response;
@@ -112,7 +155,7 @@ test('HTTP API authentication, origin isolation, imports, writes and ownership',
     res.end('<script>globalThis.compromised=true</script>');
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
-  t.teardown(() => new Promise(resolve => upstream.close(resolve)));
+  t.teardown(() => closeTestServer(upstream));
   const result = await fetch(`${base}/__api-client/api/executions`, {
     method: 'POST',
     headers: jsonHeaders,
@@ -171,7 +214,7 @@ test('CLI validates mode conflicts and ports', t => {
 for (const entry of ['src/bin/mock-service-cli', 'bin/mock-service-cli']) {
   test(`${entry} server reports a port taken after discovery`, async t => {
     const occupied = http.createServer((req, res) => res.end('existing server'));
-    t.teardown(() => new Promise(resolve => occupied.close(resolve)));
+    t.teardown(() => closeTestServer(occupied));
     await new Promise(resolve => occupied.listen(0, '127.0.0.1', resolve));
     const port = occupied.address().port;
     const password = 'startup-test-secret';
@@ -204,8 +247,15 @@ for (const entry of ['src/bin/mock-service-cli', 'bin/mock-service-cli']) {
       let requestedPort = 0;
       if (mode === 'occupied port') {
         const occupied = http.createServer((req, res) => res.end('existing server'));
-        t.teardown(() => new Promise(resolve => occupied.close(resolve)));
-        await new Promise(resolve => occupied.listen(0, '127.0.0.1', resolve));
+        t.teardown(() => closeTestServer(occupied));
+        // Keep the subsequent port search outside the OS ephemeral range used by parallel fixtures.
+        const port = await new Promise((resolve, reject) => {
+          portfinder.getPort({ port: 18090, stopPort: 28090, host: '127.0.0.1' }, (error, available) => {
+            if (error) reject(error);
+            else resolve(available);
+          });
+        });
+        await new Promise(resolve => occupied.listen(port, '127.0.0.1', resolve));
         requestedPort = occupied.address().port;
       }
       const flags = [];
