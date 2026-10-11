@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.11.0](https://github.com/chandq/mock-service-cli/compare/v4.10.0...v4.11.0) (2026-10-11)
+
+
+### Features
+
+* **api-client:** add local HTTP API workbench ([b88065b](https://github.com/chandq/mock-service-cli/commit/b88065b70d7c7b21369c5467e016944260ce668c))
+
+
+### Bug Fixes
+
+* **api-client:** compact request tabs and add title tooltips ([5961907](https://github.com/chandq/mock-service-cli/commit/59619076ed43e2d7a5c228e03c725a0684ba8d53))
+* test failed under node 18 ([1e3ef67](https://github.com/chandq/mock-service-cli/commit/1e3ef67b1bef57c19647455f9eebdabb5359561c))
+
 ## [4.10.0](https://github.com/chandq/mock-service-cli/compare/v4.9.3...v4.10.0) (2026-09-15)
 
 
