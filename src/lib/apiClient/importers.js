@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const YAML = require('yaml');
+const { isManagedHeader } = require('./headers');
 const { check, fail, safeObject, request, resource, redact, pointer, flatten } = require('./model');
 const id = () => crypto.randomUUID();
 const pair = (key, value, extra = {}) => ({ key: String(key), value: String(value ?? ''), enabled: true, ...extra });
@@ -79,7 +80,10 @@ function curl(text, warnings) {
       const line = value();
       const colon = line.indexOf(':');
       check(colon > 0, '请求头格式为 Name: Value');
-      item.headers.push(pair(line.slice(0, colon), line.slice(colon + 1).trim()));
+      const key = line.slice(0, colon).trim();
+      const managed = isManagedHeader(key);
+      item.headers.push(pair(key, line.slice(colon + 1).trim(), { enabled: !managed }));
+      if (managed) warnings.push(`请求头 ${key} 由客户端管理，已保留但停用，无需手动设置`);
     } else if (['-d', '--data', '--data-raw', '--data-binary', '--data-urlencode'].includes(flag)) {
       const data = value();
       if (!explicitMethod) item.method = 'POST';

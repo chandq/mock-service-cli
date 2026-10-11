@@ -9,6 +9,7 @@ const { execFileSync } = require('child_process');
 const { CookieJar } = require('tough-cookie');
 const { Engine } = require('../src/lib/apiClient/engine');
 const { request, LIMITS } = require('../src/lib/apiClient/model');
+const { preview } = require('../src/lib/apiClient/importers');
 function listen(server) {
   return new Promise(resolve =>
     server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${server.address().port}`))
@@ -27,6 +28,33 @@ async function finished(engine, job) {
   while (['queued', 'running'].includes(job.state)) await new Promise(resolve => setTimeout(resolve, 10));
   return engine.view(job);
 }
+
+test('cURL with managed headers executes using generated transport headers', async t => {
+  const engine = new Engine();
+  t.teardown(() => engine.close());
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    res.end(JSON.stringify({ headers: req.headers, body: Buffer.concat(chunks).toString() }));
+  });
+  const base = await listen(upstream);
+  t.teardown(() => close(upstream));
+  const imported = preview(
+    'curl',
+    `curl '${base}' -H 'Connection: close' -H 'Host: wrong.test' -H 'Content-Length: 9999' -H 'Content-Type: application/json' -H 'X-Custom: kept' --data-raw '{"ok":true}'`
+  ).collection.items[0];
+  const execute = value => engine.execute(value, 'curl', new CookieJar(), new AbortController().signal);
+  const result = await execute(imported);
+  t.equal(result.status, 200);
+  const received = JSON.parse(result.body);
+  t.equal(received.body, '{"ok":true}');
+  t.equal(received.headers.host, new URL(base).host);
+  t.equal(received.headers['content-length'], String(Buffer.byteLength(received.body)));
+  t.equal(received.headers['content-type'], 'application/json');
+  t.equal(received.headers['x-custom'], 'kept');
+  imported.headers[0].enabled = true;
+  await t.rejects(execute(imported), /Connection.*由客户端管理/, 'manual overrides remain rejected');
+});
 
 test('transport preserves params/headers, streams uploads and decodes compressed responses', async t => {
   const engine = new Engine();

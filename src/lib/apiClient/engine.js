@@ -11,6 +11,7 @@ const { pipeline } = require('stream/promises');
 const { Worker } = require('worker_threads');
 const { CookieJar } = require('tough-cookie');
 const { responseFilename } = require('./download');
+const { isManagedHeader } = require('./headers');
 const { LIMITS, fail, check, request, interpolate, variables, redact, sensitive } = require('./model');
 
 class TemporaryFiles {
@@ -83,20 +84,7 @@ function outgoingHeaders(rows) {
       throw fail('请求头名称或值无效，请检查 Headers');
     }
     const key = row.key.toLowerCase();
-    check(
-      ![
-        'host',
-        'content-length',
-        'connection',
-        'transfer-encoding',
-        'upgrade',
-        'proxy-authorization',
-        'proxy-connection',
-        'trailer',
-        'te'
-      ].includes(key),
-      `请求头 ${row.key} 由客户端管理`
-    );
+    check(!isManagedHeader(key), `请求头 ${row.key} 由客户端管理`);
     if (headers[key]) headers[key] = [].concat(headers[key], row.value);
     else headers[key] = row.value;
   }

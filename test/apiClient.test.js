@@ -113,6 +113,44 @@ test('workspace initializes on save, detects conflicts, rejects symlinks and str
     await t.rejects(store.write('collections', id, { name: 'x', items: [] }), /符号链接/);
   }
 });
+test('cURL retains managed headers as disabled rows with compatibility warnings', t => {
+  const names = [
+    'Connection',
+    'hOsT',
+    'Content-Length',
+    'Transfer-Encoding',
+    'Upgrade',
+    'Proxy-Authorization',
+    'Proxy-Connection',
+    'Trailer',
+    'TE'
+  ];
+  const report = preview(
+    'curl',
+    `curl https://example.com ${names.map(name => `-H '${name}: original'`).join(' ')} -H 'X-Request-ID: first' -H 'X-Request-ID: second'`
+  );
+  const headers = report.collection.items[0].headers;
+  t.same(
+    headers.slice(0, names.length).map(row => row.enabled),
+    names.map(() => false)
+  );
+  t.same(
+    headers.slice(0, names.length).map(row => row.key),
+    names
+  );
+  t.same(
+    headers.slice(-2).map(row => [row.value, row.enabled]),
+    [
+      ['first', true],
+      ['second', true]
+    ]
+  );
+  for (const name of names) t.ok(report.warnings.some(warning => warning.includes(name) && warning.includes('停用')));
+  t.notMatch(report.warnings.join(), 'original', 'warnings do not expose header values');
+  t.notMatch(exportCurl(report.collection.items[0]), /Connection|Content-Length/);
+  t.end();
+});
+
 test('cURL imports quoting, repeated headers, forms and rejects executable input', t => {
   const report = preview(
     'curl',

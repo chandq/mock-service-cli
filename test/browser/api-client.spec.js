@@ -76,9 +76,10 @@ test('response downloads use media types and upstream Unicode filenames', async 
 });
 test('import compatibility preview, environment variables and collection runner', async ({ page }) => {
   await page.locator('#import').click();
-  await page.getByLabel('导入内容').fill(`curl '${target}/imported'`);
+  await page.getByLabel('导入内容').fill(`curl '${target}/imported' -H 'Connection: keep-alive' -H 'Content-Length: 9999'`);
   await page.getByRole('button', { name: '预览兼容性' }).click();
   await expect(page.locator('#modal-body')).toContainText('包含 1 个请求');
+  await expect(page.locator('#modal-body')).toContainText('请求头 Connection 由客户端管理，已保留但停用');
   await page.getByRole('button', { name: '确认导入' }).click();
   await page.locator('#tree').getByText('导入的 cURL', { exact: true }).click();
   await page.locator('#environments').click();
