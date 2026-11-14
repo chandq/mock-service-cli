@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.11.1](https://github.com/chandq/mock-service-cli/compare/v4.11.0...v4.11.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **api-client:** send latest form values without saving first ([942fae8](https://github.com/chandq/mock-service-cli/commit/942fae8f41db26d2a53cec40e89b976136dda077))
+* default disable request header of client managed ([2140a90](https://github.com/chandq/mock-service-cli/commit/2140a9093b63be7e1380588bb87f53223a45939d))
+
 ## [4.11.0](https://github.com/chandq/mock-service-cli/compare/v4.10.0...v4.11.0) (2026-10-11)
 
 
