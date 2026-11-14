@@ -1273,8 +1273,10 @@
   async function send() {
     const tab = active();
     if (tab.job) return;
-    tab.request = secureRequest(tab.request);
-    const data = await api('/executions', 'POST', { request: tab.request, ...executionContext(tab.collectionId) });
+    // 用独立副本承载 Secret 变量引用，保持 tab.request 对象不变；
+    // 否则正文编辑器、参数表等面板闭包会继续指向发送前的旧对象，之后的修改不会被发送或保存。
+    const request = secureRequest(tab.request);
+    const data = await api('/executions', 'POST', { request, ...executionContext(tab.collectionId) });
     tab.job = data.executionId;
     if (active() === tab) {
       syncSend();
@@ -1297,7 +1299,7 @@
       state.history.unshift({
         id: id(),
         time: Date.now(),
-        request: persistable(tab.request),
+        request: persistable(request),
         status: tab.result.status,
         duration: tab.result.duration
       });

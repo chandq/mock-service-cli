@@ -243,3 +243,69 @@ test('secrets remain in memory and are isolated between environments', async ({ 
   await page.locator('#send').click();
   await expect(page.locator('#response-content')).toContainText('未定义变量: token');
 });
+test('edits after sending are sent and saved without stale values', async ({ page }) => {
+  const received = [];
+  const echo = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      received.push({ method: req.method, url: req.url, body });
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ method: req.method, url: req.url, body }));
+    });
+  });
+  await new Promise(resolve => echo.listen(0, '127.0.0.1', resolve));
+  const echoTarget = `http://127.0.0.1:${echo.address().port}`;
+  try {
+    // JSON body: 发送后继续修改，再次发送应携带新值，不需要先保存
+    await page.getByLabel('HTTP 方法').selectOption('POST');
+    await page.locator('#request-panels').getByRole('button', { name: 'Body', exact: true }).click();
+    await page.getByLabel('正文类型').selectOption('json');
+    const editorContent = page.locator('.cm-content');
+    await editorContent.fill('{"v":"alpha-body"}');
+    await page.getByLabel('请求 URL', { exact: true }).fill(`${echoTarget}/echo`);
+    await page.getByRole('button', { name: '发送 ↗', exact: true }).click();
+    await expect(page.locator('#metrics')).toContainText('200');
+    await expect(page.locator('#response-content')).toContainText('alpha-body');
+    await editorContent.fill('{"v":"beta-body"}');
+    await page.getByRole('button', { name: '发送 ↗', exact: true }).click();
+    await expect(page.locator('#metrics')).toContainText('200');
+    await expect(page.locator('#response-content')).toContainText('beta-body');
+    // 保存不得用历史值覆盖界面上的新修改
+    await editorContent.fill('{"v":"gamma-body"}');
+    await page.locator('#save').click();
+    await expect
+      .poll(
+        async () =>
+          (await page.locator('#modal').isVisible()) ||
+          (await page.locator('#save-state').textContent()) === '已保存到项目'
+      )
+      .toBe(true);
+    if (await page.locator('#modal').isVisible())
+      await page.locator('#modal-actions').getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.locator('#save-state')).toHaveText('已保存到项目');
+    await expect(page.locator('.cm-content')).toContainText('gamma-body');
+    // Query 表格: 发送后修改参数值，再次发送应携带新值
+    await page.locator('#new-request').click();
+    await page.getByLabel('请求 URL', { exact: true }).fill(`${echoTarget}/search`);
+    await page.locator('#request-panels').getByRole('button', { name: 'Params', exact: true }).click();
+    await page.locator('#request-content').getByRole('button', { name: '＋ 添加', exact: true }).click();
+    await page.locator('#request-content').getByLabel('Key', { exact: true }).fill('q');
+    await page.locator('#request-content').getByLabel('Value', { exact: true }).fill('alpha-q');
+    await page.getByRole('button', { name: '发送 ↗', exact: true }).click();
+    await expect(page.locator('#response-content')).toContainText('/search?q=alpha-q');
+    await page.locator('#request-content').getByLabel('Value', { exact: true }).fill('beta-q');
+    await page.getByRole('button', { name: '发送 ↗', exact: true }).click();
+    await expect(page.locator('#response-content')).toContainText('/search?q=beta-q');
+    expect(received).toHaveLength(4);
+    expect(received[1].body).toBe('{"v":"beta-body"}');
+    expect(received[3].url).toBe('/search?q=beta-q');
+  } finally {
+    await new Promise(resolve => {
+      echo.close(resolve);
+      echo.closeAllConnections?.();
+    });
+  }
+});
