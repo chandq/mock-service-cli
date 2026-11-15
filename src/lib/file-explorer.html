@@ -1086,8 +1086,8 @@
             </button>
           </div>
           <div class="view-toggle">
-            <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">网格</button>
-            <button class="view-btn" id="listViewBtn" onclick="setView('list')">列表</button>
+            <button class="view-btn" id="gridViewBtn" onclick="setView('grid')">网格</button>
+            <button class="view-btn active" id="listViewBtn" onclick="setView('list')">列表</button>
           </div>
         </div>
         <div class="file-grid" id="fileGrid"></div>
@@ -1137,7 +1137,7 @@
 
     <script>
       let currentPath = '/';
-      let currentView = 'grid';
+      let currentView = 'list';
       let currentFiles = [];
       let allFiles = [];
       let searchQuery = '';
@@ -1570,9 +1570,17 @@
         hideContextMenu();
       }
 
+      function isSameExplorerPath(left, right) {
+        const normalize = value => String(value || '/').replace(/\/+$/, '') || '/';
+        return normalize(left) === normalize(right);
+      }
+
       async function loadDirectory(path, { fallbackToRoot = false } = {}) {
         const fileGrid = document.getElementById('fileGrid');
         const oldCurrentPath = currentPath;
+        // Refresh buttons and post-operation reloads revisit the same directory:
+        // keep the active search instead of silently resetting the filter.
+        const keepSearch = isSameExplorerPath(path, currentPath);
         const requestId = ++directoryRequestId;
 
         if (directoryRequestController) {
@@ -1604,10 +1612,15 @@
           storeExplorerPath(currentPath);
           allFiles = data.files || [];
 
-          if (document.getElementById('searchInput')) {
-            document.getElementById('searchInput').value = '';
+          const searchInput = document.getElementById('searchInput');
+          if (!keepSearch) {
+            if (searchInput) searchInput.value = '';
+            searchQuery = '';
+          } else if (searchInput) {
+            // A refresh may land inside the search debounce window; resync so the
+            // filtered view matches the visible query immediately.
+            searchQuery = searchInput.value;
           }
-          searchQuery = '';
 
           renderBreadcrumb(data.currentPath, data.parentPath);
           processAndRenderFiles();
