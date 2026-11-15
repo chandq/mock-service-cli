@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.12.0](https://github.com/chandq/mock-service-cli/compare/v4.11.1...v4.12.0) (2026-11-15)
+
+
+### Features
+
+* **archive:** extract safe symlinks and fix CJK archive names ([9d02392](https://github.com/chandq/mock-service-cli/commit/9d02392b15f1076b012cba54e68b91a5e969fbd0))
+* **cli:** add archive extract and create commands ([989145c](https://github.com/chandq/mock-service-cli/commit/989145c33e546841bb09a50a97277e10ac634c5b))
+
+
+### Bug Fixes
+
+* **archive:** drain aborted extraction streams before cleanup ([f8c0e9f](https://github.com/chandq/mock-service-cli/commit/f8c0e9fa1fa78deb4a65182b167b5b26b90d472b))
+* ci failed under windows node 18 ([4a4c3ce](https://github.com/chandq/mock-service-cli/commit/4a4c3cee99c09d1a17a6e677edc8604d01ece004))
+* **explorer:** decode multipart upload filenames from bytes ([0f4c47b](https://github.com/chandq/mock-service-cli/commit/0f4c47b6af98b394a955adab5f690187839074e4))
+* **file-explorer:** not clear search when refresh under same current path ([e04fb09](https://github.com/chandq/mock-service-cli/commit/e04fb09c181ab64bdeaa128f4965f4a2f78dc136))
+* increase main content width ([f177b35](https://github.com/chandq/mock-service-cli/commit/f177b35053d08c30ead8bc7f8a94b1fb1d53e5a6))
+
 ### [4.11.1](https://github.com/chandq/mock-service-cli/compare/v4.11.0...v4.11.1) (2026-11-14)
 
 
