@@ -420,9 +420,12 @@ test('static server development behaviors', async t => {
       t.match(rootHtml, /__mock-service-cli\/live-reload\.js/, 'injects live reload into directory indexes');
       t.match(rootHtml, /href="\/nested\/"/, 'links subdirectories for navigation');
       t.match(rootHtml, /显示隐藏项目/, 'offers a server-rendered hidden item toggle');
+      t.notMatch(rootHtml, /隐藏隐藏/, 'avoids duplicated wording in the hidden item toggle');
       t.notMatch(rootHtml, /AUTO_INDEX_MARKER/, 'does not automatically serve index.html');
       const rootWithHidden = await request(`${baseUrl}/?showHidden=1`);
       t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows root hidden files when requested');
+      t.match(rootWithHidden.text, />隐藏项目</, 'labels the active toggle with a concise action');
+      t.notMatch(rootWithHidden.text, /隐藏隐藏/, 'avoids duplicated wording when hidden items are shown');
       t.match(
         rootWithHidden.text,
         /href="\/\.git\/\?showHidden=1"/,

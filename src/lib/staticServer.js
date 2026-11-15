@@ -427,9 +427,13 @@ async function getDirectoryIndexData(directoryPath, requestPath, showHidden, bas
   const entries = await fsPromises.readdir(directoryPath, { withFileTypes: true });
   // Windows 下逐文件 spawnSync attrib 会随文件数线性阻塞（每个约 10-20ms）；
   // 这里批量读取隐藏状态，避免大目录目录页请求被拖慢。
-  const hiddenNames = await getDirectoryHiddenNames(directoryPath, entries.map(entry => entry.name), {
-    osHidden: osHiddenEnabled
-  });
+  const hiddenNames = await getDirectoryHiddenNames(
+    directoryPath,
+    entries.map(entry => entry.name),
+    {
+      osHidden: osHiddenEnabled
+    }
+  );
   const entriesWithHidden = entries.map(entry => ({
     entry,
     hidden: hiddenNames.has(entry.name)
@@ -495,9 +499,9 @@ function renderDirectoryIndex(data) {
     ? `<p id="directoryParent"><a href="${withVisibility(encodeDirectoryPath(publicParentPath))}">← 返回上级</a></p>`
     : '<p id="directoryParent" hidden></p>';
   const visibilityToggleUrl = data.showHidden ? encodedDirectoryPath : `${encodedDirectoryPath}?showHidden=1`;
-  const visibilityToggle = `<a class="visibility-toggle" href="${visibilityToggleUrl}">${
-    data.showHidden ? '隐藏隐藏项目' : '显示隐藏项目'
-  }</a>`;
+  const visibilityToggle = `<a class="visibility-toggle" href="${visibilityToggleUrl}" title="${
+    data.showHidden ? '不显示隐藏项目' : '显示隐藏项目'
+  }">${data.showHidden ? '不显示隐藏项目' : '显示隐藏项目'}</a>`;
   const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="icon" type="image/svg+xml" href="${STATIC_FAVICON_PATH}"><title>目录索引 ${escapeHtml(
     publicCurrentPath
   )}</title><style>body{font:14px system-ui,sans-serif;margin:32px;max-width:900px}a{color:#2563eb;text-decoration:none}a:hover{text-decoration:underline}.directory-header{display:flex;align-items:center;gap:12px;margin:12px 0;flex-wrap:wrap}.directory-header h1{font-size:20px;margin:0}.directory-header nav{color:#4b5563;min-width:0;flex:1;overflow-wrap:anywhere}.directory-header nav span{padding:0 5px;color:#9ca3af}.visibility-toggle{color:#374151;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;padding:5px 8px;white-space:nowrap}.visibility-toggle:hover{background:#f3f4f6;text-decoration:none}.is-hidden{opacity:.55}ul{list-style:none;padding:0}li{padding:7px 0;border-bottom:1px solid #eee}</style></head><body><header class="directory-header"><h1>目录索引</h1><nav aria-label="路径导航">${breadcrumb}</nav>${visibilityToggle}</header>${parent}<ul>${items || '<li>（空目录）</li>'}</ul></body></html>`;

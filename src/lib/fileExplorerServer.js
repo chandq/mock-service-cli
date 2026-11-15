@@ -333,7 +333,16 @@ function init() {
   const sendExplorerPage = (filename, faviconUrl, res) => {
     const htmlPath = path.resolve(__dirname, filename);
     if (!existsSync(htmlPath)) return res.status(404).send('File explorer page not found');
-    res.type('html').send(readFileSync(htmlPath, 'utf8').replace('__FILE_EXPLORER_FAVICON_URL__', faviconUrl));
+    // Render the edit-mode toolbar in the first paint: toggling it after the
+    // config request makes the toolbar wrap and jump (visible flicker).
+    const bodyClass = isEditMode && filename === './file-explorer.html' ? ' class="editing"' : '';
+    res
+      .type('html')
+      .send(
+        readFileSync(htmlPath, 'utf8')
+          .replace('__FILE_EXPLORER_FAVICON_URL__', faviconUrl)
+          .replace('<body>', `<body${bodyClass}>`)
+      );
   };
   app.get('/favicon-file-explorer.svg', (req, res) => sendFavicon('./favicon-file-explorer.svg', res));
   app.get('/favicon-file-explorer-login.svg', (req, res) => sendFavicon('./favicon-file-explorer-login.svg', res));

@@ -12,11 +12,27 @@ const path = require('path');
 const crypto = require('crypto');
 const archiver = require('archiver');
 const archiveProvider = require('./archiveProvider');
-const { createArchiveError, isInside, isSafeArchiveEntry } = require('./archiveShared');
+const {
+  createArchiveError,
+  isInside,
+  isSafeArchiveEntry,
+  verifyExtractedTree
+} = require('./archiveShared');
 
 const MAX_ARCHIVE_SIZE = 2 * 1024 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10000;
 const MAX_COMPRESSION_RATIO = 100;
+
+// lstat-based existence check: a dangling symlink still occupies the destination name.
+function pathExists(targetPath) {
+  try {
+    lstatSync(targetPath);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 class ArchiveService {
   constructor({ rootPath, resolvePath, getChildPath }) {
     this.rootPath = rootPath;
@@ -39,13 +55,17 @@ class ArchiveService {
     const fullPath = this.resolveExistingFile(inputPath);
     const entries = await archiveProvider.listEntries(fullPath);
     this.assertEntriesSafe(entries, fullPath);
+    const totalSize = entries.reduce((total, entry) => total + (Number(entry.size) || 0), 0);
+    const reportedPackedSize = entries.reduce((total, entry) => total + (Number(entry.packedSize) || 0), 0);
     return {
       path: inputPath,
       name: path.basename(fullPath),
       entries,
       totalEntries: entries.length,
-      totalSize: entries.reduce((total, entry) => total + entry.size, 0),
-      totalPackedSize: entries.reduce((total, entry) => total + entry.packedSize, 0)
+      totalSize,
+      // TAR streams do not expose per-entry packed sizes, so fall back to the
+      // archive file size instead of showing "0 B" in the preview.
+      totalPackedSize: reportedPackedSize || lstatSync(fullPath).size
     };
   }
 
@@ -53,7 +73,10 @@ class ArchiveService {
     if (!entries.length) throw createArchiveError('Archive contains no entries', 422);
     if (entries.length > MAX_ARCHIVE_ENTRIES) throw createArchiveError('Archive contains too many entries', 413);
     if (entries.some(entry => entry.encrypted)) throw createArchiveError('Encrypted archives are not supported', 422);
-    if (entries.some(entry => entry.isSymbolicLink || !isSafeArchiveEntry(entry.path))) {
+    // Listing is a read-only header inspection: allow symlink/special entries to be
+    // displayed (e.g. the official Node.js tarball ships bin/npm as symlinks), but
+    // keep rejecting path traversal. Extraction validates each link target instead.
+    if (entries.some(entry => !isSafeArchiveEntry(entry.path))) {
       throw createArchiveError('Archive contains an unsafe entry path', 422);
     }
 
@@ -193,11 +216,13 @@ class ArchiveService {
     try {
       await archiveProvider.extract(job, sourcePath, tempOutput);
       if (job.cancelled) throw createArchiveError('Archive job cancelled', 499);
-      await this.assertExtractedTreeSafe(tempOutput);
+      // Allows in-tree symlinks (Node.js tarballs rely on them) while rejecting
+      // links or entries that resolve outside the temporary extraction folder.
+      verifyExtractedTree(tempOutput);
       const outputEntries = await fsPromises.readdir(tempOutput);
       if (!outputEntries.length) throw createArchiveError('Archive produced no files', 422);
       outputEntries.forEach(name => {
-        if (existsSync(path.join(destinationPath, name)))
+        if (pathExists(path.join(destinationPath, name)))
           throw createArchiveError(`Destination already contains ${name}`, 409);
       });
       for (const name of outputEntries) {
@@ -208,24 +233,6 @@ class ArchiveService {
     } finally {
       rmSync(tempRoot, { recursive: true, force: true });
     }
-  }
-
-  async assertExtractedTreeSafe(root) {
-    const rootRealPath = realpathSync(root);
-    const walk = async current => {
-      const entries = await fsPromises.readdir(current, { withFileTypes: true });
-      for (const entry of entries) {
-        const child = path.join(current, entry.name);
-        const stats = await fsPromises.lstat(child);
-        if (stats.isSymbolicLink()) throw createArchiveError('Archive contains symbolic links', 422);
-        const realPath = realpathSync(child);
-        if (!isInside(rootRealPath, realPath)) {
-          throw createArchiveError('Archive extracted outside its destination', 422);
-        }
-        if (stats.isDirectory()) await walk(child);
-      }
-    };
-    await walk(root);
   }
 
   async assertSourceTreeSafe(source) {

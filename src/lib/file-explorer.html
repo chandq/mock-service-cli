@@ -95,26 +95,31 @@
       }
 
       .toolbar {
-        padding: 10px 12px;
+        padding: 5px 6px;
         border-bottom: 1px solid #eee;
         display: flex;
-        gap: 8px;
+        gap: 4px;
         align-items: center;
         flex-wrap: wrap;
         flex-shrink: 0;
       }
 
+      /* Keep the dynamic counter from re-wrapping the toolbar while it updates. */
       .stats-info {
         font-size: 12px;
         color: #666;
-        padding: 4px 8px;
+        padding: 4px 4px;
         background: #f8f8f8;
         border-radius: 4px;
+        min-width: 168px;
+        text-align: center;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
       }
 
       .search-box {
-        flex: 1;
-        min-width: 150px;
+        flex: 1 1 120px;
+        min-width: 120px;
       }
 
       .search-box input {
@@ -138,7 +143,7 @@
       }
 
       .sort-select {
-        padding: 6px 10px;
+        padding: 6px 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 12px;
@@ -152,7 +157,7 @@
       }
 
       .sort-order-btn {
-        padding: 6px 10px;
+        padding: 6px 4px;
         background: #f0f0f0;
         border: none;
         border-radius: 4px;
@@ -166,7 +171,8 @@
       }
 
       .toolbar-action-btn {
-        padding: 6px 10px;
+        padding: 6px 4px;
+        white-space: nowrap;
         background: #f0f0f0;
         border: none;
         border-radius: 4px;
@@ -210,7 +216,8 @@
       }
 
       .back-btn {
-        padding: 6px 12px;
+        padding: 6px 4px;
+        white-space: nowrap;
         background: #f0f0f0;
         border: none;
         border-radius: 4px;
@@ -239,7 +246,8 @@
       }
 
       .view-btn {
-        padding: 4px 10px;
+        padding: 4px 4px;
+        white-space: nowrap;
         background: transparent;
         border: none;
         border-radius: 3px;
@@ -254,7 +262,7 @@
       }
 
       .refresh-btn {
-        padding: 6px 10px;
+        padding: 4px 4px;
         background: #f0f0f0;
         border: none;
         border-radius: 4px;
@@ -268,7 +276,7 @@
       }
 
       .toggle-hidden-btn {
-        padding: 6px 10px;
+        padding: 4px 4px;
         background: #f0f0f0;
         border: none;
         border-radius: 4px;
@@ -302,7 +310,7 @@
       }
 
       .context-menu-item {
-        padding: 10px 16px;
+        padding: 5px 8px;
         cursor: pointer;
         font-size: 14px;
         color: #333;
@@ -379,8 +387,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 10px 8px;
-        border-radius: 6px;
+        padding: 5px 4px;
+        border-radius: 4px;
         cursor: pointer;
         transition: background-color 0.2s;
       }
@@ -1052,12 +1060,7 @@
           >
             压缩选中
           </button>
-          <button
-            class="toggle-hidden-btn"
-            id="toggleHiddenBtn"
-            onclick="toggleHiddenFiles()"
-            title="显示/隐藏隐藏文件"
-          >
+          <button class="toggle-hidden-btn" id="toggleHiddenBtn" onclick="toggleHiddenFiles()" title="显示隐藏文件">
             👁️
           </button>
           <button
@@ -1123,7 +1126,11 @@
       <div class="context-menu-item edit-only edit-flex" id="ctxExtract" onclick="handleContextMenuAction('extract')">
         📦 解压到当前目录
       </div>
-      <div class="context-menu-item edit-only edit-flex" id="ctxArchivePreview" onclick="handleContextMenuAction('archivePreview')">
+      <div
+        class="context-menu-item edit-only edit-flex"
+        id="ctxArchivePreview"
+        onclick="handleContextMenuAction('archivePreview')"
+      >
         🔎 查看压缩包
       </div>
     </div>
@@ -1418,7 +1425,12 @@
       function getStoredExplorerPath() {
         try {
           const stored = JSON.parse(sessionStorage.getItem(EXPLORER_PATH_STORAGE_KEY));
-          if (stored && stored.rootId === explorerRootId && typeof stored.path === 'string' && stored.path.startsWith('/')) {
+          if (
+            stored &&
+            stored.rootId === explorerRootId &&
+            typeof stored.path === 'string' &&
+            stored.path.startsWith('/')
+          ) {
             return stored.path;
           }
         } catch (error) {
@@ -1700,7 +1712,7 @@
         if (showHiddenFiles) {
           btn.classList.add('active');
           btn.innerHTML = '👁️';
-          btn.title = '隐藏隐藏文件';
+          btn.title = '不再显示隐藏文件';
         } else {
           btn.classList.remove('active');
           btn.innerHTML = '👁️‍🗨️';
@@ -1767,7 +1779,9 @@
 
       function isArchiveFile(filePath) {
         const lowerPath = String(filePath || '').toLowerCase();
-        return archiveCapabilities.readExtensions.some(extension => lowerPath.endsWith(`.${String(extension).toLowerCase()}`));
+        return archiveCapabilities.readExtensions.some(extension =>
+          lowerPath.endsWith(`.${String(extension).toLowerCase()}`)
+        );
       }
 
       async function createArchiveFromSelection(sourceOverride) {
@@ -1776,7 +1790,13 @@
           showToast('请先选择要压缩的文件或文件夹');
           return;
         }
-        const defaultName = sources.length === 1 ? sources[0].split('/').pop().replace(/\.[^.]+$/, '') : 'archive';
+        const defaultName =
+          sources.length === 1
+            ? sources[0]
+                .split('/')
+                .pop()
+                .replace(/\.[^.]+$/, '')
+            : 'archive';
         const name = window.prompt('压缩包名称', defaultName);
         if (name === null || !name.trim()) return;
         const formats = archiveCapabilities.createFormats;
@@ -1800,7 +1820,9 @@
       }
 
       async function extractArchive(filePath) {
-        const confirmed = window.confirm(`将 “${filePath.split('/').pop()}” 解压到当前目录吗？已有同名文件将导致整个操作失败。`);
+        const confirmed = window.confirm(
+          `将 “${filePath.split('/').pop()}” 解压到当前目录吗？已有同名文件将导致整个操作失败。`
+        );
         if (!confirmed) return;
         await startArchiveJob({ operation: 'extract', path: filePath, destinationPath: currentPath });
       }
@@ -1889,8 +1911,16 @@
               <div class="binary-info">${entries.length} 项 · 解压后 ${formatSize(preview.totalSize || 0)} · 包内数据 ${formatSize(preview.totalPackedSize || 0)}</div>
               <div class="text-preview">${entries
                 .map(entry => {
-                  const depth = entry.path.split('/').length - 1;
-                  const label = `${entry.isDirectory ? '📁' : '📄'} ${entry.path.split('/').pop()}${entry.isDirectory ? '/' : ` (${formatSize(entry.size || 0)})`}`;
+                  const normalizedPath = String(entry.path || '').replace(/\/+$/, '');
+                  const segments = normalizedPath.split('/');
+                  const depth = segments.length - 1;
+                  const icon = entry.isSymbolicLink ? '🔗' : entry.isDirectory ? '📁' : '📄';
+                  const suffix = entry.isDirectory
+                    ? '/'
+                    : entry.isSymbolicLink
+                      ? ' (链接)'
+                      : ` (${formatSize(entry.size || 0)})`;
+                  const label = `${icon} ${segments.pop()}${suffix}`;
                   return `<div style="padding-left:${depth * 16}px">${escapeHtml(label)}</div>`;
                 })
                 .join('')}</div>

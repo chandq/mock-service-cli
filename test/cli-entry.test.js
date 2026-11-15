@@ -194,6 +194,7 @@ async function assertFileExplorerCli(t, entryFile) {
     );
 
     const html = await fetch(baseUrl).then(response => response.text());
+    t.match(html, /<body class="editing">/, `${entryFile} renders the edit toolbar in the first paint`);
     t.match(
       html,
       /favicon-file-explorer\.svg\?instance=/,
@@ -298,6 +299,9 @@ async function assertReadOnlyFileExplorerCli(t, entryFile) {
     const config = await requestJson(`${baseUrl}/__api/config`);
     t.equal(config.editMode, false, `${entryFile} is read-only by default`);
 
+    const page = await fetch(baseUrl).then(response => response.text());
+    t.notMatch(page, /<body class="editing">/, `${entryFile} keeps the read-only toolbar first paint`);
+
     const response = await fetch(`${baseUrl}/__api/path`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -325,6 +329,7 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
     t.equal(loginResponse.status, 200, `${entryFile} serves the login page`);
     const loginHtml = await loginResponse.text();
     t.match(loginHtml, /访问密码/, `${entryFile} login page asks for a password`);
+    t.notMatch(loginHtml, /class="editing"/, `${entryFile} login page never renders the edit toolbar`);
     t.match(loginHtml, /favicon-file-explorer-login\.svg\?instance=/, `${entryFile} cache-busts the login tab icon`);
 
     const unauthenticatedResponse = await fetch(`${baseUrl}/__api/list?path=%2F`);

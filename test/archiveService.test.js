@@ -45,6 +45,7 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     const preview = await service.listArchive('/bundle.zip');
     t.equal(preview.totalEntries, 1, 'lists archive entries');
     t.equal(preview.entries[0].path, 'source/hello.txt', 'keeps the source directory in the archive');
+    t.ok(preview.totalPackedSize > 0, 'reports the ZIP packed size');
 
     const tarJob = service.startJob('create', {
       sources: ['/source'],
@@ -54,11 +55,9 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     });
     await waitForJob(service, tarJob.id);
     t.ok(existsSync(path.join(root, 'bundle-tar.tar.gz')), 'creates a TAR.GZ archive');
-    t.equal(
-      (await service.listArchive('/bundle-tar.tar.gz')).entries[0].path,
-      'source/hello.txt',
-      'previews TAR.GZ entries'
-    );
+    const tarPreview = await service.listArchive('/bundle-tar.tar.gz');
+    t.equal(tarPreview.entries[0].path, 'source/hello.txt', 'previews TAR.GZ entries');
+    t.ok(tarPreview.totalPackedSize > 0, 'reports the TAR.GZ packed size instead of 0 B');
 
     t.same(
       lightArchiveProvider.capabilities,
