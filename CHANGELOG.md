@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.13.0](https://github.com/chandq/mock-service-cli/compare/v4.12.0...v4.13.0) (2026-11-15)
+
+
+### Features
+
+* **archive:** improve large-archive and Node 26 support ([d61eb95](https://github.com/chandq/mock-service-cli/commit/d61eb950f47f4ad7d82561391d25b35a4244c523))
+
 ## [4.12.0](https://github.com/chandq/mock-service-cli/compare/v4.11.1...v4.12.0) (2026-11-15)
 
 
