@@ -624,6 +624,49 @@ function getServerUrls(port, pathname = '') {
 //   });
 // };
 
+// 文件浏览器与归档文件共享的条目名校验：拒绝路径分隔符、通配符、NUL，
+// 以及 Windows 保留设备名与结尾的空格/点号。
+function validateEntryName(name) {
+  if (typeof name !== 'string') return 'Name must be a string';
+  const normalizedName = name.trim();
+  if (!normalizedName || normalizedName === '.' || normalizedName === '..') return 'Invalid name';
+  if (/[/\\\0<>:"|?*]/.test(normalizedName)) return 'Name contains invalid characters';
+  if (process.platform === 'win32') {
+    const upperName = normalizedName
+      .replace(/[. ]+$/g, '')
+      .split('.')[0]
+      .toUpperCase();
+    const reservedNames = new Set([
+      'CON',
+      'PRN',
+      'AUX',
+      'NUL',
+      'COM1',
+      'COM2',
+      'COM3',
+      'COM4',
+      'COM5',
+      'COM6',
+      'COM7',
+      'COM8',
+      'COM9',
+      'LPT1',
+      'LPT2',
+      'LPT3',
+      'LPT4',
+      'LPT5',
+      'LPT6',
+      'LPT7',
+      'LPT8',
+      'LPT9'
+    ]);
+    if (reservedNames.has(upperName) || normalizedName.endsWith(' ') || normalizedName.endsWith('.')) {
+      return 'Name is not supported on Windows';
+    }
+  }
+  return null;
+}
+
 // 浏览器以 UTF-8 字节发送 multipart 文件名，旧版 Windows 客户端可能发送 GBK；
 // Node 的 HTTP 解析器按 latin1 保留原始字节，因此需要先还原字节再解码。
 let fatalUtf8Decoder;
@@ -685,5 +728,6 @@ module.exports = {
   getDirectoryHiddenNames,
   openPathInFileManager,
   decodeFileNameBytes,
-  decodeUploadFileName
+  decodeUploadFileName,
+  validateEntryName
 };

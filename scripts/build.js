@@ -65,12 +65,9 @@ async function build() {
         {
           name: 'archive-edition-provider',
           setup(buildOptions) {
-            buildOptions.onResolve({ filter: /^\.\/archiveProvider$/ }, args => {
-              if (args.importer === path.join(srcLibDir, 'archiveService.js')) {
-                return { path: archiveProviderPath };
-              }
-              return null;
-            });
+            // Every archive entry point must resolve to the edition provider,
+            // otherwise the light bundle would pull in ultra-only dependencies.
+            buildOptions.onResolve({ filter: /^\.\/archiveProvider$/ }, () => ({ path: archiveProviderPath }));
           }
         }
       ]

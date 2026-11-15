@@ -15,6 +15,7 @@
 - **HTTP Proxy** - 本地接口代理服务
 - **API Overview** - 现代化的 API 概览页面
 - **File Explorer** - 现代化的文件浏览器
+- **Archive CLI** - 命令行压缩与解压（ZIP/TAR.GZ，Ultra 支持更多只读格式）
 - **API Client** - 现代化的 API 客户端
 
 ## 🚀 特性
@@ -101,6 +102,11 @@ npx mock-service-cli [options] [path]
 | `--windows-hidden`         | 读取 Windows 系统隐藏属性（attrib/PowerShell）判定隐藏项          | false                  |
 | `-e` 或 `--explorer`       | 启用文件浏览器服务器，指定要浏览的目录                            | ./                     |
 | `--edit`                   | 启用文件浏览器的新建、重命名、删除和上传操作                      | false                  |
+| `-x` 或 `--extract <archive>` | 解压归档到 `--out` 指定目录后退出                              | -                      |
+| `-c` 或 `--create <path...>` | 将文件/目录压缩为归档后退出                                    | -                      |
+| `--out <dir>`              | 压缩/解压的输出目录（必须已存在）                                 | 当前目录               |
+| `--format <format>`        | 创建归档的格式：`zip` 或 `tar.gz`                                 | zip                    |
+| `--name <name>`            | 创建归档的名称                                                    | 来源名或 `archive`     |
 | `--api-client [dir]`       | 启用独立 HTTP 接口工作台，指定项目工作区目录                      | ./.mock-service-client |
 | `--auth <password>`        | 为文件浏览器或 API Client 启用密码认证                            | -                      |
 | `--host [allowlist-file]`  | 暴露全部 IPv4 网卡；传入文件时仅允许白名单 IP 访问                | false                  |
@@ -212,6 +218,31 @@ Ultra 版额外支持 RAR、7z、gzip、bzip2 与 xz 系列的预览和解压；
 
 `--auth` 会在文件浏览器中显示登录页，并在每次页面加载和每个 API 请求时验证密码。密码仅保存在当前浏览器标签页的
 `sessionStorage` 中，但命令行参数仍可能暴露在 shell 历史和进程列表里，因此只适用于可信本机或局域网环境。
+
+### 命令行压缩与解压
+
+不需要启动任何服务，直接压缩或解压后退出：
+
+```bash
+# 解压到已存在的目录
+mock-service-cli -x bundle.zip --out ./dist
+
+# 解压到当前目录（省略 --out）
+mock-service-cli -x node-v22.23.1-linux-x64.tar.xz
+
+# 压缩单个文件，默认生成 hello.zip
+mock-service-cli -c hello.txt
+
+# 多来源压缩为 TAR.GZ，并指定名称
+mock-service-cli -c ./src ./README.md --out ./release --format tar.gz --name bundle
+```
+
+- `--out` 必须是已存在的目录，默认当前目录；`--name` 省略时，单来源使用源文件名（去掉扩展名），多来源使用 `archive`。
+- 解压支持 ZIP、TAR、TAR.GZ；安装 Ultra 版后额外支持 RAR、7z、gzip、bzip2、xz 等只读格式。
+- 创建仅支持 ZIP 与 TAR.GZ；来源中包含符号链接会被拒绝，多来源重名会被拒绝，归档名称不能包含路径分隔符。
+- 目标同名文件不会被覆盖，解压失败不会留下半成品。
+- `-s` 抑制成功输出；退出码 `0` 成功、`1` 失败、`2` 参数错误；`Ctrl+C` 会取消并清理临时文件。
+- 归档命令不能与 `-e`、`-R`、`--api-client`、`-d` 等服务模式同时使用。
 
 ## 📝 编写 Mock 文件
 

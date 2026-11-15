@@ -1,8 +1,8 @@
 const test = require('tap').test;
-const { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require('fs');
+const { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const net = require('net');
 
 const node = process.execPath;
@@ -436,12 +436,60 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
   }
 }
 
+async function assertArchiveCli(t, entryFile) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-archive-cli-'));
+  const outputDir = path.join(tempDir, 'out');
+  const extractDir = path.join(tempDir, 'extracted');
+  mkdirSync(outputDir);
+  mkdirSync(extractDir);
+  writeFileSync(path.join(tempDir, '中文文件.txt'), 'archive-cli');
+  const run = args =>
+    spawnSync(node, [entryFile, ...args], { cwd: tempDir, env: getCliEnv(), encoding: 'utf8' });
+
+  try {
+    const create = run(['-c', '中文文件.txt', '--out', outputDir]);
+    t.equal(create.status, 0, `${entryFile} creates archives from the command line`);
+    t.ok(existsSync(path.join(outputDir, '中文文件.zip')), `${entryFile} derives the archive name from the source`);
+    t.match(create.stdout, /Created .*中文文件\.zip/, `${entryFile} reports the created archive`);
+
+    const extract = run(['-x', path.join(outputDir, '中文文件.zip'), '--out', extractDir]);
+    t.equal(extract.status, 0, `${entryFile} extracts archives from the command line`);
+    t.equal(
+      readFileSync(path.join(extractDir, '中文文件.txt'), 'utf8'),
+      'archive-cli',
+      `${entryFile} restores the archived file`
+    );
+
+    const silent = run(['-s', '-c', '中文文件.txt', '--out', outputDir, '--name', 'silent', '--format', 'tar.gz']);
+    t.equal(silent.status, 0, `${entryFile} creates tar.gz archives from the command line`);
+    t.equal(silent.stdout, '', `${entryFile} suppresses success output with --silent`);
+    t.ok(existsSync(path.join(outputDir, 'silent.tar.gz')), `${entryFile} applies --format and --name`);
+
+    const conflict = run(['-c', '中文文件.txt', '--out', outputDir, '--name', 'silent', '--format', 'tar.gz']);
+    t.equal(conflict.status, 1, `${entryFile} fails when the archive already exists`);
+    t.match(conflict.stderr, /already exists/, `${entryFile} reports archive conflicts`);
+
+    const invalidFormat = run(['-c', '中文文件.txt', '--out', outputDir, '--format', '7z']);
+    t.equal(invalidFormat.status, 2, `${entryFile} rejects unsupported creation formats`);
+    t.match(invalidFormat.stderr, /Unsupported format/, `${entryFile} lists supported formats`);
+
+    const mixedMode = run(['-e', tempDir, '-x', path.join(outputDir, '中文文件.zip')]);
+    t.equal(mixedMode.status, 2, `${entryFile} rejects mixing server and archive modes`);
+
+    const missingValue = run(['-x']);
+    t.equal(missingValue.status, 2, `${entryFile} requires an archive path for --extract`);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+}
+
 if (!isCoverageMode()) {
   test('source cli can start file explorer server directly', async t => {
     await assertExplorerParentShutdown(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertReadOnlyFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertFileExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
     await assertAuthenticatedExplorerCli(t, path.join(root, 'src/bin/mock-service-cli'));
+    await assertArchiveCli(t, path.join(root, 'src/bin/mock-service-cli'));
   });
 
   test('built cli can start file explorer server through dist wrapper', async t => {
@@ -456,5 +504,6 @@ if (!isCoverageMode()) {
     await assertReadOnlyFileExplorerCli(t, entryFile);
     await assertFileExplorerCli(t, entryFile);
     await assertAuthenticatedExplorerCli(t, entryFile);
+    await assertArchiveCli(t, entryFile);
   });
 }

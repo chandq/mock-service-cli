@@ -31,7 +31,8 @@ const {
   getDirectoryHiddenNames,
   normalizeRemoteAddress,
   openPathInFileManager,
-  decodeUploadFileName
+  decodeUploadFileName,
+  validateEntryName
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { ArchiveService } = require('./archiveService');
@@ -105,58 +106,6 @@ function resolveExplorerPath(inputPath) {
   }
 
   return realPath;
-}
-
-function validateEntryName(name) {
-  if (typeof name !== 'string') {
-    return 'Name must be a string';
-  }
-
-  const normalizedName = name.trim();
-  if (!normalizedName || normalizedName === '.' || normalizedName === '..') {
-    return 'Invalid name';
-  }
-
-  if (/[/\\\0<>:"|?*]/.test(normalizedName)) {
-    return 'Name contains invalid characters';
-  }
-
-  if (process.platform === 'win32') {
-    const upperName = normalizedName
-      .replace(/[. ]+$/g, '')
-      .split('.')[0]
-      .toUpperCase();
-    const reservedNames = new Set([
-      'CON',
-      'PRN',
-      'AUX',
-      'NUL',
-      'COM1',
-      'COM2',
-      'COM3',
-      'COM4',
-      'COM5',
-      'COM6',
-      'COM7',
-      'COM8',
-      'COM9',
-      'LPT1',
-      'LPT2',
-      'LPT3',
-      'LPT4',
-      'LPT5',
-      'LPT6',
-      'LPT7',
-      'LPT8',
-      'LPT9'
-    ]);
-
-    if (reservedNames.has(upperName) || normalizedName.endsWith(' ') || normalizedName.endsWith('.')) {
-      return 'Name is not supported on Windows';
-    }
-  }
-
-  return null;
 }
 
 function getChildPath(parentPath, name) {

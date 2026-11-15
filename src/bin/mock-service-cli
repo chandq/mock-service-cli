@@ -58,10 +58,39 @@ if (argv.h || argv.help) {
       '  -h --help            Print this list and exit.',
       '  -v --version         Print the version and exit.',
       '  -w --open            Open the available web page/API overview automatically, default false.',
-      '  -e --explorer        Enable file explorer server, specify directory to browse, default [./].'
+      '  -e --explorer        Enable file explorer server, specify directory to browse, default [./].',
+      '',
+      '  -x --extract <archive>  Extract an archive into --out, then exit.',
+      '  -c --create <path...>   Create a ZIP/TAR.GZ archive from files or directories, then exit.',
+      '      --out <dir>         Output directory for --extract/--create, default [.].',
+      '      --format <format>   Creation format: zip or tar.gz, default [zip].',
+      '      --name <name>       Archive name for --create. Defaults to the source name or [archive].'
     ].join('\n')
   );
   process.exit();
+}
+
+const archiveRequested =
+  argv.x !== undefined || argv.extract !== undefined || argv.c !== undefined || argv.create !== undefined;
+let archiveCommand = null;
+if (archiveRequested) {
+  // Lazy require keeps normal server startup free of archive-only modules.
+  const { getArchiveCommand, runArchiveCommand } = require('../lib/cliArchive');
+  try {
+    archiveCommand = getArchiveCommand(argv);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(2);
+  }
+  runArchiveCommand(archiveCommand).then(
+    code => {
+      process.exitCode = code;
+    },
+    error => {
+      console.error(`Archive command failed: ${error.message}`);
+      process.exitCode = 1;
+    }
+  );
 }
 
 const apiClientArg = argv['api-client'];
@@ -229,7 +258,7 @@ let managedServerShutdown = false;
 let managedServerShutdownTimer = null;
 const MANAGED_SERVER_SHUTDOWN_TIMEOUT = 5000;
 
-if (!argv.s && !argv.silent) {
+if (!archiveCommand && !argv.s && !argv.silent) {
   log = logger(false);
 } else if (colors) {
   process.env.SILENT = true;
@@ -327,7 +356,9 @@ if (proxyArg) {
   process.env.PROXY_OPTIONS = JSON.stringify(proxyTable);
 }
 // whether to start Web server or not
-if (apiClientEnabled) {
+if (archiveCommand) {
+  // The one-shot archive command was already started above.
+} else if (apiClientEnabled) {
   const requestedPort = Number(argv.p ?? argv.port ?? 8090);
   if (requestedPort === 0) {
     process.env.PORT = '0';
