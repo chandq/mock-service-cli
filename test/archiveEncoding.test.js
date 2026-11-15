@@ -1,4 +1,5 @@
 const test = require('tap').test;
+const { expectRejection } = require('./archiveTestHelpers');
 const {
   createWriteStream,
   existsSync,
@@ -245,14 +246,14 @@ test('ArchiveService rejects unsafe entry paths in legacy encoded ZIP archives',
       path.join(root, 'evil.zip'),
       buildStoredZip([{ name: Buffer.from(`../${escapeMarker}`, 'ascii'), data: Buffer.from('x') }])
     );
-    await t.rejects(service.listArchive('/evil.zip'), /unsafe entry path/, 'rejects traversal entries');
+    await expectRejection(t, service.listArchive('/evil.zip'), /unsafe entry path/, 'rejects traversal entries');
     t.notOk(existsSync(path.join(root, '..', escapeMarker)), 'never writes outside the root');
 
     writeFileSync(
       path.join(root, 'nul.zip'),
       buildStoredZip([{ name: Buffer.from('bad\0name.txt', 'utf8'), data: Buffer.from('x'), utf8Flag: true }])
     );
-    await t.rejects(service.listArchive('/nul.zip'), /unsafe entry path/, 'rejects NUL bytes in entry names');
+    await expectRejection(t, service.listArchive('/nul.zip'), /unsafe entry path/, 'rejects NUL bytes in entry names');
   } finally {
     removeTempDir(root);
   }
@@ -497,12 +498,16 @@ test('ArchiveService previews and extracts RAR4 archives with Chinese names', as
 });
 
 test('archive jobs with Chinese names can be cancelled mid-extraction', async t => {
+  // Windows runners with antivirus can take far longer than tap's 30s default
+  // for 1000+ files; a timeout would leave this async test running and corrupt
+  // the TAP plan of later tests.
+  t.setTimeout(120000);
   const root = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-cancel-cjk-'));
   const service = createService(root);
   try {
     mkdirSync(path.join(root, 'src'));
-    for (let index = 0; index < 3000; index++) {
-      writeFileSync(path.join(root, 'src', `文件-${index}.bin`), Buffer.alloc(4 * 1024, index % 256));
+    for (let index = 0; index < 1200; index++) {
+      writeFileSync(path.join(root, 'src', `文件-${index}.bin`), Buffer.alloc(16 * 1024, index % 256));
     }
     for (const format of ['zip', 'tar.gz']) {
       const archiveName = format === 'zip' ? '大包.zip' : '大包.tar.gz';
@@ -520,7 +525,13 @@ test('archive jobs with Chinese names can be cancelled mid-extraction', async t 
         path: `/${archiveName}`,
         destinationPath: `/${destinationName}`
       });
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Cancel once the first entry has been written instead of relying on a
+      // fixed delay, so the cancellation is genuinely mid-extraction.
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const current = service.getJob(extractJob.id);
+        if (current.progress.processedEntries > 0 || current.status !== 'running') break;
+        await new Promise(resolve => setTimeout(resolve, 5));
+      }
       service.cancelJob(extractJob.id);
       for (let attempt = 0; attempt < 600; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 20));
@@ -787,7 +798,8 @@ test('TAR providers reject symbolic links whose target escapes the extraction fo
       for (const provider of [lightArchiveProvider, ultraArchiveProvider]) {
         const output = path.join(root, `out-${provider.capabilities.edition}-${index}`);
         if (!existsSync(output)) mkdirSync(output);
-        await t.rejects(
+        await expectRejection(
+          t,
           provider.extract({ progress: { processedEntries: 0, totalEntries: 1 } }, archivePath, output),
           /pointing outside the extraction folder/,
           `${provider.capabilities.edition} provider rejects ${item.linkname}`
@@ -821,7 +833,7 @@ test('ArchiveService extracts in-tree symlinks and commits nothing when a link e
     const evilPath = path.join(root, 'evil.tar');
     await buildTarEntries(evilPath, [{ name: 'bin/evil', type: 'symlink', linkname: '../../../etc/passwd' }]);
     const evilJob = service.startJob('extract', { path: '/evil.tar', destinationPath: '/dest-escape' });
-    await t.rejects(waitForJob(service, evilJob.id), /pointing outside/, 'fails the job for escaping links');
+    await expectRejection(t, waitForJob(service, evilJob.id), /pointing outside/, 'fails the job for escaping links');
     t.same(readdirSync(path.join(root, 'dest-escape')), [], 'leaves the destination untouched');
     t.notOk(existsSync(path.join(root, 'etc')), 'never creates link targets outside the destination');
   } finally {
@@ -844,7 +856,7 @@ test('ArchiveService refuses to replace a dangling destination symlink', async t
     symlinkSync('missing-target', path.join(root, '占用.txt'));
 
     const job = service.startJob('extract', { path: '/single.zip', destinationPath: '/' });
-    await t.rejects(waitForJob(service, job.id), /Destination already contains/, 'reports the destination conflict');
+    await expectRejection(t, waitForJob(service, job.id), /Destination already contains/, 'reports the destination conflict');
     t.ok(lstatSync(path.join(root, '占用.txt')).isSymbolicLink(), 'keeps the existing dangling symlink');
   } finally {
     removeTempDir(root);
@@ -895,7 +907,8 @@ test('ZIP providers restore in-tree symbolic links and reject escaping targets',
     );
     const evilOutput = path.join(root, 'out-evil');
     mkdirSync(evilOutput);
-    await t.rejects(
+    await expectRejection(
+      t,
       lightArchiveProvider.extract({ progress: { processedEntries: 0, totalEntries: 1 } }, escapingPath, evilOutput),
       /pointing outside the extraction folder/,
       'rejects ZIP links pointing outside'
@@ -936,7 +949,7 @@ test('7-Zip expanded archives validate link targets before extraction', async t 
     run7za(['a', '-y', '-t7z', evilPath, 'evil-source'], root);
     mkdirSync(path.join(root, 'dest-evil'));
     const evilJob = service.startJob('extract', { path: '/evil.7z', destinationPath: '/dest-evil' });
-    await t.rejects(waitForJob(service, evilJob.id), /pointing outside/, 'rejects absolute 7z links before extraction');
+    await expectRejection(t, waitForJob(service, evilJob.id), /pointing outside/, 'rejects absolute 7z links before extraction');
     t.same(readdirSync(path.join(root, 'dest-evil')), [], 'leaves the 7z destination untouched');
   } finally {
     removeTempDir(root);

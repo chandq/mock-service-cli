@@ -1,4 +1,5 @@
 const test = require('tap').test;
+const { expectRejection } = require('./archiveTestHelpers');
 const { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require('fs');
 const os = require('os');
 const path = require('path');
@@ -62,7 +63,8 @@ test('archive task core rejects unsafe names and duplicate source basenames', as
   mkdirSync(output);
 
   try {
-    await t.rejects(
+    await expectRejection(
+      t,
       createArchiveFile({
         sourcePaths: [path.join(first, 'data.txt'), path.join(second, 'data.txt')],
         destinationPath: output,
@@ -74,7 +76,8 @@ test('archive task core rejects unsafe names and duplicate source basenames', as
       'rejects sources that would collide inside the archive'
     );
 
-    await t.rejects(
+    await expectRejection(
+      t,
       createArchiveFile({
         sourcePaths: [path.join(first, 'data.txt')],
         destinationPath: output,
@@ -87,7 +90,8 @@ test('archive task core rejects unsafe names and duplicate source basenames', as
     );
     t.notOk(existsSync(path.join(root, 'escape.zip')), 'never writes outside the output directory');
 
-    await t.rejects(
+    await expectRejection(
+      t,
       createArchiveFile({
         sourcePaths: [path.join(first, 'data.txt')],
         destinationPath: output,
@@ -110,7 +114,8 @@ test('archive task core refuses to write the archive inside its source directory
   writeFileSync(path.join(source, 'file.txt'), 'data');
 
   try {
-    await t.rejects(
+    await expectRejection(
+      t,
       createArchiveFile({
         sourcePaths: [source],
         destinationPath: path.join(source, 'nested'),
@@ -142,7 +147,8 @@ test('archive task core refuses to overwrite an existing archive', async t => {
       format: 'zip',
       job: createJob()
     });
-    await t.rejects(
+    await expectRejection(
+      t,
       createArchiveFile({
         sourcePaths: [source],
         destinationPath: output,

@@ -1,4 +1,5 @@
 const test = require('tap').test;
+const { expectRejection } = require('./archiveTestHelpers');
 const { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, mkdirSync } = require('fs');
 const os = require('os');
 const path = require('path');
@@ -86,7 +87,8 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     );
 
     const conflictJob = service.startJob('extract', { path: '/bundle.zip', destinationPath: '/' });
-    await t.rejects(
+    await expectRejection(
+      t,
       waitForJob(service, conflictJob.id),
       /Destination already contains source/,
       'refuses extraction conflicts'
