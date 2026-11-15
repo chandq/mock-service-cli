@@ -76,9 +76,15 @@ class ArchiveService {
     if (!job) throw createArchiveError('Archive job not found', 404);
     if (['completed', 'failed', 'cancelled'].includes(job.status)) return job;
     job.cancelled = true;
-    job.status = 'cancelled';
     if (job.child) job.child.kill('SIGTERM');
     if (job.archive) job.archive.abort();
+    // A queued job never starts, so it is terminal immediately. A running job
+    // keeps its status until the background task drains its streams and removes
+    // the temporary directory; otherwise callers may delete files still in use.
+    if (job.status === 'queued') {
+      job.status = 'cancelled';
+      job.finishedAt = new Date().toISOString();
+    }
     return job;
   }
 

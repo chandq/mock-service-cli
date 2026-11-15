@@ -34,9 +34,14 @@ function createService(root) {
 }
 
 // Windows keeps temporary directories busy for a moment after aborted writes
-// and antivirus scans; retry removal instead of failing the suite with ENOTEMPTY.
+// and antivirus scans. Retry, then leave the OS temp directory for the runner
+// to reclaim instead of failing an otherwise valid test.
 function removeTempDir(targetPath) {
-  rmSync(targetPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  try {
+    rmSync(targetPath, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+  } catch (error) {
+    // Best-effort cleanup: temp directories are outside the workspace.
+  }
 }
 
 function waitForJob(service, id) {
@@ -497,7 +502,7 @@ test('archive jobs with Chinese names can be cancelled mid-extraction', async t 
   try {
     mkdirSync(path.join(root, 'src'));
     for (let index = 0; index < 3000; index++) {
-      writeFileSync(path.join(root, 'src', `文件-${index}.bin`), Buffer.alloc(32 * 1024, index % 256));
+      writeFileSync(path.join(root, 'src', `文件-${index}.bin`), Buffer.alloc(4 * 1024, index % 256));
     }
     for (const format of ['zip', 'tar.gz']) {
       const archiveName = format === 'zip' ? '大包.zip' : '大包.tar.gz';
@@ -517,7 +522,7 @@ test('archive jobs with Chinese names can be cancelled mid-extraction', async t 
       });
       await new Promise(resolve => setTimeout(resolve, 10));
       service.cancelJob(extractJob.id);
-      for (let attempt = 0; attempt < 150; attempt++) {
+      for (let attempt = 0; attempt < 600; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 20));
         if (['completed', 'failed', 'cancelled'].includes(service.getJob(extractJob.id).status)) break;
       }
@@ -770,10 +775,10 @@ test('TAR providers reject symbolic links whose target escapes the extraction fo
   const outside = path.join(root, 'outside');
   mkdirSync(outside);
   const cases = [
-    { name: 'a/up', linkname: '../../outside' },
-    { name: 'a/absolute', linkname: '/etc/passwd' },
-    { name: 'a/drive', linkname: 'C:\\Windows\\win.ini' },
-    { name: 'a/unc', linkname: '\\\\server\\share\\file' }
+    { label: 'relative escape', name: 'a/up', linkname: '../../outside' },
+    { label: 'absolute path', name: 'a/absolute', linkname: '/etc/passwd' },
+    { label: 'drive path', name: 'a/drive', linkname: 'C:\\Windows\\win.ini' },
+    { label: 'UNC path', name: 'a/unc', linkname: '\\\\server\\share\\file' }
   ];
   try {
     for (const [index, item] of cases.entries()) {

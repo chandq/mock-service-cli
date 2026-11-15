@@ -146,12 +146,12 @@ async function createArchiveFile({ sourcePaths, destinationPath, name, format, j
     });
     archive.finalize();
   }).catch(error => {
-    rmSync(outputPath, { force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outputPath, { force: true, maxRetries: 20, retryDelay: 100 });
     throw error;
   });
 
   if (job.cancelled) {
-    rmSync(outputPath, { force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outputPath, { force: true, maxRetries: 20, retryDelay: 100 });
     throw createArchiveError('Archive job cancelled', 499);
   }
   return { path: outputPath, name: path.basename(outputPath) };
@@ -187,7 +187,7 @@ async function extractArchiveFile({ sourcePath, destinationPath, job }) {
   } finally {
     // Windows may still hold brief handles from aborted writes; retry instead
     // of leaving temporary extraction directories behind.
-    rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(tempRoot, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   }
 }
 
