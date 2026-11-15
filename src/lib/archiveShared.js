@@ -1,12 +1,10 @@
 const { lstatSync, readlinkSync, readdirSync, realpathSync, symlinkSync, writeFileSync } = require('fs');
 const path = require('path');
+const { decodeFileNameBytes } = require('./utils');
 
 // Link privileges are not granted to every Windows account; Git solves the same
 // problem by storing the link target as a regular file.
 const WINDOWS_LINK_FALLBACK_CODES = new Set(['EPERM', 'EACCES', 'UNKNOWN']);
-
-let fatalUtf8Decoder;
-let legacyNameDecoder;
 
 function createArchiveError(message, statusCode = 400) {
   const error = new Error(message);
@@ -37,21 +35,7 @@ function hasArchiveExtension(filePath, extensions) {
 // UTF-8 (with or without the ZIP EFS flag) is decoded first so multi-language
 // archives keep working, then the Chinese Windows default is assumed.
 function decodeArchiveNameBytes(buffer) {
-  if (!Buffer.isBuffer(buffer)) return String(buffer || '');
-  if (!fatalUtf8Decoder) fatalUtf8Decoder = new TextDecoder('utf-8', { fatal: true });
-  try {
-    return fatalUtf8Decoder.decode(buffer);
-  } catch (error) {
-    if (!legacyNameDecoder) {
-      try {
-        legacyNameDecoder = new TextDecoder('gb18030');
-      } catch (unsupportedError) {
-        legacyNameDecoder = new TextDecoder('utf-8');
-      }
-    }
-    // Keep U+FFFD replacement only when the runtime lacks a GB18030 decoder.
-    return legacyNameDecoder.decode(buffer);
-  }
+  return decodeFileNameBytes(buffer);
 }
 
 // Validates a symbolic-link target before the link is created. Only relative

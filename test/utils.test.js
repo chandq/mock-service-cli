@@ -25,7 +25,9 @@ const {
   isAddressAllowed,
   isHiddenPath,
   getDirectoryHiddenNames,
-  openPathInFileManager
+  openPathInFileManager,
+  decodeFileNameBytes,
+  decodeUploadFileName
 } = require('../src/lib/utils');
 
 test('getLogger function - with args', async t => {
@@ -659,5 +661,20 @@ test('openPathInFileManager rejects unsupported platforms without spawning', asy
   t.equal(result.unsupported, true, 'marks the failure as unsupported platform');
   t.equal(result.error.message, 'Unsupported platform', 'reports the platform error');
 
+  t.end();
+});
+
+test('decodeUploadFileName restores UTF-8 and legacy GBK multipart names', async t => {
+  const utf8AsLatin1 = Buffer.from('中文文件.txt', 'utf8').toString('latin1');
+  t.equal(decodeUploadFileName(utf8AsLatin1), '中文文件.txt', 'decodes UTF-8 bytes preserved as latin1');
+
+  // 旧版文件.txt in GBK, as older Windows clients put it on the wire.
+  const gbkAsLatin1 = Buffer.from([190, 201, 176, 230, 206, 196, 188, 254, 46, 116, 120, 116]).toString('latin1');
+  t.equal(decodeUploadFileName(gbkAsLatin1), '旧版文件.txt', 'falls back to GB18030 for GBK clients');
+  t.equal(decodeUploadFileName('中文文件.txt'), '中文文件.txt', 'keeps names that are already decoded');
+  t.equal(decodeUploadFileName('plain.txt'), 'plain.txt', 'keeps ASCII names');
+  t.equal(decodeUploadFileName(''), '', 'keeps empty names');
+  t.equal(decodeFileNameBytes(Buffer.from('中文', 'utf8')), '中文', 'decodes raw UTF-8 buffers');
+  t.equal(decodeFileNameBytes(Buffer.alloc(0)), '', 'decodes empty buffers');
   t.end();
 });

@@ -30,7 +30,8 @@ const {
   hostAllowlistMiddleware,
   getDirectoryHiddenNames,
   normalizeRemoteAddress,
-  openPathInFileManager
+  openPathInFileManager,
+  decodeUploadFileName
 } = require('./utils');
 const { getPackageVersion } = require('./packageInfo');
 const { ArchiveService } = require('./archiveService');
@@ -643,24 +644,27 @@ function init() {
     const uploaded = [];
     const failed = [];
     files.forEach(file => {
+      // multipart filename is UTF-8 on the wire but busboy keeps it as latin1;
+      // legacy Windows clients may still send GBK, so decode bytes explicitly.
+      const originalName = decodeUploadFileName(file.originalname);
       try {
-        const { targetPath, parentFullPath, parts } = getUploadTargetPath(parentPath, file.originalname);
+        const { targetPath, parentFullPath, parts } = getUploadTargetPath(parentPath, originalName);
         if (existsSync(targetPath)) {
-          failed.push({ name: file.originalname, error: 'Path already exists', statusCode: 409 });
+          failed.push({ name: originalName, error: 'Path already exists', statusCode: 409 });
           return;
         }
         ensureUploadParent(parentFullPath, parts);
         if (existsSync(targetPath)) {
-          failed.push({ name: file.originalname, error: 'Path already exists', statusCode: 409 });
+          failed.push({ name: originalName, error: 'Path already exists', statusCode: 409 });
           return;
         }
         moveUploadedFile(file.path, targetPath);
         uploaded.push({
-          name: file.originalname,
+          name: originalName,
           path: path.posix.join(normalizeExplorerInputPath(parentPath), ...parts)
         });
       } catch (error) {
-        failed.push({ name: file.originalname, error: error.message, statusCode: error.statusCode || 500 });
+        failed.push({ name: originalName, error: error.message, statusCode: error.statusCode || 500 });
       } finally {
         if (existsSync(file.path)) rmSync(file.path, { force: true });
       }

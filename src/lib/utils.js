@@ -624,6 +624,41 @@ function getServerUrls(port, pathname = '') {
 //   });
 // };
 
+// 浏览器以 UTF-8 字节发送 multipart 文件名，旧版 Windows 客户端可能发送 GBK；
+// Node 的 HTTP 解析器按 latin1 保留原始字节，因此需要先还原字节再解码。
+let fatalUtf8Decoder;
+let legacyFileNameDecoder;
+
+function decodeFileNameBytes(value) {
+  const buffer = Buffer.isBuffer(value) ? value : Buffer.from(String(value || ''), 'latin1');
+  if (!buffer.length) return '';
+  if (!fatalUtf8Decoder) fatalUtf8Decoder = new TextDecoder('utf-8', { fatal: true });
+  try {
+    return fatalUtf8Decoder.decode(buffer);
+  } catch (error) {
+    if (!legacyFileNameDecoder) {
+      try {
+        legacyFileNameDecoder = new TextDecoder('gb18030');
+      } catch (unsupportedError) {
+        legacyFileNameDecoder = new TextDecoder('utf-8');
+      }
+    }
+    // 缺少 GB18030 解码器时退回 UTF-8，仅影响极少见的非 UTF-8 文件名。
+    return legacyFileNameDecoder.decode(buffer);
+  }
+}
+
+// multipart 的 filename 参数经 Node 以 latin1 字符串透传；含 > U+00FF 字符时
+// 说明客户端已按 RFC 5987 解码，直接返回，避免二次解码破坏名称。
+function decodeUploadFileName(value) {
+  const raw = String(value || '');
+  if (!raw) return raw;
+  for (let index = 0; index < raw.length; index++) {
+    if (raw.charCodeAt(index) > 0xff) return raw;
+  }
+  return decodeFileNameBytes(Buffer.from(raw, 'latin1'));
+}
+
 module.exports = {
   getLogger,
   dateFormat,
@@ -648,5 +683,7 @@ module.exports = {
   hostAllowlistMiddleware,
   isHiddenPath,
   getDirectoryHiddenNames,
-  openPathInFileManager
+  openPathInFileManager,
+  decodeFileNameBytes,
+  decodeUploadFileName
 };

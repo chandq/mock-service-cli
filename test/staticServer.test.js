@@ -424,7 +424,7 @@ test('static server development behaviors', async t => {
       t.notMatch(rootHtml, /AUTO_INDEX_MARKER/, 'does not automatically serve index.html');
       const rootWithHidden = await request(`${baseUrl}/?showHidden=1`);
       t.match(rootWithHidden.text, /\.coveralls\.yml/, 'shows root hidden files when requested');
-      t.match(rootWithHidden.text, />隐藏项目</, 'labels the active toggle with a concise action');
+      t.match(rootWithHidden.text, />不显示隐藏项目<\/a>/, 'labels the active toggle with a concise action');
       t.notMatch(rootWithHidden.text, /隐藏隐藏/, 'avoids duplicated wording when hidden items are shown');
       t.match(
         rootWithHidden.text,

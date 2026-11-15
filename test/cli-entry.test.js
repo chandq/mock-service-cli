@@ -360,6 +360,45 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
       `${entryFile} preserves upload folders`
     );
 
+    const unicodeUpload = await uploadFiles(
+      baseUrl,
+      [
+        { name: '中文文件.txt', content: 'unicode' },
+        { name: '中文目录/中文子文件.txt', content: 'nested-unicode' }
+      ],
+      password
+    );
+    t.equal(unicodeUpload.response.status, 200, `${entryFile} accepts Chinese upload filenames`);
+    t.same(
+      unicodeUpload.data.uploaded.map(item => item.name),
+      ['中文文件.txt', '中文目录/中文子文件.txt'],
+      `${entryFile} reports decoded Chinese upload names`
+    );
+    t.equal(
+      readFileSync(path.join(tempDir, '中文目录', '中文子文件.txt'), 'utf8'),
+      'nested-unicode',
+      `${entryFile} writes Chinese upload paths`
+    );
+
+    const gbkBoundary = '----mock-service-cli-gbk-filename';
+    const gbkFilename = Buffer.from([190, 201, 176, 230, 206, 196, 188, 254, 46, 116, 120, 116]);
+    const gbkBody = Buffer.concat([
+      Buffer.from(`--${gbkBoundary}\r\nContent-Disposition: form-data; name="parentPath"\r\n\r\n/\r\n`),
+      Buffer.from(`--${gbkBoundary}\r\nContent-Disposition: form-data; name="files"; filename="`),
+      gbkFilename,
+      Buffer.from(`"\r\nContent-Type: text/plain\r\n\r\nlegacy-gbk\r\n`),
+      Buffer.from(`--${gbkBoundary}--\r\n`)
+    ]);
+    const gbkUpload = await fetch(`${baseUrl}/__api/upload`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': `multipart/form-data; boundary=${gbkBoundary}` },
+      body: gbkBody
+    });
+    const gbkData = await gbkUpload.json();
+    t.equal(gbkUpload.status, 200, `${entryFile} accepts legacy GBK upload filenames`);
+    t.equal(gbkData.uploaded[0].name, '旧版文件.txt', `${entryFile} decodes GBK upload filenames`);
+    t.equal(readFileSync(path.join(tempDir, '旧版文件.txt'), 'utf8'), 'legacy-gbk', `${entryFile} writes the decoded GBK name`);
+
     const partialUpload = await uploadFiles(
       baseUrl,
       [
