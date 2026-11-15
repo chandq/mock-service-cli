@@ -1,6 +1,6 @@
 const test = require('tap').test;
 const { expectRejection } = require('./archiveTestHelpers');
-const { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, mkdirSync } = require('fs');
+const { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, mkdirSync, symlinkSync } = require('fs');
 const os = require('os');
 const path = require('path');
 const { ArchiveService } = require('../src/lib/archiveService');
@@ -118,6 +118,31 @@ test('ArchiveService creates, previews, extracts, rejects conflicts, and cancels
     await new Promise(resolve => setTimeout(resolve, 30));
     t.equal(service.getJob(cancelledJob.id).status, 'cancelled', 'cancels a queued archive job');
     t.notOk(existsSync(path.join(root, 'cancelled.zip')), 'does not create a cancelled archive');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ArchiveService archives a selected in-root symbolic link as a link', async t => {
+  if (process.platform === 'win32') {
+    t.skip('symbolic link fixture requires the Windows symlink privilege');
+    return;
+  }
+  const root = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-service-link-create-'));
+  const service = createService(root);
+  try {
+    writeFileSync(path.join(root, 'target.txt'), 'target');
+    symlinkSync('target.txt', path.join(root, 'link.txt'));
+    const job = service.startJob('create', {
+      sources: ['/link.txt'],
+      destinationPath: '/',
+      name: 'link',
+      format: 'zip'
+    });
+    await waitForJob(service, job.id);
+    const preview = await service.listArchive('/link.zip');
+    t.equal(preview.entries[0].path, 'link.txt', 'stores the selected link under its own name');
+    t.ok(preview.entries[0].isSymbolicLink, 'stores the selected link as a link instead of rejecting it');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

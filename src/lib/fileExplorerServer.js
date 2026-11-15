@@ -54,10 +54,10 @@ const osHiddenEnabled = process.env.OS_HIDDEN_ENABLED === 'true' || process.env.
 const visitorKeys = new Set();
 let httpServer = null;
 let shuttingDown = false;
-const MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024;
-const MAX_UPLOAD_TOTAL_SIZE = 2 * 1024 * 1024 * 1024;
-const MAX_UPLOAD_FILE_COUNT = 100;
-const MAX_MULTIPART_OVERHEAD_SIZE = 2 * 1024 * 1024;
+const MAX_UPLOAD_FILE_SIZE = 10 * 1024 * 1024 * 1024;
+const MAX_UPLOAD_TOTAL_SIZE = 20 * 1024 * 1024 * 1024;
+const MAX_UPLOAD_FILE_COUNT = 1000;
+const MAX_MULTIPART_OVERHEAD_SIZE = 32 * 1024 * 1024;
 const upload = multer({
   dest: path.join(os.tmpdir(), 'mock-service-cli-upload'),
   preservePath: true,
@@ -235,7 +235,7 @@ function cleanupUploadedTempFiles(files = []) {
 function enforceUploadRequestSize(req, res, next) {
   const contentLength = Number(req.get('content-length'));
   if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_TOTAL_SIZE + MAX_MULTIPART_OVERHEAD_SIZE) {
-    return res.status(413).json({ error: 'Total upload size exceeds 2GB limit' });
+    return res.status(413).json({ error: 'Total upload size exceeds 20GB limit' });
   }
   next();
 }
@@ -273,7 +273,7 @@ if (!process.env.PORT) {
 
 function init() {
   app.use(hostAllowlistMiddleware());
-  app.use(express.json());
+  app.use(express.json({ limit: '5mb' }));
   const faviconInstanceId = crypto.randomUUID();
   const explorerFaviconUrl = `/favicon-file-explorer.svg?instance=${faviconInstanceId}`;
   const loginFaviconUrl = `/favicon-file-explorer-login.svg?instance=${faviconInstanceId}`;
@@ -587,7 +587,7 @@ function init() {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_UPLOAD_TOTAL_SIZE) {
       cleanupUploadedTempFiles(files);
-      return res.status(413).json({ error: 'Total upload size exceeds 2GB limit' });
+      return res.status(413).json({ error: 'Total upload size exceeds 20GB limit' });
     }
 
     const uploaded = [];

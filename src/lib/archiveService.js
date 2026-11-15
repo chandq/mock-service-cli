@@ -1,4 +1,4 @@
-const { existsSync, lstatSync, realpathSync } = require('fs');
+const { lstatSync, realpathSync } = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const archiveProvider = require('./archiveProvider');
@@ -94,8 +94,15 @@ class ArchiveService {
     }
     const sourcePaths = payload.sources.map(source => this.resolvePath(source));
     sourcePaths.forEach(source => {
-      if (!existsSync(source)) throw createArchiveError('Source path not found', 404);
-      if (lstatSync(source).isSymbolicLink()) throw createArchiveError('Symbolic links cannot be archived');
+      let stats;
+      try {
+        stats = lstatSync(source);
+      } catch (error) {
+        throw createArchiveError('Source path not found', 404);
+      }
+      // Links are stored as links and never followed, so their target may be
+      // outside the explorer root without exposing its contents.
+      if (stats.isSymbolicLink()) return;
       const realPath = realpathSync(source);
       if (!isInside(this.rootPath, realPath)) throw createArchiveError('Access denied', 403);
     });

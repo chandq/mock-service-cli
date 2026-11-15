@@ -78,7 +78,7 @@ function init() {
 
   app.use(hostAllowlistMiddleware());
   app.use(crossDomain()); // 允许跨域
-  app.use(express.json()); // 解析body
+  app.use(express.json({ limit: '10mb' })); // 解析body
   app.get('/favicon-api-overview.svg', (req, res) => {
     res.sendFile(path.resolve(__dirname, './favicon-api-overview.svg'));
   });

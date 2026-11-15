@@ -13,9 +13,15 @@ const archiveProvider = require('./archiveProvider');
 const { createArchiveError, isInside, isSafeArchiveEntry, verifyExtractedTree } = require('./archiveShared');
 const { validateEntryName } = require('./utils');
 
-const MAX_ARCHIVE_SIZE = 2 * 1024 * 1024 * 1024;
-const MAX_ARCHIVE_ENTRIES = 10000;
-const MAX_COMPRESSION_RATIO = 100;
+const ARCHIVE_LIMITS = Object.freeze({
+  maxBytes: 20 * 1024 * 1024 * 1024,
+  maxEntries: 1000000,
+  maxCompressionRatio: 2000
+});
+
+function formatLimit(bytes) {
+  return `${Math.round(bytes / (1024 * 1024 * 1024))}GB`;
+}
 
 // lstat-based existence check: a dangling symlink still occupies the destination name.
 function pathExists(targetPath) {
@@ -34,12 +40,14 @@ function assertArchiveFile(fullPath) {
   const stats = lstatSync(fullPath);
   if (!stats.isFile()) throw createArchiveError('Archive path must be a file');
   if (!archiveProvider.isArchivePath(fullPath)) throw createArchiveError('Unsupported archive format');
-  if (stats.size > MAX_ARCHIVE_SIZE) throw createArchiveError('Archive exceeds 2GB limit', 413);
+  if (stats.size > ARCHIVE_LIMITS.maxBytes)
+    throw createArchiveError(`Archive exceeds ${formatLimit(ARCHIVE_LIMITS.maxBytes)} limit`, 413);
 }
 
 function assertEntriesSafe(entries, fullPath) {
   if (!entries.length) throw createArchiveError('Archive contains no entries', 422);
-  if (entries.length > MAX_ARCHIVE_ENTRIES) throw createArchiveError('Archive contains too many entries', 413);
+  if (entries.length > ARCHIVE_LIMITS.maxEntries)
+    throw createArchiveError(`Archive contains more than ${ARCHIVE_LIMITS.maxEntries} entries`, 413);
   if (entries.some(entry => entry.encrypted)) throw createArchiveError('Encrypted archives are not supported', 422);
   // Listing is a read-only header inspection: allow symlink/special entries to be
   // displayed (e.g. the official Node.js tarball ships bin/npm as symlinks), but
@@ -50,8 +58,9 @@ function assertEntriesSafe(entries, fullPath) {
 
   const totalSize = entries.reduce((total, entry) => total + (Number(entry.size) || 0), 0);
   const packedSize = Math.max(lstatSync(fullPath).size, 1);
-  if (totalSize > MAX_ARCHIVE_SIZE) throw createArchiveError('Archive expands beyond 2GB limit', 413);
-  if (totalSize / packedSize > MAX_COMPRESSION_RATIO)
+  if (totalSize > ARCHIVE_LIMITS.maxBytes)
+    throw createArchiveError(`Archive expands beyond ${formatLimit(ARCHIVE_LIMITS.maxBytes)} limit`, 413);
+  if (totalSize / packedSize > ARCHIVE_LIMITS.maxCompressionRatio)
     throw createArchiveError('Archive compression ratio exceeds limit', 413);
 }
 
@@ -72,12 +81,24 @@ async function listArchiveFile(fullPath) {
   };
 }
 
-async function assertSourceTreeSafe(source) {
-  const stats = await fsPromises.lstat(source);
-  if (stats.isSymbolicLink()) throw createArchiveError('Symbolic links cannot be archived');
-  if (!stats.isDirectory()) return;
-  const entries = await fsPromises.readdir(source, { withFileTypes: true });
-  await Promise.all(entries.map(entry => assertSourceTreeSafe(path.join(source, entry.name))));
+// archiver.directory() lets glob follow links, which can read outside the
+// source tree. Walk explicitly and let archiver store each link as a link.
+async function appendSource(archive, sourcePath, entryName, isRoot = false) {
+  const stats = await fsPromises.lstat(sourcePath);
+  if (stats.isSymbolicLink()) {
+    const target = await fsPromises.readlink(sourcePath);
+    archive.symlink(entryName, target.split(path.sep).join('/'));
+    return;
+  }
+  if (!stats.isDirectory()) {
+    archive.file(sourcePath, { name: entryName, stats });
+    return;
+  }
+  if (!isRoot) archive.file(sourcePath, { name: entryName, stats });
+  const children = await fsPromises.readdir(sourcePath, { withFileTypes: true });
+  await Promise.all(
+    children.map(child => appendSource(archive, path.join(sourcePath, child.name), `${entryName}/${child.name}`))
+  );
 }
 
 async function createArchiveFile({ sourcePaths, destinationPath, name, format, job }) {
@@ -94,11 +115,9 @@ async function createArchiveFile({ sourcePaths, destinationPath, name, format, j
   }
 
   sourcePaths.forEach(source => {
-    if (!existsSync(source)) throw createArchiveError('Source path not found', 404);
-    if (lstatSync(source).isSymbolicLink()) throw createArchiveError('Symbolic links cannot be archived');
+    // lstat-based check so dangling symlinks can be archived as links.
+    if (!pathExists(source)) throw createArchiveError('Source path not found', 404);
   });
-  await Promise.all(sourcePaths.map(source => assertSourceTreeSafe(source)));
-
   // Every source is stored under its basename, so identical names would
   // silently collide inside the archive.
   const entryNames = sourcePaths.map(source => path.basename(source));
@@ -139,12 +158,12 @@ async function createArchiveFile({ sourcePaths, destinationPath, name, format, j
       job.progress.totalEntries = progress.entries.total;
     });
     archive.pipe(output);
-    sourcePaths.forEach(source => {
-      const stats = lstatSync(source);
-      if (stats.isDirectory()) archive.directory(source, path.basename(source));
-      else archive.file(source, { name: path.basename(source) });
-    });
-    archive.finalize();
+    Promise.all(sourcePaths.map(source => appendSource(archive, source, path.basename(source), true)))
+      .then(() => archive.finalize())
+      .catch(error => {
+        archive.abort();
+        reject(error);
+      });
   }).catch(error => {
     rmSync(outputPath, { force: true, maxRetries: 20, retryDelay: 100 });
     throw error;
@@ -192,6 +211,7 @@ async function extractArchiveFile({ sourcePath, destinationPath, job }) {
 }
 
 module.exports = {
+  ARCHIVE_LIMITS,
   assertArchiveFile,
   createArchiveFile,
   extractArchiveFile,

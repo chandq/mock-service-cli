@@ -217,8 +217,8 @@ async function assertFileExplorerCli(t, entryFile) {
     t.ok(html.includes("window.addEventListener('pageshow'"), `${entryFile} restores explorer state from bfcache`);
     t.ok(html.includes('event.persisted'), `${entryFile} only restores after a persisted page lifecycle event`);
     t.ok(html.includes('createUploadBatches'), `${entryFile} batches folder uploads in the browser`);
-    t.ok(html.includes('MAX_UPLOAD_BATCH_FILE_COUNT = 100'), `${entryFile} batches folder uploads by file count`);
-    t.ok(html.includes('MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024 * 1024'), `${entryFile} allows large LAN upload files`);
+    t.ok(html.includes('MAX_UPLOAD_BATCH_FILE_COUNT = 500'), `${entryFile} batches folder uploads by file count`);
+    t.ok(html.includes('MAX_UPLOAD_FILE_SIZE = 10 * 1024 * 1024 * 1024'), `${entryFile} allows large LAN upload files`);
 
     const downloadResponse = await fetch(`${baseUrl}/__api/file?path=%2F${binaryMarker}&download=1`);
     t.equal(downloadResponse.status, 200, `${entryFile} serves explicit downloads`);
@@ -421,15 +421,15 @@ async function assertAuthenticatedExplorerCli(t, entryFile) {
       content: String(index)
     }));
     const bulkUpload = await uploadFiles(baseUrl, hundredFiles, password);
-    t.equal(bulkUpload.response.status, 200, `${entryFile} accepts a full 100-file upload batch`);
-    t.equal(bulkUpload.data.uploaded.length, 100, `${entryFile} processes every file in a full upload batch`);
+    t.equal(bulkUpload.response.status, 200, `${entryFile} accepts a multi-file upload batch`);
+    t.equal(bulkUpload.data.uploaded.length, 100, `${entryFile} processes every file in a multi-file upload batch`);
 
     const overLimitUpload = await uploadFiles(
       baseUrl,
-      Array.from({ length: 101 }, (_, index) => ({ name: `over-limit/file-${index}.txt`, content: String(index) })),
+      Array.from({ length: 1001 }, (_, index) => ({ name: `over-limit/file-${index}.txt`, content: String(index) })),
       password
     );
-    t.equal(overLimitUpload.response.status, 413, `${entryFile} rejects requests exceeding the 100-file server limit`);
+    t.equal(overLimitUpload.response.status, 413, `${entryFile} rejects requests exceeding the 1,000-file server limit`);
   } finally {
     stopCliProcess(child);
     rmSync(tempDir, { recursive: true, force: true });

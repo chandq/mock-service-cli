@@ -1,6 +1,16 @@
 const test = require('tap').test;
 const { expectRejection } = require('./archiveTestHelpers');
-const { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require('fs');
+const {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} = require('fs');
 const os = require('os');
 const path = require('path');
 const { createArchiveFile, extractArchiveFile, listArchiveFile } = require('../src/lib/archiveTask');
@@ -160,6 +170,45 @@ test('archive task core refuses to overwrite an existing archive', async t => {
       'does not overwrite the archive'
     );
     t.ok(existsSync(created.path), 'keeps the original archive');
+  } finally {
+    removeTempDir(root);
+  }
+});
+
+test('archive task core preserves in-tree symbolic links', async t => {
+  if (process.platform === 'win32') {
+    t.skip('symbolic link fixture requires the Windows symlink privilege');
+    return;
+  }
+  const root = mkdtempSync(path.join(os.tmpdir(), 'mock-service-cli-task-link-'));
+  const source = path.join(root, 'source');
+  mkdirSync(source);
+  writeFileSync(path.join(source, 'target.txt'), 'target content');
+  symlinkSync('target.txt', path.join(source, 'link.txt'));
+  const output = path.join(root, 'out');
+  mkdirSync(output);
+
+  try {
+    for (const format of ['zip', 'tar.gz']) {
+      const created = await createArchiveFile({
+        sourcePaths: [source],
+        destinationPath: output,
+        name: `链接-${format === 'zip' ? 'zip' : 'targz'}`,
+        format,
+        job: createJob()
+      });
+      const listed = await listArchiveFile(created.path);
+      const linkEntry = listed.entries.find(entry => entry.path === 'source/link.txt');
+      t.ok(linkEntry && linkEntry.isSymbolicLink, `${format} stores symbolic links as links`);
+
+      const extractDir = path.join(root, `extract-link-${format === 'zip' ? 'zip' : 'targz'}`);
+      mkdirSync(extractDir);
+      await extractArchiveFile({ sourcePath: created.path, destinationPath: extractDir, job: createJob() });
+      const linkPath = path.join(extractDir, 'source', 'link.txt');
+      t.ok(lstatSync(linkPath).isSymbolicLink(), `${format} restores the symbolic link`);
+      t.equal(readlinkSync(linkPath), 'target.txt', `${format} keeps the link target`);
+      t.equal(readFileSync(linkPath, 'utf8'), 'target content', `${format} link resolves to the archived file`);
+    }
   } finally {
     removeTempDir(root);
   }
