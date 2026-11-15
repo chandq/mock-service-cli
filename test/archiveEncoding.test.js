@@ -33,6 +33,12 @@ function createService(root) {
   });
 }
 
+// Windows keeps temporary directories busy for a moment after aborted writes
+// and antivirus scans; retry removal instead of failing the suite with ENOTEMPTY.
+function removeTempDir(targetPath) {
+  rmSync(targetPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+}
+
 function waitForJob(service, id) {
   return new Promise((resolve, reject) => {
     const timer = setInterval(() => {
@@ -162,7 +168,7 @@ test('ZIP providers decode Chinese entry names from legacy GBK archives', async 
       t.equal(readFileSync(extractedFile, 'utf8'), '中文内容', `${provider.capabilities.edition} provider keeps file contents intact`);
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -194,7 +200,7 @@ test('ZIP providers fall back to UTF-8 and the Unicode extra when the EFS flag i
       'trusts the Info-ZIP Unicode path extra when its CRC matches'
     );
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -221,7 +227,7 @@ test('ArchiveService previews and extracts GBK ZIP archives through the full job
     await waitForJob(service, job.id);
     t.ok(existsSync(path.join(root, '中文目录', '中文文件.txt')), 'extracts to the decoded Chinese path');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -243,7 +249,7 @@ test('ArchiveService rejects unsafe entry paths in legacy encoded ZIP archives',
     );
     await t.rejects(service.listArchive('/nul.zip'), /unsafe entry path/, 'rejects NUL bytes in entry names');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -303,7 +309,7 @@ test('ArchiveService round-trips Chinese names when creating and extracting arch
       'extracts Chinese TAR.GZ entries'
     );
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -459,7 +465,7 @@ test('ultra provider decodes Chinese names in RAR, 7z, TAR.BZ2, TAR.XZ and plain
       'light provider extracts plain TAR Chinese names'
     );
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -481,7 +487,7 @@ test('ArchiveService previews and extracts RAR4 archives with Chinese names', as
     t.ok(existsSync(path.join(root, '中文目录', '中文文件.txt')), 'extracts RAR entries to Chinese paths');
     t.equal(readFileSync(path.join(root, '中文目录', '中文文件.txt'), 'utf8'), 'rar 中文内容', 'keeps RAR contents intact');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -520,9 +526,14 @@ test('archive jobs with Chinese names can be cancelled mid-extraction', async t 
         existsSync(path.join(root, destinationName, 'src', '文件-0.bin')),
         `${format} cancellation leaves no committed output`
       );
+      t.same(
+        readdirSync(path.join(root, destinationName)).filter(name => name.startsWith('.mock-service-cli-archive-')),
+        [],
+        `${format} cancellation removes the temporary extraction directory`
+      );
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -545,7 +556,7 @@ test('ultra provider falls back to 7-Zip for Deflate64 ZIP entries', async t => 
       'extracts Deflate64 entries through the fallback'
     );
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -589,7 +600,7 @@ test('providers normalize GNU tar ./ markers and trailing-slash directory names'
       );
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -621,7 +632,7 @@ test('ZIP providers detect directories via external attributes without a trailin
       );
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -685,7 +696,7 @@ function assertInTreeSymlink(t, linkPath, expectedTarget, expectedContent) {
     return;
   }
   t.ok(stats.isSymbolicLink(), 'restores the entry as a symbolic link');
-  t.equal(readlinkSync(linkPath), expectedTarget, 'keeps the archived link target');
+  t.equal(readlinkSync(linkPath).replace(/\\/g, '/'), expectedTarget, 'keeps the archived link target');
   t.equal(readFileSync(linkPath, 'utf8'), expectedContent, 'link resolves to the archived file');
 }
 
@@ -726,7 +737,7 @@ test('TAR providers decode legacy GBK entry names through the byte-level decoder
       t.equal(readFileSync(path.join(output, '中文说明.txt'), 'utf8'), 'utf8 内容', `${edition} provider keeps UTF-8 names`);
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -750,7 +761,7 @@ test('TAR providers restore in-tree symbolic links instead of rejecting the arch
       t.ok(existsSync(path.join(output, '中文说明.txt')), `${edition} provider still extracts regular entries`);
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -781,7 +792,7 @@ test('TAR providers reject symbolic links whose target escapes the extraction fo
       t.same(readdirSync(outside), [], 'never writes outside the destination');
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -809,7 +820,7 @@ test('ArchiveService extracts in-tree symlinks and commits nothing when a link e
     t.same(readdirSync(path.join(root, 'dest-escape')), [], 'leaves the destination untouched');
     t.notOk(existsSync(path.join(root, 'etc')), 'never creates link targets outside the destination');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -831,7 +842,7 @@ test('ArchiveService refuses to replace a dangling destination symlink', async t
     await t.rejects(waitForJob(service, job.id), /Destination already contains/, 'reports the destination conflict');
     t.ok(lstatSync(path.join(root, '占用.txt')).isSymbolicLink(), 'keeps the existing dangling symlink');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -886,7 +897,7 @@ test('ZIP providers restore in-tree symbolic links and reject escaping targets',
     );
     t.notOk(existsSync(path.join(evilOutput, '逃逸链接.txt')), 'never creates the escaping ZIP link');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });
 
@@ -923,6 +934,6 @@ test('7-Zip expanded archives validate link targets before extraction', async t 
     await t.rejects(waitForJob(service, evilJob.id), /pointing outside/, 'rejects absolute 7z links before extraction');
     t.same(readdirSync(path.join(root, 'dest-evil')), [], 'leaves the 7z destination untouched');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTempDir(root);
   }
 });

@@ -190,12 +190,12 @@ class ArchiveService {
       });
       archive.finalize();
     }).catch(error => {
-      rmSync(outputPath, { force: true });
+      rmSync(outputPath, { force: true, maxRetries: 10, retryDelay: 50 });
       throw error;
     });
 
     if (job.cancelled) {
-      rmSync(outputPath, { force: true });
+      rmSync(outputPath, { force: true, maxRetries: 10, retryDelay: 50 });
       throw createArchiveError('Archive job cancelled', 499);
     }
     return { path: outputPath, name: path.basename(outputPath) };
@@ -231,7 +231,9 @@ class ArchiveService {
       job.progress.processedEntries = job.progress.totalEntries;
       return { destinationPath, entries: outputEntries };
     } finally {
-      rmSync(tempRoot, { recursive: true, force: true });
+      // Windows may still hold brief handles from aborted writes; retry instead
+      // of leaving temporary extraction directories behind.
+      rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     }
   }
 

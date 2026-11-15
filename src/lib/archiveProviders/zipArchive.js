@@ -195,93 +195,131 @@ async function isSupportedArchive(filePath) {
 
 async function extract(job, sourcePath, targetPath) {
   const rootRealPath = realpathSync(targetPath);
-  const zipFile = await openZip(sourcePath);
-  await new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (callback, value) => {
-      if (settled) return;
-      settled = true;
-      if (job.child === cancelHandle) job.child = null;
-      zipFile.close();
-      callback(value);
-    };
-    const cancelHandle = {
-      kill: () => finish(reject, createArchiveError('Archive job cancelled', 499))
-    };
-    job.child = cancelHandle;
-    const next = () => {
-      if (!settled) zipFile.readEntry();
-    };
-    const countEntry = () => {
-      job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
-    };
-    const extractSymlink = (entry, outputPath) => {
-      if (Number(entry.uncompressedSize || 0) > MAX_SYMLINK_TARGET_BYTES) {
-        finish(reject, createArchiveError('Archive contains a symbolic link with an invalid target', 422));
-        return;
-      }
-      zipFile.openReadStream(entry, async (error, input) => {
-        if (error) return finish(reject, createArchiveError(`Unable to extract ZIP archive: ${error.message}`, 422));
-        try {
-          const link = resolveSafeLinkTarget(
-            rootRealPath,
-            outputPath,
-            decodeArchiveNameBytes(await readStreamBuffer(input, MAX_SYMLINK_TARGET_BYTES))
-          );
-          mkdirSync(path.dirname(outputPath), { recursive: true });
-          createSafeSymlink(outputPath, link.target, link.resolvedPath);
-          countEntry();
-          next();
-        } catch (streamError) {
-          finish(reject, streamError);
-        }
-      });
-    };
-
-    zipFile.on('entry', entry => {
-      let entryName;
+  const activeInputs = new Set();
+  const activeWrites = new Set();
+  const destroyActiveInputs = () => {
+    for (const input of activeInputs) {
       try {
-        entryName = decodeZipEntryName(entry);
-        if (!entryName) {
-          next();
+        input.destroy();
+      } catch (error) {
+        // The stream may already be closed after a read error.
+      }
+    }
+    activeInputs.clear();
+  };
+  const zipFile = await openZip(sourcePath);
+  try {
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        if (job.child === cancelHandle) job.child = null;
+        // Aborted entry streams must release their file handles before the
+        // service removes the temporary directory (Windows keeps it busy).
+        if (callback === reject) destroyActiveInputs();
+        zipFile.close();
+        callback(value);
+      };
+      const cancelHandle = {
+        kill: () => finish(reject, createArchiveError('Archive job cancelled', 499))
+      };
+      job.child = cancelHandle;
+      const next = () => {
+        if (!settled) zipFile.readEntry();
+      };
+      const countEntry = () => {
+        job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
+      };
+      const extractSymlink = (entry, outputPath) => {
+        if (Number(entry.uncompressedSize || 0) > MAX_SYMLINK_TARGET_BYTES) {
+          finish(reject, createArchiveError('Archive contains a symbolic link with an invalid target', 422));
           return;
         }
-        assertZipEntrySafe(entry, entryName);
-        const outputPath = path.join(rootRealPath, entryName);
-        assertNoEscapingAncestor(rootRealPath, outputPath);
-        // Check the link mode before the directory bit: some writers mark
-        // symlinks with the DOS directory attribute as well.
-        if (isZipSymbolicLink(entry)) {
-          extractSymlink(entry, outputPath);
-          return;
-        }
-        if (isZipDirectoryEntry(entry)) {
-          mkdirSync(outputPath, { recursive: true });
-          countEntry();
-          next();
-          return;
-        }
-        mkdirSync(path.dirname(outputPath), { recursive: true });
         zipFile.openReadStream(entry, async (error, input) => {
           if (error) return finish(reject, createArchiveError(`Unable to extract ZIP archive: ${error.message}`, 422));
+          if (settled) {
+            input.destroy();
+            return;
+          }
+          activeInputs.add(input);
           try {
-            await pipeline(input, createWriteStream(outputPath, { flags: 'wx' }));
+            const link = resolveSafeLinkTarget(
+              rootRealPath,
+              outputPath,
+              decodeArchiveNameBytes(await readStreamBuffer(input, MAX_SYMLINK_TARGET_BYTES))
+            );
+            mkdirSync(path.dirname(outputPath), { recursive: true });
+            createSafeSymlink(outputPath, link.target, link.resolvedPath);
             countEntry();
-            return next();
+            next();
           } catch (streamError) {
-            finish(reject, createArchiveError(`Unable to extract ZIP archive: ${streamError.message}`, 422));
+            finish(reject, streamError);
+          } finally {
+            activeInputs.delete(input);
           }
         });
-      } catch (error) {
-        finish(reject, error);
-      }
+      };
+
+      zipFile.on('entry', entry => {
+        let entryName;
+        try {
+          entryName = decodeZipEntryName(entry);
+          if (!entryName) {
+            next();
+            return;
+          }
+          assertZipEntrySafe(entry, entryName);
+          const outputPath = path.join(rootRealPath, entryName);
+          assertNoEscapingAncestor(rootRealPath, outputPath);
+          // Check the link mode before the directory bit: some writers mark
+          // symlinks with the DOS directory attribute as well.
+          if (isZipSymbolicLink(entry)) {
+            extractSymlink(entry, outputPath);
+            return;
+          }
+          if (isZipDirectoryEntry(entry)) {
+            mkdirSync(outputPath, { recursive: true });
+            countEntry();
+            next();
+            return;
+          }
+          mkdirSync(path.dirname(outputPath), { recursive: true });
+          zipFile.openReadStream(entry, async (error, input) => {
+            if (error) return finish(reject, createArchiveError(`Unable to extract ZIP archive: ${error.message}`, 422));
+            if (settled) {
+              input.destroy();
+              return;
+            }
+            activeInputs.add(input);
+            const write = pipeline(input, createWriteStream(outputPath, { flags: 'wx' }));
+            activeWrites.add(write);
+            try {
+              await write;
+              countEntry();
+              next();
+            } catch (streamError) {
+              finish(reject, createArchiveError(`Unable to extract ZIP archive: ${streamError.message}`, 422));
+            } finally {
+              activeInputs.delete(input);
+              activeWrites.delete(write);
+            }
+          });
+        } catch (error) {
+          finish(reject, error);
+        }
+      });
+      zipFile.once('end', () => finish(resolve));
+      zipFile.once('error', error =>
+        finish(reject, createArchiveError(`Unable to read ZIP archive: ${error.message}`, 422))
+      );
+      zipFile.readEntry();
     });
-    zipFile.once('end', () => finish(resolve));
-    zipFile.once('error', error =>
-      finish(reject, createArchiveError(`Unable to read ZIP archive: ${error.message}`, 422))
-    );
-    zipFile.readEntry();
-  });
+  } catch (error) {
+    destroyActiveInputs();
+    await Promise.allSettled([...activeWrites]);
+    throw error;
+  }
   // Defense in depth: verify the complete tree after every entry is in place.
   verifyExtractedTree(rootRealPath);
 }

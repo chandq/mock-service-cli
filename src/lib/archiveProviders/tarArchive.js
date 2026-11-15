@@ -90,7 +90,13 @@ function runTar(filePath, createSource, job, onEntry) {
     streams.forEach(stream => stream.once('error', fail));
     extractor.on('entry', (header, entryStream, next) => {
       Promise.resolve()
-        .then(() => onEntry(header, entryStream, fail))
+        .then(() => {
+          if (settled) {
+            entryStream.resume();
+            return;
+          }
+          return onEntry(header, entryStream, fail);
+        })
         .then(() => {
           if (!settled) next();
         })
@@ -149,56 +155,68 @@ async function listEntries(filePath, createSource = createFileSource) {
 
 async function extract(job, sourcePath, targetPath, createSource = createFileSource) {
   const rootRealPath = realpathSync(targetPath);
-  await runTar(sourcePath, createSource, job, (header, entryStream) =>
-    new Promise((resolve, reject) => {
-      const resolved = resolveTarEntry(header);
-      if (resolved.skip) {
-        entryStream.once('error', reject);
-        entryStream.once('end', resolve);
-        entryStream.resume();
-        return;
-      }
-      if (resolved.unsafe) {
-        reject(createArchiveError('Archive contains an unsafe entry path', 422));
-        return;
-      }
-      if (resolved.special) {
-        reject(createArchiveError('Archive contains hard links or device entries that cannot be extracted', 422));
-        return;
-      }
-      const outputPath = path.join(rootRealPath, resolved.name);
-      assertNoEscapingAncestor(rootRealPath, outputPath);
-      if (resolved.symlink) {
-        const link = resolveSafeLinkTarget(rootRealPath, outputPath, resolved.linkname);
+  const pendingWrites = new Set();
+  try {
+    await runTar(sourcePath, createSource, job, (header, entryStream) =>
+      new Promise((resolve, reject) => {
+        const resolved = resolveTarEntry(header);
+        if (resolved.skip) {
+          entryStream.once('error', reject);
+          entryStream.once('end', resolve);
+          entryStream.resume();
+          return;
+        }
+        if (resolved.unsafe) {
+          reject(createArchiveError('Archive contains an unsafe entry path', 422));
+          return;
+        }
+        if (resolved.special) {
+          reject(createArchiveError('Archive contains hard links or device entries that cannot be extracted', 422));
+          return;
+        }
+        const outputPath = path.join(rootRealPath, resolved.name);
+        assertNoEscapingAncestor(rootRealPath, outputPath);
+        if (resolved.symlink) {
+          const link = resolveSafeLinkTarget(rootRealPath, outputPath, resolved.linkname);
+          mkdirSync(path.dirname(outputPath), { recursive: true });
+          createSafeSymlink(outputPath, link.target, link.resolvedPath);
+          entryStream.once('error', reject);
+          entryStream.once('end', () => {
+            job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
+            resolve();
+          });
+          entryStream.resume();
+          return;
+        }
+        if (resolved.isDirectory) {
+          mkdirSync(outputPath, { recursive: true });
+          entryStream.once('error', reject);
+          entryStream.once('end', () => {
+            job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
+            resolve();
+          });
+          entryStream.resume();
+          return;
+        }
         mkdirSync(path.dirname(outputPath), { recursive: true });
-        createSafeSymlink(outputPath, link.target, link.resolvedPath);
-        entryStream.once('error', reject);
-        entryStream.once('end', () => {
-          job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
-          resolve();
-        });
-        entryStream.resume();
-        return;
-      }
-      if (resolved.isDirectory) {
-        mkdirSync(outputPath, { recursive: true });
-        entryStream.once('error', reject);
-        entryStream.once('end', () => {
-          job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
-          resolve();
-        });
-        entryStream.resume();
-        return;
-      }
-      mkdirSync(path.dirname(outputPath), { recursive: true });
-      pipeline(entryStream, createWriteStream(outputPath, { flags: 'wx' }))
-        .then(() => {
-          job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
-          resolve();
-        })
-        .catch(reject);
-    })
-  );
+        const write = pipeline(entryStream, createWriteStream(outputPath, { flags: 'wx' }));
+        pendingWrites.add(write);
+        write
+          .then(() => {
+            job.progress.processedEntries = Math.min(job.progress.totalEntries, job.progress.processedEntries + 1);
+            resolve();
+          })
+          .catch(reject)
+          .finally(() => pendingWrites.delete(write));
+      })
+    );
+  } catch (error) {
+    // A cancelled or failed extraction must release the file handles of aborted
+    // writes before the caller removes the temporary directory (Windows keeps
+    // such directories busy until the handles close).
+    await Promise.allSettled([...pendingWrites]);
+    throw error;
+  }
   // Defense in depth: verify the complete tree after every entry is in place.
   verifyExtractedTree(rootRealPath);
 }
