@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [4.13.1](https://github.com/chandq/mock-service-cli/compare/v4.13.0...v4.13.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **api-client:** raise upload and request limits ([031333c](https://github.com/chandq/mock-service-cli/commit/031333c6d7363f3b8d2a50913152a2c38e25f255))
+
 ## [4.13.0](https://github.com/chandq/mock-service-cli/compare/v4.12.0...v4.13.0) (2026-11-15)
 
 
