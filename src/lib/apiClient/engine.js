@@ -14,6 +14,10 @@ const { responseFilename } = require('./download');
 const { isManagedHeader } = require('./headers');
 const { LIMITS, fail, check, request, interpolate, variables, redact, sensitive } = require('./model');
 
+// Multipart boundaries, part headers and small text fields live outside the
+// uploaded file bytes but still occupy the request buffer.
+const MULTIPART_OVERHEAD = 2 * 1024 * 1024;
+
 class TemporaryFiles {
   constructor() {
     this.files = new Map();
@@ -32,7 +36,7 @@ class TemporaryFiles {
     return file;
   }
   add(file, size) {
-    if (this.bytes + size > LIMITS.disk) throw fail('临时存储超过 256 MiB，请清理结果后重试', 413);
+    if (this.bytes + size > LIMITS.disk) throw fail('临时存储超过 512 MiB，请清理结果后重试', 413);
     file.size += size;
     this.bytes += size;
   }
@@ -104,7 +108,7 @@ async function bodyBuffer(body, headers, files, owner) {
     const append = chunk => {
       const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       size += data.length;
-      check(size <= LIMITS.request, '请求正文超过 20 MiB');
+      check(size <= LIMITS.request + MULTIPART_OVERHEAD, '请求正文超过 100 MiB');
       chunks.push(data);
     };
     for (const row of (body.fields || []).filter(row => row.enabled !== false)) {
@@ -344,7 +348,8 @@ class Engine {
     let headers = outgoingHeaders(input.headers);
     addAuth(input.auth, headers, url);
     let body = await bodyBuffer(input.body, headers, this.files, owner);
-    check(!body || body.length <= LIMITS.request, '请求正文超过 20 MiB');
+    const bodyLimit = input.body.type === 'multipart' ? LIMITS.request + MULTIPART_OVERHEAD : LIMITS.request;
+    check(!body || body.length <= bodyLimit, '请求正文超过 100 MiB');
     check(!['GET', 'HEAD'].includes(input.method) || !body?.length, 'GET/HEAD 不发送正文');
     let method = input.method;
     const started = Date.now();

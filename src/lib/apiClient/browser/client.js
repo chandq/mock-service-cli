@@ -978,7 +978,7 @@
           el(
             'div',
             { className: 'toolbar' },
-            button(req.body.fileName || '选择文件（最大 20 MiB）', () =>
+            button(req.body.fileName || '选择文件（最大 100 MiB）', () =>
               chooseFile(async file => {
                 const data = await upload(file);
                 req.body.uploadId = data.uploadId;
@@ -1235,7 +1235,7 @@
     picker.click();
   }
   async function upload(file) {
-    if (file.size > config.limits.request) throw new Error('文件超过 20 MiB');
+    if (file.size > config.limits.upload) throw new Error('文件超过 100 MiB');
     const response = await fetch('/__api-client/api/uploads', {
       method: 'POST',
       headers: {
@@ -1548,7 +1548,7 @@
         ),
         button('选择文件', () =>
           chooseFile(async file => {
-            if (file.size > config.limits.request) throw new Error('文件超过 20 MiB');
+            if (file.size > config.limits.upload) throw new Error('文件超过 100 MiB');
             text = await file.text();
             source.value = text;
             report = null;

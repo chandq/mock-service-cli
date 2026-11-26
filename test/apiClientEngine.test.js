@@ -339,3 +339,29 @@ test('scheduler enforces per-session, global and queued limits; queued cancellat
   await Promise.all([...engine.jobs.values()].map(job => job.promise));
   t.equal(engine.active, 0);
 });
+
+test('binary request bodies above 20 MiB are accepted', async t => {
+  const engine = new Engine();
+  t.teardown(() => engine.close());
+  const upstream = http.createServer((req, res) => {
+    let size = 0;
+    req.on('data', chunk => {
+      size += chunk.length;
+    });
+    req.on('end', () => res.end(String(size)));
+  });
+  const base = await listen(upstream);
+  t.teardown(() => close(upstream));
+  const file = await engine.files.create('a');
+  file.name = 'large.bin';
+  const size = 21 * 1024 * 1024;
+  await fs.writeFile(file.path, Buffer.alloc(size, 7));
+  engine.files.add(file, size);
+  const result = await engine.execute(
+    input(`${base}/size`, { method: 'POST', body: { type: 'binary', uploadId: file.id } }),
+    'a',
+    new CookieJar(),
+    new AbortController().signal
+  );
+  t.equal(result.body, String(size), 'sends the complete binary body');
+});

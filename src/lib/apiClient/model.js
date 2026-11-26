@@ -1,7 +1,13 @@
 const crypto = require('crypto');
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-const LIMITS = { request: 20 * 1024 * 1024, response: 50 * 1024 * 1024, preview: 1024 * 1024, disk: 256 * 1024 * 1024 };
+const LIMITS = {
+  request: 100 * 1024 * 1024,
+  upload: 100 * 1024 * 1024,
+  response: 50 * 1024 * 1024,
+  preview: 1024 * 1024,
+  disk: 512 * 1024 * 1024
+};
 const sensitive = /authorization|cookie|password|token|secret|api[-_]?key/i;
 function fail(message, status = 400) {
   const error = new Error(message);

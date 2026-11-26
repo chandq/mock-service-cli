@@ -145,6 +145,15 @@ test('HTTP API authentication, origin isolation, imports, writes and ownership',
     })
   ).json();
   t.ok(uploaded.uploadId);
+  const largePayload = Buffer.alloc(21 * 1024 * 1024, 0x61);
+  const largeUploadResponse = await fetch(`${base}/__api-client/api/uploads`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/octet-stream', 'X-File-Name': 'large.bin' },
+    body: largePayload
+  });
+  const largeUpload = await largeUploadResponse.json();
+  t.equal(largeUploadResponse.status, 201, 'accepts uploads above 20 MiB');
+  t.equal(largeUpload.size, largePayload.length, 'stores the complete large upload');
   const other = await session(base, 'test-password');
   t.equal(
     (await fetch(`${base}/__api-client/api/uploads/${uploaded.uploadId}`, { method: 'DELETE', headers: other })).status,

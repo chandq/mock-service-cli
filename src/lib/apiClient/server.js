@@ -163,7 +163,7 @@ function createClientServer(options = {}) {
         transform(chunk, encoding, callback) {
           try {
             size += chunk.length;
-            check(size <= LIMITS.request, '上传超过 20 MiB');
+            check(size <= LIMITS.upload, '上传超过 100 MiB');
             engine.files.add(file, chunk.length);
             callback(null, chunk);
           } catch (error) {
@@ -180,7 +180,7 @@ function createClientServer(options = {}) {
       }
     })
   );
-  app.use(API, express.json({ limit: '21mb' }));
+  app.use(API, express.json({ limit: '105mb' }));
   app.use(API, (req, res, next) => {
     try {
       safeObject(req.body);
